@@ -1,32 +1,53 @@
 /**
  * Strawberry Tarneeb Scoreboard
- * Logic & State Engine
+ * Engine with 4-Player Table Roster, Pre-Round Bidding, and Exact Tarneeb Scoring Rules.
+ * Rules:
+ *   - Exactly 4 active players seated at the table; remaining roster on Bench / Sitting Out.
+ *   - Pre-round Bidding Phase: Allowed bids: 0, 2-13 (Bid 1 is strictly prohibited).
+ *   - Scoring:
+ *       * Bid 0: +5 if made (0 tricks), -5 if failed (>= 1 trick)
+ *       * Bid 7: +14 if made (>= 7 tricks), -14 if failed (< 7 tricks)
+ *       * General (2-6, 8-13): +Bid if made (tricks >= bid), -Bid if failed (tricks < bid)
  */
 
 (function () {
   'use strict';
 
-  // Constants & Defaults
-  const DEFAULT_PLAYERS = ['Ahmed', 'Hosam', 'Shiba', 'Furjani', 'Surum'];
+  // Constants
   const TOTAL_ROUNDS = 15;
-  const STORAGE_KEY_STATE = 'strawberry_tarneeb_state_v1';
-  const STORAGE_KEY_HISTORY = 'strawberry_tarneeb_history_v1';
+  const ALLOWED_BIDS = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]; // 1 is strictly prohibited!
+  const STORAGE_KEY_STATE = 'strawberry_tarneeb_v2_custom_rules';
+  const STORAGE_KEY_HISTORY = 'strawberry_tarneeb_v2_history';
 
-  // State
+  const DEFAULT_ROSTER = [
+    { id: 'p_ahmed', name: 'Ahmed', active: true },
+    { id: 'p_hosam', name: 'Hosam', active: true },
+    { id: 'p_shiba', name: 'Shiba', active: true },
+    { id: 'p_furjani', name: 'Furjani', active: true },
+    { id: 'p_surum', name: 'Surum', active: false }
+  ];
+
+  // Application State
   let state = {
-    players: [...DEFAULT_PLAYERS],
-    // rounds: 15 arrays, each of length players.length, storing number or null
-    rounds: Array.from({ length: TOTAL_ROUNDS }, () => Array(DEFAULT_PLAYERS.length).fill(null)),
+    roster: JSON.parse(JSON.stringify(DEFAULT_ROSTER)),
+    activePlayerIds: ['p_ahmed', 'p_hosam', 'p_shiba', 'p_furjani'],
+    // 15 rounds
+    rounds: Array.from({ length: TOTAL_ROUNDS }, () => ({
+      bids: {},    // { [playerId]: number | null }
+      tricks: {},  // { [playerId]: number | null }
+      scores: {},  // { [playerId]: number | null }
+      completed: false
+    })),
     activeRound: 0, // 0-indexed (Round 1 = 0)
     gameStartedAt: new Date().toISOString()
   };
 
   let deferredInstallPrompt = null;
-  let activeFastPlayerIndex = 0; // for fast keypad focus
+  let currentModalRound = 0;
 
   // DOM Elements
   const podiumContainer = document.getElementById('podiumContainer');
-  const secondaryStandingsList = document.getElementById('secondaryStandingsList');
+  const benchContainer = document.getElementById('benchContainer');
   const tableHeaderRow = document.getElementById('tableHeaderRow');
   const tableBody = document.getElementById('tableBody');
   const tableFooterRow = document.getElementById('tableFooterRow');
@@ -37,30 +58,44 @@
   const playerCountTag = document.getElementById('playerCountTag');
 
   // Modals
-  const modalFastEntry = document.getElementById('modalFastEntry');
+  const modalBidding = document.getElementById('modalBidding');
+  const modalScoring = document.getElementById('modalScoring');
   const modalPlayers = document.getElementById('modalPlayers');
   const modalNewGame = document.getElementById('modalNewGame');
   const modalHistory = document.getElementById('modalHistory');
   const modalVictory = document.getElementById('modalVictory');
 
-  // Fast modal elements
-  const fastModalRoundTitle = document.getElementById('fastModalRoundTitle');
-  const fastModalDealer = document.getElementById('fastModalDealer');
-  const fastPlayerList = document.getElementById('fastPlayerList');
+  // Bidding Modal Elements
+  const biddingModalRoundTitle = document.getElementById('biddingModalRoundTitle');
+  const biddingModalDealer = document.getElementById('biddingModalDealer');
+  const biddingPlayerList = document.getElementById('biddingPlayerList');
+  const btnSaveBidsAndPlay = document.getElementById('btnSaveBidsAndPlay');
+  const btnBiddingDone = document.getElementById('btnBiddingDone');
+  const btnCloseBiddingModal = document.getElementById('btnCloseBiddingModal');
+
+  // Scoring Modal Elements
+  const scoringModalRoundTitle = document.getElementById('scoringModalRoundTitle');
+  const scoringModalRoundNum = document.getElementById('scoringModalRoundNum');
+  const scoringModalDealer = document.getElementById('scoringModalDealer');
+  const scoringPlayerList = document.getElementById('scoringPlayerList');
+  const tricksTotalBadge = document.getElementById('tricksTotalBadge');
+  const tricksStatusIcon = document.getElementById('tricksStatusIcon');
   const btnPrevRound = document.getElementById('btnPrevRound');
   const btnNextRound = document.getElementById('btnNextRound');
-  let fastModalRoundIndex = 0;
+  const btnBackToBidding = document.getElementById('btnBackToBidding');
+  const btnSaveScoring = document.getElementById('btnSaveScoring');
+  const btnCloseScoringModal = document.getElementById('btnCloseScoringModal');
 
-  // Manage Players elements
-  const playerManageList = document.getElementById('playerManageList');
+  // Roster Modal Elements
+  const activeCounterPill = document.getElementById('activeCounterPill');
+  const activeCountNum = document.getElementById('activeCountNum');
+  const activePlayersList = document.getElementById('activePlayersList');
+  const benchPlayersList = document.getElementById('benchPlayersList');
   const newPlayerNameInput = document.getElementById('newPlayerNameInput');
   const btnAddPlayer = document.getElementById('btnAddPlayer');
-  const btnSavePlayers = document.getElementById('btnSavePlayers');
   const btnResetDefaultPlayers = document.getElementById('btnResetDefaultPlayers');
-
-  // History elements
-  const historyListContainer = document.getElementById('historyListContainer');
-  const btnClearAllHistory = document.getElementById('btnClearAllHistory');
+  const btnSaveRoster = document.getElementById('btnSaveRoster');
+  const btnClosePlayersModal = document.getElementById('btnClosePlayersModal');
 
   // Confetti Canvas
   const confettiCanvas = document.getElementById('confettiCanvas');
@@ -77,8 +112,6 @@
     setupPWA();
     setupEventListeners();
     renderAll();
-
-    // Check if initial load is already completed game
     checkGameCompletion(false);
   }
 
@@ -87,17 +120,23 @@
       const saved = localStorage.getItem(STORAGE_KEY_STATE);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.players && Array.isArray(parsed.players) && parsed.players.length > 0) {
-          state.players = parsed.players;
+        if (parsed.roster && Array.isArray(parsed.roster)) {
+          state.roster = parsed.roster;
+        }
+        if (parsed.activePlayerIds && Array.isArray(parsed.activePlayerIds) && parsed.activePlayerIds.length === 4) {
+          state.activePlayerIds = parsed.activePlayerIds;
+        } else {
+          ensureFourActivePlayers();
         }
         if (parsed.rounds && Array.isArray(parsed.rounds)) {
-          // Normalize rounds to 15 rounds and match player count
           state.rounds = Array.from({ length: TOTAL_ROUNDS }, (_, rIdx) => {
-            const savedRow = parsed.rounds[rIdx] || [];
-            return state.players.map((_, pIdx) => {
-              const val = savedRow[pIdx];
-              return (val !== null && val !== undefined && val !== '') ? Number(val) : null;
-            });
+            const r = parsed.rounds[rIdx] || {};
+            return {
+              bids: r.bids || {},
+              tricks: r.tricks || {},
+              scores: r.scores || {},
+              completed: !!r.completed
+            };
           });
         }
         if (typeof parsed.activeRound === 'number') {
@@ -106,17 +145,32 @@
         if (parsed.gameStartedAt) {
           state.gameStartedAt = parsed.gameStartedAt;
         }
+      } else {
+        ensureFourActivePlayers();
       }
     } catch (e) {
       console.warn('Error reading state from localStorage:', e);
+      ensureFourActivePlayers();
     }
+  }
+
+  function ensureFourActivePlayers() {
+    let actives = state.roster.filter(p => p.active);
+    if (actives.length !== 4) {
+      // Pick first 4 as active, rest as bench
+      state.roster.forEach((p, idx) => {
+        p.active = idx < 4;
+      });
+      actives = state.roster.filter(p => p.active);
+    }
+    state.activePlayerIds = actives.slice(0, 4).map(p => p.id);
   }
 
   function saveState() {
     try {
       localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(state));
     } catch (e) {
-      console.warn('Error saving state to localStorage:', e);
+      console.warn('Error saving state:', e);
     }
   }
 
@@ -125,7 +179,6 @@
       const saved = localStorage.getItem(STORAGE_KEY_HISTORY);
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
-      console.warn('Error reading history:', e);
       return [];
     }
   }
@@ -139,44 +192,95 @@
   }
 
   // ==========================================================================
-  // CORE CALCULATION & RANKING LOGIC
+  // HELPERS & ACTIVE PLAYERS
+  // ==========================================================================
+
+  function getActivePlayers() {
+    return state.activePlayerIds
+      .map(id => state.roster.find(p => p.id === id))
+      .filter(Boolean);
+  }
+
+  function getBenchPlayers() {
+    return state.roster.filter(p => !state.activePlayerIds.includes(p.id));
+  }
+
+  function getPlayerById(id) {
+    return state.roster.find(p => p.id === id);
+  }
+
+  function getDealerForRound(roundIndex) {
+    const actives = getActivePlayers();
+    if (actives.length === 0) return 'Dealer';
+    const idx = roundIndex % actives.length;
+    return actives[idx].name;
+  }
+
+  // ==========================================================================
+  // EXACT SCORING ENGINE
   // ==========================================================================
 
   /**
-   * Calculates Total Score for each player:
+   * Exact Game Rules:
+   *  - Bid 0: +5 points if made (0 tricks), -5 points if failed (>= 1 trick)
+   *  - Bid 7: +14 points if made (>= 7 tricks), -14 points if failed (< 7 tricks)
+   *  - General Bids (2-6, 8-13): +Bid points if made (tricks >= bid), -Bid points if failed (tricks < bid)
+   *  - Note: Bid 1 is strictly prohibited in bidding phase.
+   */
+  function calculateRoundScore(bid, tricks) {
+    if (bid === null || tricks === null || isNaN(bid) || isNaN(tricks)) {
+      return null;
+    }
+    bid = Number(bid);
+    tricks = Number(tricks);
+
+    // Bid 0 special rule
+    if (bid === 0) {
+      return tricks === 0 ? 5 : -5;
+    }
+
+    // Bid 7 special rule
+    if (bid === 7) {
+      return tricks >= 7 ? 14 : -14;
+    }
+
+    // General Bids (2-6, 8-13)
+    return tricks >= bid ? bid : -bid;
+  }
+
+  /**
+   * Total Score: Sum of Round 1 through Round 15 for each active player
    * = SUM(Round 1 : Round 15)
    */
   function calculateTotals() {
-    const totals = state.players.map((name, pIdx) => {
+    const actives = getActivePlayers();
+    return actives.map((player) => {
       let sum = 0;
       let playedRounds = 0;
       for (let r = 0; r < TOTAL_ROUNDS; r++) {
-        const val = state.rounds[r][pIdx];
-        if (val !== null && !isNaN(val)) {
-          sum += val;
+        const score = state.rounds[r].scores[player.id];
+        if (score !== null && score !== undefined && !isNaN(score)) {
+          sum += Number(score);
           playedRounds++;
         }
       }
       return {
-        playerIndex: pIdx,
-        name: name,
+        id: player.id,
+        name: player.name,
         total: sum,
         playedRounds: playedRounds
       };
     });
-    return totals;
   }
 
   /**
    * Dynamic Live Ranking:
-   * Ranked from 1st to Nth based on highest total score descending.
+   * Ranked from 1st to 4th based on highest total score descending.
    */
   function calculateRankings() {
     const totals = calculateTotals();
-    // Sort descending by total score
     totals.sort((a, b) => b.total - a.total);
 
-    // Assign rank with tie handling
     let currentRank = 1;
     for (let i = 0; i < totals.length; i++) {
       if (i > 0 && totals[i].total === totals[i - 1].total) {
@@ -186,28 +290,18 @@
       }
       currentRank++;
     }
-
     return totals;
   }
 
-  /**
-   * Determine the current active round (the first round that still has unentered scores)
-   */
   function detectActiveRound() {
+    const actives = getActivePlayers();
     for (let r = 0; r < TOTAL_ROUNDS; r++) {
-      const isComplete = state.players.every((_, pIdx) => state.rounds[r][pIdx] !== null);
+      const isComplete = actives.every(p => state.rounds[r].scores[p.id] !== null && state.rounds[r].scores[p.id] !== undefined);
       if (!isComplete) {
         return r;
       }
     }
-    return TOTAL_ROUNDS - 1; // all completed
-  }
-
-  function getDealerForRound(roundIndex) {
-    if (state.players.length === 0) return '';
-    // Cyclical dealer rotation
-    const dealerIdx = roundIndex % state.players.length;
-    return state.players[dealerIdx];
+    return TOTAL_ROUNDS - 1;
   }
 
   // ==========================================================================
@@ -219,7 +313,6 @@
     renderHeaderInfo();
     renderLeaderboard();
     renderScoreboardTable();
-    playerCountTag.textContent = `${state.players.length} Players`;
   }
 
   function renderHeaderInfo() {
@@ -228,108 +321,84 @@
     activeRoundLabel.textContent = `Round ${roundNumber} of ${TOTAL_ROUNDS}`;
     dealerInfoTag.textContent = `• Dealer: ${dealer} 🂠`;
 
-    // Calculate overall completed rounds percentage
+    const actives = getActivePlayers();
     let completedCount = 0;
     for (let r = 0; r < TOTAL_ROUNDS; r++) {
-      if (state.players.every((_, pIdx) => state.rounds[r][pIdx] !== null)) {
+      if (actives.every(p => state.rounds[r].scores[p.id] !== null && state.rounds[r].scores[p.id] !== undefined)) {
         completedCount++;
       }
     }
     const percent = Math.round((completedCount / TOTAL_ROUNDS) * 100);
     roundProgressBar.style.width = `${percent}%`;
+    playerCountTag.textContent = `4 Active Seated`;
   }
 
   /**
-   * Render Top Leaderboard with Gold / Silver / Bronze podium
+   * Render Top Leaderboard Podium (4 Seated Players) + Bench Strip
    */
   function renderLeaderboard() {
     const rankings = calculateRankings();
     if (rankings.length === 0) return;
 
     const first = rankings[0];
-    const second = rankings.length > 1 ? rankings[1] : null;
-    const third = rankings.length > 2 ? rankings[2] : null;
 
-    // Podium HTML (1st, 2nd, 3rd)
     let podiumHtml = '';
+    const rankBadges = ['👑', '🥈', '🥉', '4️⃣'];
+    const rankClasses = ['first', 'second', 'third', 'fourth'];
+    const rankLabels = ['1st Place', '2nd Place', '3rd Place', '4th Place'];
 
-    // 2nd Place (Left)
-    if (second) {
-      const diff1 = second.total - first.total;
+    rankings.forEach((item, idx) => {
+      const diff = item.total - first.total;
+      let gapText = '';
+      if (idx === 0) {
+        const second = rankings[1];
+        gapText = second ? (first.total === second.total ? 'Tied' : `+${first.total - second.total} ahead`) : 'Leader';
+      } else {
+        gapText = diff === 0 ? 'Tied 1st' : `${diff} pts`;
+      }
+
       podiumHtml += `
-        <div class="podium-item second">
-          <div class="podium-badge">🥈</div>
-          <span class="podium-rank-tag">2nd Place</span>
-          <div class="podium-name" title="${escapeHtml(second.name)}">${escapeHtml(second.name)}</div>
-          <div class="podium-score num">${second.total}</div>
-          <div class="podium-gap num">${diff1 === 0 ? 'Tied 1st' : `${diff1} pts`}</div>
+        <div class="podium-item ${rankClasses[idx]}">
+          <div class="podium-badge">${rankBadges[idx]}</div>
+          <span class="podium-rank-tag">${rankLabels[idx]}</span>
+          <div class="podium-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
+          <div class="podium-score num">${item.total}</div>
+          <div class="podium-gap num">${gapText}</div>
         </div>
       `;
-    }
-
-    // 1st Place (Center - Prominent)
-    podiumHtml += `
-      <div class="podium-item first">
-        <div class="podium-badge">👑</div>
-        <span class="podium-rank-tag">1st Place</span>
-        <div class="podium-name" title="${escapeHtml(first.name)}">${escapeHtml(first.name)}</div>
-        <div class="podium-score num">${first.total}</div>
-        <div class="podium-gap num">${second ? (first.total === second.total ? 'Tied' : `+${first.total - second.total} ahead`) : 'Leader'}</div>
-      </div>
-    `;
-
-    // 3rd Place (Right)
-    if (third) {
-      const diff1 = third.total - first.total;
-      podiumHtml += `
-        <div class="podium-item third">
-          <div class="podium-badge">🥉</div>
-          <span class="podium-rank-tag">3rd Place</span>
-          <div class="podium-name" title="${escapeHtml(third.name)}">${escapeHtml(third.name)}</div>
-          <div class="podium-score num">${third.total}</div>
-          <div class="podium-gap num">${diff1 === 0 ? 'Tied 1st' : `${diff1} pts`}</div>
-        </div>
-      `;
-    }
-
+    });
     podiumContainer.innerHTML = podiumHtml;
 
-    // 4th, 5th, etc. Remaining Standings
-    let remainingHtml = '';
-    for (let i = 3; i < rankings.length; i++) {
-      const item = rankings[i];
-      const diff1 = item.total - first.total;
-      remainingHtml += `
-        <div class="standing-row">
-          <div class="standing-left">
-            <span class="standing-rank">${item.rank}</span>
-            <span class="standing-name">${escapeHtml(item.name)}</span>
-          </div>
-          <div class="standing-right">
-            <span class="standing-diff num">${diff1 === 0 ? 'Tied' : `${diff1} pts`}</span>
-            <span class="standing-score num">${item.total}</span>
-          </div>
-        </div>
+    // Render Bench / Sitting Out Strip
+    const bench = getBenchPlayers();
+    if (bench.length > 0) {
+      benchContainer.style.display = 'flex';
+      benchContainer.innerHTML = `
+        <span class="bench-title">🪑 Bench / Sitting Out:</span>
+        ${bench.map(p => `<span class="bench-pill">${escapeHtml(p.name)}</span>`).join('')}
       `;
+    } else {
+      benchContainer.style.display = 'none';
     }
-    secondaryStandingsList.innerHTML = remainingHtml;
   }
 
   /**
-   * Render Full Matrix Scoreboard Table
+   * Render 15-Round Matrix Scoreboard
    */
   function renderScoreboardTable() {
+    const actives = getActivePlayers();
     const totals = calculateTotals();
 
     // 1. Table Header (Sticky)
     let headerHtml = `<th class="col-round">Round</th>`;
-    state.players.forEach((player, pIdx) => {
-      const playerTotal = totals[pIdx]?.total ?? 0;
+    actives.forEach((player) => {
+      const playerTotalObj = totals.find(t => t.id === player.id);
+      const totalScore = playerTotalObj?.total ?? 0;
       headerHtml += `
         <th>
           <div class="player-header-wrap">
-            <span class="player-header-name">${escapeHtml(player)}</span>
-            <span class="player-header-total num">${playerTotal} pts</span>
+            <span class="player-header-name">${escapeHtml(player.name)}</span>
+            <span class="player-header-total num">${totalScore} pts</span>
           </div>
         </th>
       `;
@@ -342,10 +411,11 @@
       const roundNum = r + 1;
       const dealer = getDealerForRound(r);
       const isActive = r === state.activeRound;
+      const roundObj = state.rounds[r];
 
-      bodyHtml += `<tr id="tableRow-${r}" class="${isActive ? 'active-round' : ''}">`;
+      bodyHtml += `<tr id="tableRow-${r}" class="${isActive ? 'active-round' : ''}" data-round="${r}">`;
       bodyHtml += `
-        <td class="col-round">
+        <td class="col-round" onclick="window.handleScoreCellClick(${r})">
           <div class="round-info-cell">
             <span class="round-num-label">R${roundNum}</span>
             <span class="dealer-tag" title="Dealer: ${escapeHtml(dealer)}">🂠 ${escapeHtml(dealer)}</span>
@@ -353,25 +423,38 @@
         </td>
       `;
 
-      // Inputs for each player
-      state.players.forEach((_, pIdx) => {
-        const val = state.rounds[r][pIdx];
-        const displayVal = val !== null ? val : '';
-        bodyHtml += `
-          <td>
-            <div class="score-input-wrap">
-              <input 
-                type="number" 
-                inputmode="numeric" 
-                pattern="[0-9\-]*" 
-                class="score-cell-input" 
-                data-round="${r}" 
-                data-player="${pIdx}" 
-                value="${displayVal}" 
-                placeholder="-"
-                autocomplete="off"
-              />
+      actives.forEach((player) => {
+        const bid = roundObj.bids[player.id];
+        const tricks = roundObj.tricks[player.id];
+        const score = roundObj.scores[player.id];
+
+        let cellContent = '';
+        if (score !== null && score !== undefined && !isNaN(score)) {
+          const isPos = score >= 0;
+          cellContent = `
+            <div class="table-score-cell">
+              <span class="cell-score-num ${isPos ? 'pos' : 'neg'} num">${isPos ? '+' : ''}${score}</span>
+              <span class="cell-sub-detail">Bid ${bid ?? '-'} • ${tricks ?? 0}T</span>
             </div>
+          `;
+        } else if (bid !== null && bid !== undefined && !isNaN(bid)) {
+          cellContent = `
+            <div class="table-score-cell">
+              <span class="cell-bid-only num">Bid: ${bid}</span>
+              <span class="cell-sub-detail">In play...</span>
+            </div>
+          `;
+        } else {
+          cellContent = `
+            <div class="table-score-cell">
+              <span class="cell-empty-dash">-</span>
+            </div>
+          `;
+        }
+
+        bodyHtml += `
+          <td onclick="window.handleScoreCellClick(${r})">
+            ${cellContent}
           </td>
         `;
       });
@@ -379,237 +462,333 @@
     }
     tableBody.innerHTML = bodyHtml;
 
-    // 3. Table Footer (Totals `=SUM(Round 1 : Round 15)`)
+    // 3. Table Footer (Totals)
     let footerHtml = `<td class="col-round">TOTAL</td>`;
-    state.players.forEach((_, pIdx) => {
-      const total = totals[pIdx]?.total ?? 0;
+    actives.forEach((player) => {
+      const playerTotalObj = totals.find(t => t.id === player.id);
+      const totalScore = playerTotalObj?.total ?? 0;
       footerHtml += `
         <td>
-          <span class="footer-total-score num">${total}</span>
+          <span class="footer-total-score num">${totalScore}</span>
         </td>
       `;
     });
     tableFooterRow.innerHTML = footerHtml;
-
-    // Attach in-cell input event handlers
-    attachTableInputListeners();
   }
 
-  function attachTableInputListeners() {
-    const inputs = tableBody.querySelectorAll('.score-cell-input');
-    inputs.forEach((input) => {
-      input.addEventListener('focus', function () {
-        this.select();
-        const r = parseInt(this.dataset.round, 10);
-        updateActiveRowHighlight(r);
-      });
+  window.handleScoreCellClick = function (roundIndex) {
+    const roundObj = state.rounds[roundIndex];
+    const actives = getActivePlayers();
+    const hasBids = actives.every(p => roundObj.bids[p.id] !== null && roundObj.bids[p.id] !== undefined);
 
-      input.addEventListener('input', function () {
-        const r = parseInt(this.dataset.round, 10);
-        const p = parseInt(this.dataset.player, 10);
-        const valStr = this.value.trim();
-
-        if (valStr === '' || isNaN(valStr)) {
-          state.rounds[r][p] = null;
-        } else {
-          state.rounds[r][p] = Number(valStr);
-        }
-
-        saveState();
-        updateScoresFast();
-      });
-
-      input.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          const r = parseInt(this.dataset.round, 10);
-          const p = parseInt(this.dataset.player, 10);
-
-          // Focus next player in same round, or next round first player
-          let nextP = p + 1;
-          let nextR = r;
-          if (nextP >= state.players.length) {
-            nextP = 0;
-            nextR = r + 1;
-          }
-
-          if (nextR < TOTAL_ROUNDS) {
-            const nextInput = tableBody.querySelector(`.score-cell-input[data-round="${nextR}"][data-player="${nextP}"]`);
-            if (nextInput) nextInput.focus();
-          } else {
-            this.blur();
-            checkGameCompletion(true);
-          }
-        }
-      });
-    });
-  }
-
-  /**
-   * Fast incremental UI update without destroying input focus
-   */
-  function updateScoresFast() {
-    const totals = calculateTotals();
-
-    // Update header total tags
-    const headerTotals = tableHeaderRow.querySelectorAll('.player-header-total');
-    headerTotals.forEach((el, pIdx) => {
-      el.textContent = `${totals[pIdx]?.total ?? 0} pts`;
-    });
-
-    // Update footer total values
-    const footerTotals = tableFooterRow.querySelectorAll('.footer-total-score');
-    footerTotals.forEach((el, pIdx) => {
-      el.textContent = `${totals[pIdx]?.total ?? 0}`;
-    });
-
-    // Update Leaderboard
-    renderLeaderboard();
-    renderHeaderInfo();
-
-    checkGameCompletion(true);
-  }
-
-  function updateActiveRowHighlight(activeRoundIdx) {
-    const rows = tableBody.querySelectorAll('tr');
-    rows.forEach((row, idx) => {
-      if (idx === activeRoundIdx) {
-        row.classList.add('active-round');
-      } else {
-        row.classList.remove('active-round');
-      }
-    });
-  }
+    if (!hasBids) {
+      openBiddingModal(roundIndex);
+    } else {
+      openScoringModal(roundIndex);
+    }
+  };
 
   function scrollToActiveRound() {
     const activeRow = document.getElementById(`tableRow-${state.activeRound}`);
     if (activeRow) {
       activeRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      const firstInput = activeRow.querySelector('.score-cell-input');
-      if (firstInput) firstInput.focus();
+    }
+  }
+
+  function clearCurrentRoundScores() {
+    const roundNum = state.activeRound + 1;
+    if (confirm(`Clear all bids, tricks, and scores entered for Round ${roundNum}?`)) {
+      state.rounds[state.activeRound] = {
+        bids: {},
+        tricks: {},
+        scores: {},
+        completed: false
+      };
+      saveState();
+      renderAll();
+      showToast(`Round ${roundNum} scores cleared.`);
     }
   }
 
   // ==========================================================================
-  // FAST ROUND ENTRY MODAL
+  // PRE-ROUND BIDDING PHASE MODAL
   // ==========================================================================
 
-  function openFastEntryModal(roundIdx = null) {
-    if (roundIdx === null) {
-      roundIdx = state.activeRound;
-    }
-    fastModalRoundIndex = Math.min(Math.max(0, roundIdx), TOTAL_ROUNDS - 1);
-    renderFastModalContent();
-    modalFastEntry.classList.add('open');
+  function openBiddingModal(roundIndex = null) {
+    if (roundIndex === null) roundIndex = state.activeRound;
+    currentModalRound = Math.min(Math.max(0, roundIndex), TOTAL_ROUNDS - 1);
+
+    const roundNum = currentModalRound + 1;
+    const dealer = getDealerForRound(currentModalRound);
+
+    biddingModalRoundTitle.textContent = `Round ${roundNum} Bidding Phase`;
+    biddingModalDealer.textContent = `Dealer: ${dealer}`;
+
+    renderBiddingPlayerList();
+    modalBidding.classList.add('open');
   }
 
-  function closeFastEntryModal() {
-    modalFastEntry.classList.remove('open');
+  function closeBiddingModal() {
+    modalBidding.classList.remove('open');
     renderAll();
   }
 
-  function renderFastModalContent() {
-    const roundNum = fastModalRoundIndex + 1;
-    const dealer = getDealerForRound(fastModalRoundIndex);
-
-    fastModalRoundTitle.textContent = `Round ${roundNum} of ${TOTAL_ROUNDS}`;
-    fastModalDealer.textContent = `Dealer: ${dealer} 🂠`;
-
-    btnPrevRound.disabled = fastModalRoundIndex <= 0;
-    btnNextRound.disabled = fastModalRoundIndex >= TOTAL_ROUNDS - 1;
+  function renderBiddingPlayerList() {
+    const actives = getActivePlayers();
+    const roundObj = state.rounds[currentModalRound];
+    const dealerIdx = currentModalRound % actives.length;
 
     let html = '';
-    state.players.forEach((player, pIdx) => {
-      const val = state.rounds[fastModalRoundIndex][pIdx];
-      const isDealer = (fastModalRoundIndex % state.players.length) === pIdx;
+    actives.forEach((player, idx) => {
+      const isDealer = idx === dealerIdx;
+      const currentBid = roundObj.bids[player.id];
+
       html += `
-        <div class="fast-player-card ${isDealer ? 'active-dealer' : ''}" data-player="${pIdx}">
-          <div class="fast-player-info">
-            <span class="fast-player-name">${escapeHtml(player)} ${isDealer ? '🂠' : ''}</span>
-            <span class="fast-player-sub">${isDealer ? 'Dealer' : 'Player'}</span>
+        <div class="bidding-player-card ${isDealer ? 'is-dealer' : ''}" data-player-id="${player.id}">
+          <div class="bidding-card-header">
+            <span class="bidding-card-name">
+              ${escapeHtml(player.name)} ${isDealer ? '🂠 (Dealer)' : ''}
+            </span>
+            <span class="bidding-current-val num" id="bidLabel-${player.id}">
+              ${currentBid !== null && currentBid !== undefined ? `Bid: ${currentBid}` : 'No Bid'}
+            </span>
           </div>
-          <div class="fast-player-controls">
-            <button class="btn-step" data-action="minus" data-player="${pIdx}">-</button>
-            <input 
-              type="number" 
-              inputmode="numeric" 
-              class="fast-input-box num" 
-              data-player="${pIdx}" 
-              value="${val !== null ? val : ''}" 
-              placeholder="0"
-            />
-            <button class="btn-step" data-action="plus" data-player="${pIdx}">+</button>
+
+          <!-- Allowed Bids Grid: 0, and 2 to 13 (1 is prohibited!) -->
+          <div class="bid-buttons-grid">
+            ${ALLOWED_BIDS.map(val => {
+              const isSelected = currentBid === val;
+              const specialClass = val === 0 ? 'bid-0' : val === 7 ? 'bid-7' : '';
+              return `
+                <button 
+                  type="button"
+                  class="bid-btn ${specialClass} ${isSelected ? 'active' : ''}" 
+                  data-val="${val}" 
+                  data-player-id="${player.id}"
+                >
+                  ${val}
+                </button>
+              `;
+            }).join('')}
           </div>
         </div>
       `;
     });
-    fastPlayerList.innerHTML = html;
+    biddingPlayerList.innerHTML = html;
 
-    // Attach listeners for fast inputs and steppers
-    const inputs = fastPlayerList.querySelectorAll('.fast-input-box');
-    inputs.forEach((input) => {
-      input.addEventListener('focus', function () {
-        this.select();
-        activeFastPlayerIndex = parseInt(this.dataset.player, 10);
-      });
-      input.addEventListener('input', function () {
-        const p = parseInt(this.dataset.player, 10);
-        const val = this.value.trim();
-        state.rounds[fastModalRoundIndex][p] = val === '' || isNaN(val) ? null : Number(val);
-        saveState();
-      });
-    });
-
-    const stepBtns = fastPlayerList.querySelectorAll('.btn-step');
-    stepBtns.forEach((btn) => {
+    // Attach listeners to bid buttons
+    const bidButtons = biddingPlayerList.querySelectorAll('.bid-btn');
+    bidButtons.forEach((btn) => {
       btn.addEventListener('click', function () {
-        triggerHaptic();
-        const p = parseInt(this.dataset.player, 10);
-        const action = this.dataset.action;
-        let current = state.rounds[fastModalRoundIndex][p];
-        if (current === null || isNaN(current)) current = 0;
+        triggerHaptic(12);
+        const pId = this.dataset.playerId;
+        const val = parseInt(this.dataset.val, 10);
 
-        if (action === 'plus') current += 1;
-        if (action === 'minus') current -= 1;
-
-        state.rounds[fastModalRoundIndex][p] = current;
+        state.rounds[currentModalRound].bids[pId] = val;
         saveState();
 
-        const input = fastPlayerList.querySelector(`.fast-input-box[data-player="${p}"]`);
-        if (input) input.value = current;
+        // Update UI active buttons for this player
+        const card = biddingPlayerList.querySelector(`.bidding-player-card[data-player-id="${pId}"]`);
+        if (card) {
+          card.querySelectorAll('.bid-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          const label = card.querySelector(`#bidLabel-${pId}`);
+          if (label) label.textContent = `Bid: ${val}`;
+        }
       });
     });
   }
 
-  // Quick number pills
-  const numPills = document.querySelectorAll('.num-pill');
-  numPills.forEach((pill) => {
-    pill.addEventListener('click', function () {
-      triggerHaptic();
-      const val = parseInt(this.dataset.val, 10);
-      state.rounds[fastModalRoundIndex][activeFastPlayerIndex] = val;
-      saveState();
+  function handleSaveBidsAndPlay() {
+    const actives = getActivePlayers();
+    const roundObj = state.rounds[currentModalRound];
+    const missing = actives.filter(p => roundObj.bids[p.id] === null || roundObj.bids[p.id] === undefined);
 
-      const input = fastPlayerList.querySelector(`.fast-input-box[data-player="${activeFastPlayerIndex}"]`);
-      if (input) input.value = val;
+    if (missing.length > 0) {
+      if (!confirm(`Some players (${missing.map(m => m.name).join(', ')}) don't have a bid yet. Continue to trick scoring anyway?`)) {
+        return;
+      }
+    }
 
-      // Auto-advance focus to next player in list
-      if (activeFastPlayerIndex < state.players.length - 1) {
-        activeFastPlayerIndex++;
-        const nextInput = fastPlayerList.querySelector(`.fast-input-box[data-player="${activeFastPlayerIndex}"]`);
-        if (nextInput) {
-          nextInput.focus();
+    saveState();
+    closeBiddingModal();
+    openScoringModal(currentModalRound);
+  }
+
+  // ==========================================================================
+  // TRICKS ENTRY & SCORING PHASE MODAL
+  // ==========================================================================
+
+  function openScoringModal(roundIndex = null) {
+    if (roundIndex === null) roundIndex = state.activeRound;
+    currentModalRound = Math.min(Math.max(0, roundIndex), TOTAL_ROUNDS - 1);
+
+    renderScoringModalContent();
+    modalScoring.classList.add('open');
+  }
+
+  function closeScoringModal() {
+    modalScoring.classList.remove('open');
+    renderAll();
+  }
+
+  function renderScoringModalContent() {
+    const roundNum = currentModalRound + 1;
+    const dealer = getDealerForRound(currentModalRound);
+    const actives = getActivePlayers();
+    const roundObj = state.rounds[currentModalRound];
+
+    scoringModalRoundTitle.textContent = `Round ${roundNum} Tricks & Scoring`;
+    scoringModalRoundNum.textContent = `Round ${roundNum}`;
+    scoringModalDealer.textContent = `Dealer: ${dealer} 🂠`;
+
+    btnPrevRound.disabled = currentModalRound <= 0;
+    btnNextRound.disabled = currentModalRound >= TOTAL_ROUNDS - 1;
+
+    let html = '';
+    actives.forEach((player) => {
+      const bid = roundObj.bids[player.id];
+      const tricks = roundObj.tricks[player.id] ?? 0;
+      const score = calculateRoundScore(bid, tricks);
+
+      html += `
+        <div class="scoring-player-card" data-player-id="${player.id}">
+          <div class="scoring-player-info">
+            <span class="scoring-player-name">${escapeHtml(player.name)}</span>
+            <span class="scoring-bid-badge num">
+              ${bid !== null && bid !== undefined ? `Bid: ${bid}` : 'No Bid'}
+            </span>
+          </div>
+
+          <div class="scoring-player-controls">
+            <button class="btn-step" data-action="minus" data-player-id="${player.id}">-</button>
+            <input 
+              type="number" 
+              inputmode="numeric" 
+              min="0" 
+              max="13" 
+              class="tricks-input-box num" 
+              data-player-id="${player.id}" 
+              value="${tricks}"
+            />
+            <button class="btn-step" data-action="plus" data-player-id="${player.id}">+</button>
+          </div>
+
+          <div class="scoring-live-preview">
+            <span class="score-badge-live num ${score !== null && score >= 0 ? 'pos' : 'neg'}" id="liveScore-${player.id}">
+              ${score !== null ? (score >= 0 ? `+${score}` : `${score}`) : '-'}
+            </span>
+            <span style="font-size: 0.65rem; color: var(--text-dim);">Points</span>
+          </div>
+        </div>
+      `;
+    });
+    scoringPlayerList.innerHTML = html;
+
+    updateTricksSumBadge();
+
+    // Attach step & input listeners
+    const inputs = scoringPlayerList.querySelectorAll('.tricks-input-box');
+    inputs.forEach((input) => {
+      input.addEventListener('focus', function () { this.select(); });
+      input.addEventListener('input', function () {
+        const pId = this.dataset.playerId;
+        let val = parseInt(this.value, 10);
+        if (isNaN(val) || val < 0) val = 0;
+        if (val > 13) val = 13;
+        this.value = val;
+
+        state.rounds[currentModalRound].tricks[pId] = val;
+        recalculateAndSaveModalScores();
+      });
+    });
+
+    const stepBtns = scoringPlayerList.querySelectorAll('.btn-step');
+    stepBtns.forEach((btn) => {
+      btn.addEventListener('click', function () {
+        triggerHaptic(12);
+        const pId = this.dataset.playerId;
+        const action = this.dataset.action;
+        let current = state.rounds[currentModalRound].tricks[pId] ?? 0;
+
+        if (action === 'plus' && current < 13) current++;
+        if (action === 'minus' && current > 0) current--;
+
+        state.rounds[currentModalRound].tricks[pId] = current;
+        const inp = scoringPlayerList.querySelector(`.tricks-input-box[data-player-id="${pId}"]`);
+        if (inp) inp.value = current;
+
+        recalculateAndSaveModalScores();
+      });
+    });
+  }
+
+  function recalculateAndSaveModalScores() {
+    const actives = getActivePlayers();
+    const roundObj = state.rounds[currentModalRound];
+
+    actives.forEach((player) => {
+      const bid = roundObj.bids[player.id];
+      const tricks = roundObj.tricks[player.id] ?? 0;
+      const score = calculateRoundScore(bid, tricks);
+
+      roundObj.scores[player.id] = score;
+
+      const badge = scoringPlayerList.querySelector(`#liveScore-${player.id}`);
+      if (badge) {
+        if (score !== null) {
+          badge.textContent = score >= 0 ? `+${score}` : `${score}`;
+          badge.className = `score-badge-live num ${score >= 0 ? 'pos' : 'neg'}`;
+        } else {
+          badge.textContent = '-';
+          badge.className = 'score-badge-live num';
         }
       }
     });
-  });
+
+    roundObj.completed = true;
+    saveState();
+    updateTricksSumBadge();
+  }
+
+  function updateTricksSumBadge() {
+    const actives = getActivePlayers();
+    const roundObj = state.rounds[currentModalRound];
+    let sum = 0;
+    actives.forEach(p => {
+      sum += (roundObj.tricks[p.id] ?? 0);
+    });
+
+    tricksTotalBadge.textContent = `${sum} / 13`;
+    if (sum === 13) {
+      tricksTotalBadge.className = 'tricks-badge num valid';
+      tricksStatusIcon.textContent = '✓';
+    } else {
+      tricksTotalBadge.className = 'tricks-badge num';
+      tricksStatusIcon.textContent = sum < 13 ? '⚠️' : '❌';
+    }
+  }
+
+  function handleSaveScoringAndNext() {
+    recalculateAndSaveModalScores();
+    saveState();
+
+    if (currentModalRound < TOTAL_ROUNDS - 1) {
+      currentModalRound++;
+      closeScoringModal();
+      openBiddingModal(currentModalRound);
+    } else {
+      closeScoringModal();
+      checkGameCompletion(true);
+    }
+  }
 
   // ==========================================================================
-  // PLAYER MANAGEMENT
+  // TABLE ROSTER & 4-PLAYER MANAGEMENT
   // ==========================================================================
 
   function openPlayersModal() {
-    renderPlayerManageList();
+    renderRosterManageLists();
     modalPlayers.classList.add('open');
   }
 
@@ -617,73 +796,145 @@
     modalPlayers.classList.remove('open');
   }
 
-  function renderPlayerManageList() {
-    let html = '';
-    state.players.forEach((name, idx) => {
-      html += `
-        <div class="player-manage-row" data-index="${idx}">
-          <span style="font-size: 0.8rem; color: var(--text-dim); width: 20px;">#${idx + 1}</span>
-          <input type="text" class="player-name-input" value="${escapeHtml(name)}" data-index="${idx}" maxlength="16"/>
-          ${state.players.length > 2 ? `<button class="btn-del-player" data-index="${idx}" title="Delete Player">&times;</button>` : ''}
+  function renderRosterManageLists() {
+    const activeCount = state.activePlayerIds.length;
+    activeCountNum.textContent = activeCount;
+    if (activeCount === 4) {
+      activeCounterPill.className = 'active-counter-pill valid';
+      activeCounterPill.innerHTML = `✓ Seated Table: <strong>4 / 4 Players</strong>`;
+    } else {
+      activeCounterPill.className = 'active-counter-pill';
+      activeCounterPill.innerHTML = `⚠️ Select <strong>exactly 4</strong> players (${activeCount} currently active)`;
+    }
+
+    // 1. Seated Active Table List
+    const actives = getActivePlayers();
+    let activeHtml = '';
+    actives.forEach((player, idx) => {
+      activeHtml += `
+        <div class="player-manage-row is-active-seated" data-player-id="${player.id}">
+          <span style="font-weight: 800; color: #34d399; font-size: 0.85rem; width: 24px;">#${idx + 1}</span>
+          <input type="text" class="player-name-input" value="${escapeHtml(player.name)}" data-player-id="${player.id}" maxlength="16" />
+          <button class="btn-toggle-seat to-bench" data-action="bench" data-player-id="${player.id}" title="Move to Bench">
+            🪑 Bench
+          </button>
         </div>
       `;
     });
-    playerManageList.innerHTML = html;
+    activePlayersList.innerHTML = activeHtml || '<p style="color: var(--text-dim); font-size: 0.8rem; padding: 6px;">No players seated.</p>';
 
-    // Attach delete listeners
-    const delBtns = playerManageList.querySelectorAll('.btn-del-player');
+    // 2. Bench List
+    const bench = getBenchPlayers();
+    let benchHtml = '';
+    bench.forEach((player) => {
+      benchHtml += `
+        <div class="player-manage-row is-bench" data-player-id="${player.id}">
+          <span style="font-size: 0.85rem; color: var(--text-dim); width: 24px;">🪑</span>
+          <input type="text" class="player-name-input" value="${escapeHtml(player.name)}" data-player-id="${player.id}" maxlength="16" />
+          <button class="btn-toggle-seat to-table" data-action="seat" data-player-id="${player.id}" title="Seat at Table">
+            🂠 Seat at Table
+          </button>
+          ${state.roster.length > 4 ? `
+            <button class="btn-del-player" data-player-id="${player.id}" title="Remove from Roster">&times;</button>
+          ` : ''}
+        </div>
+      `;
+    });
+    benchPlayersList.innerHTML = benchHtml || '<p style="color: var(--text-dim); font-size: 0.8rem; padding: 6px;">No players on bench (All 4 are seated).</p>';
+
+    attachRosterActionListeners();
+  }
+
+  function attachRosterActionListeners() {
+    // Bench / Seat Toggles
+    const toggleBtns = modalPlayers.querySelectorAll('.btn-toggle-seat');
+    toggleBtns.forEach((btn) => {
+      btn.addEventListener('click', function () {
+        triggerHaptic(15);
+        const pId = this.dataset.playerId;
+        const action = this.dataset.action;
+
+        if (action === 'bench') {
+          // Remove from active
+          state.activePlayerIds = state.activePlayerIds.filter(id => id !== pId);
+          const p = getPlayerById(pId);
+          if (p) p.active = false;
+        } else if (action === 'seat') {
+          if (state.activePlayerIds.length >= 4) {
+            alert('The table already has 4 active players. Please bench one player first before seating another!');
+            return;
+          }
+          state.activePlayerIds.push(pId);
+          const p = getPlayerById(pId);
+          if (p) p.active = true;
+        }
+        renderRosterManageLists();
+      });
+    });
+
+    // Name edits
+    const nameInputs = modalPlayers.querySelectorAll('.player-name-input');
+    nameInputs.forEach((inp) => {
+      inp.addEventListener('input', function () {
+        const pId = this.dataset.playerId;
+        const p = getPlayerById(pId);
+        if (p) p.name = this.value.trim() || 'Player';
+      });
+    });
+
+    // Delete player from roster
+    const delBtns = modalPlayers.querySelectorAll('.btn-del-player');
     delBtns.forEach((btn) => {
       btn.addEventListener('click', function () {
-        const idx = parseInt(this.dataset.index, 10);
-        if (confirm(`Remove "${state.players[idx]}" from the game?`)) {
-          state.players.splice(idx, 1);
-          // Also remove score column
-          for (let r = 0; r < TOTAL_ROUNDS; r++) {
-            state.rounds[r].splice(idx, 1);
-          }
-          saveState();
-          renderPlayerManageList();
+        const pId = this.dataset.playerId;
+        const p = getPlayerById(pId);
+        if (confirm(`Remove "${p ? p.name : 'player'}" completely from the group roster?`)) {
+          state.roster = state.roster.filter(item => item.id !== pId);
+          state.activePlayerIds = state.activePlayerIds.filter(id => id !== pId);
+          renderRosterManageLists();
         }
       });
     });
   }
 
-  function handleSavePlayers() {
-    const inputs = playerManageList.querySelectorAll('.player-name-input');
-    const newNames = [];
-    inputs.forEach((inp) => {
-      const val = inp.value.trim();
-      newNames.push(val || `Player ${newNames.length + 1}`);
-    });
+  function handleAddPlayerToRoster() {
+    const name = newPlayerNameInput.value.trim();
+    if (!name) return;
+    const newId = 'p_' + Date.now();
+    const shouldBeActive = state.activePlayerIds.length < 4;
 
-    state.players = newNames;
+    state.roster.push({
+      id: newId,
+      name: name,
+      active: shouldBeActive
+    });
+    if (shouldBeActive) {
+      state.activePlayerIds.push(newId);
+    }
+    newPlayerNameInput.value = '';
+    renderRosterManageLists();
+  }
+
+  function handleSaveRoster() {
+    if (state.activePlayerIds.length !== 4) {
+      alert(`A Tarneeb table requires EXACTLY 4 active players. You currently have ${state.activePlayerIds.length} selected. Please seat 4 players!`);
+      return;
+    }
+
     saveState();
     closePlayersModal();
     renderAll();
-    showToast('Player names updated!');
+    showToast('Table roster updated! 4 active players seated.');
   }
 
-  function handleAddPlayer() {
-    const name = newPlayerNameInput.value.trim();
-    if (!name) return;
-    state.players.push(name);
-    // Add null score to each round
-    for (let r = 0; r < TOTAL_ROUNDS; r++) {
-      state.rounds[r].push(null);
-    }
-    newPlayerNameInput.value = '';
-    saveState();
-    renderPlayerManageList();
-  }
-
-  function handleResetDefaultPlayers() {
-    if (confirm('Reset players to the default 5: Ahmed, Hosam, Shiba, Furjani, Surum?')) {
-      state.players = [...DEFAULT_PLAYERS];
-      state.rounds = Array.from({ length: TOTAL_ROUNDS }, () => Array(DEFAULT_PLAYERS.length).fill(null));
+  function handleResetDefaultRoster() {
+    if (confirm('Reset to default group ("Ahmed", "Hosam", "Shiba", "Furjani" active, "Surum" on bench)?')) {
+      state.roster = JSON.parse(JSON.stringify(DEFAULT_ROSTER));
+      state.activePlayerIds = ['p_ahmed', 'p_hosam', 'p_shiba', 'p_furjani'];
       saveState();
-      renderPlayerManageList();
+      renderRosterManageLists();
       renderAll();
-      showToast('Reset to default 5 players!');
+      showToast('Reset to default group with Surum on bench.');
     }
   }
 
@@ -704,15 +955,15 @@
     const rankings = calculateRankings();
     if (rankings.length === 0) return;
 
-    // Check if any scores exist
-    const hasAnyScore = state.rounds.some(r => r.some(s => s !== null));
+    const hasAnyScore = state.rounds.some(r => Object.keys(r.scores).length > 0);
     if (!hasAnyScore) return;
 
     const history = getHistory();
     const matchRecord = {
       id: 'match_' + Date.now(),
       date: new Date().toLocaleString(),
-      players: [...state.players],
+      activePlayers: getActivePlayers().map(p => p.name),
+      benchPlayers: getBenchPlayers().map(p => p.name),
       totals: calculateTotals(),
       rankings: rankings,
       winner: rankings[0].name,
@@ -720,7 +971,7 @@
       rounds: JSON.parse(JSON.stringify(state.rounds))
     };
 
-    history.unshift(matchRecord); // newest first
+    history.unshift(matchRecord);
     saveHistory(history);
   }
 
@@ -731,14 +982,14 @@
         <div class="history-empty">
           <p style="font-size: 2rem; margin-bottom: 8px;">📭</p>
           <p>No archived matches yet.</p>
-          <span style="font-size: 0.75rem;">Finished games will appear here with final scores and dates.</span>
+          <span style="font-size: 0.75rem;">Completed 4-player matches will be recorded here with final standings and bench players.</span>
         </div>
       `;
       return;
     }
 
     let html = '';
-    history.forEach((m, idx) => {
+    history.forEach((m) => {
       html += `
         <div class="history-card-item">
           <div class="history-meta">
@@ -751,6 +1002,11 @@
           <div class="history-standings-mini">
             ${m.rankings.map(r => `<span class="history-pill">${r.rank}. ${escapeHtml(r.name)} (${r.total})</span>`).join('')}
           </div>
+          ${m.benchPlayers && m.benchPlayers.length > 0 ? `
+            <div style="font-size: 0.72rem; color: var(--text-dim);">
+              Bench: ${m.benchPlayers.map(escapeHtml).join(', ')}
+            </div>
+          ` : ''}
         </div>
       `;
     });
@@ -767,7 +1023,7 @@
   };
 
   function clearAllHistory() {
-    if (confirm('Are you sure you want to delete ALL archived match history? This cannot be undone.')) {
+    if (confirm('Are you sure you want to delete ALL archived match history?')) {
       saveHistory([]);
       renderHistoryList();
       showToast('All history cleared');
@@ -788,39 +1044,35 @@
 
   function confirmNewGame() {
     const shouldArchive = document.getElementById('chkArchiveBeforeReset').checked;
-    const keepPlayers = document.getElementById('chkKeepPlayers').checked;
+    const keepActive = document.getElementById('chkKeepActivePlayers').checked;
 
     if (shouldArchive) {
       archiveCurrentMatch();
     }
 
-    if (!keepPlayers) {
-      state.players = [...DEFAULT_PLAYERS];
+    if (!keepActive) {
+      state.roster = JSON.parse(JSON.stringify(DEFAULT_ROSTER));
+      state.activePlayerIds = ['p_ahmed', 'p_hosam', 'p_shiba', 'p_furjani'];
     }
 
-    // Reset scores to 15 rounds of null
-    state.rounds = Array.from({ length: TOTAL_ROUNDS }, () => Array(state.players.length).fill(null));
+    // Reset rounds
+    state.rounds = Array.from({ length: TOTAL_ROUNDS }, () => ({
+      bids: {},
+      tricks: {},
+      scores: {},
+      completed: false
+    }));
     state.activeRound = 0;
     state.gameStartedAt = new Date().toISOString();
 
     saveState();
     closeNewGameModal();
     renderAll();
-    showToast('New match started! Good luck! 🍓');
-  }
-
-  function clearCurrentRoundScores() {
-    const roundNum = state.activeRound + 1;
-    if (confirm(`Clear all scores entered for Round ${roundNum}?`)) {
-      state.rounds[state.activeRound] = Array(state.players.length).fill(null);
-      saveState();
-      renderAll();
-      showToast(`Round ${roundNum} scores cleared.`);
-    }
+    showToast('New Tarneeb match started! Good luck! 🍓');
   }
 
   // ==========================================================================
-  // SHARING STANDINGS (WHATSAPP / CLIPBOARD)
+  // WHATSAPP / CHAT SHARING
   // ==========================================================================
 
   function shareGame() {
@@ -832,37 +1084,39 @@
     text += `━━━━━━━━━━━━━━━━━━━━\n`;
 
     rankings.forEach((r, idx) => {
-      const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
+      const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '4️⃣';
       text += `${medal} *${r.name}*: ${r.total} pts\n`;
     });
 
+    const bench = getBenchPlayers();
+    if (bench.length > 0) {
+      text += `━━━━━━━━━━━━━━━━━━━━\n`;
+      text += `🪑 Bench / Sitting Out: ${bench.map(p => p.name).join(', ')}\n`;
+    }
+
     text += `━━━━━━━━━━━━━━━━━━━━\n`;
-    text += `Game Progress: Round ${state.activeRound + 1} of 15\n`;
+    text += `Round ${state.activeRound + 1} of 15 (Tarneeb 4-Player Rules)\n`;
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(() => {
         showToast('Standings copied to clipboard! Ready to paste into WhatsApp 📋');
       }).catch(() => {
-        promptFallbackCopy(text);
+        window.prompt('Copy game standings:', text);
       });
     } else {
-      promptFallbackCopy(text);
+      window.prompt('Copy game standings:', text);
     }
   }
 
-  function promptFallbackCopy(text) {
-    window.prompt('Copy game standings:', text);
-  }
-
   // ==========================================================================
-  // GAME COMPLETION & CONFETTI CELEBRATION
+  // VICTORY & CONFETTI
   // ==========================================================================
 
   let celebrationTriggeredForCurrent = false;
 
   function checkGameCompletion(triggerCelebration = true) {
-    // Check if every single round from 1 to 15 has all scores filled
-    const allFilled = state.rounds.every(row => row.every(val => val !== null && !isNaN(val)));
+    const actives = getActivePlayers();
+    const allFilled = state.rounds.every(r => actives.every(p => r.scores[p.id] !== null && r.scores[p.id] !== undefined));
 
     if (allFilled && triggerCelebration && !celebrationTriggeredForCurrent) {
       celebrationTriggeredForCurrent = true;
@@ -880,7 +1134,7 @@
 
     let podiumListHtml = '';
     rankings.forEach((r, idx) => {
-      const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
+      const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '4️⃣';
       podiumListHtml += `
         <div style="display: flex; justify-content: space-between; padding: 6px 12px; background: #0f172a; border-radius: 8px; font-weight: 700; font-size: 0.9rem;">
           <span>${medal} ${escapeHtml(r.name)}</span>
@@ -957,16 +1211,12 @@
   // ==========================================================================
 
   function setupPWA() {
-    // Register Service Worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').then((reg) => {
-        console.log('ServiceWorker registered:', reg.scope);
-      }).catch((err) => {
-        console.warn('ServiceWorker registration failed:', err);
+      navigator.serviceWorker.register('./sw.js').catch((err) => {
+        console.warn('SW registration:', err);
       });
     }
 
-    // Capture install prompt
     const pwaBanner = document.getElementById('pwaBanner');
     const btnInstallPwa = document.getElementById('btnInstallPwa');
 
@@ -980,10 +1230,7 @@
       btnInstallPwa.addEventListener('click', () => {
         if (deferredInstallPrompt) {
           deferredInstallPrompt.prompt();
-          deferredInstallPrompt.userChoice.then((choiceResult) => {
-            if (choiceResult.outcome === 'accepted') {
-              console.log('User accepted PWA installation');
-            }
+          deferredInstallPrompt.userChoice.then(() => {
             deferredInstallPrompt = null;
             if (pwaBanner) pwaBanner.style.display = 'none';
           });
@@ -991,7 +1238,6 @@
       });
     }
 
-    // Check if on iOS Safari to show manual prompt tip
     const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
 
@@ -1016,45 +1262,48 @@
     document.getElementById('btnShareGame').addEventListener('click', shareGame);
     document.getElementById('btnNewGame').addEventListener('click', openNewGameModal);
 
-    // Fast Entry Modal triggers
-    document.getElementById('btnFastRoundModal').addEventListener('click', () => openFastEntryModal());
-    document.getElementById('btnCloseFastModal').addEventListener('click', closeFastEntryModal);
-    document.getElementById('btnFastDone').addEventListener('click', closeFastEntryModal);
+    // Status strip triggers
+    document.getElementById('btnTriggerBidding').addEventListener('click', () => openBiddingModal());
+    document.getElementById('btnTriggerScoring').addEventListener('click', () => openScoringModal());
+
+    // Scoreboard Table controls
+    document.getElementById('btnScrollToActive').addEventListener('click', scrollToActiveRound);
+    document.getElementById('btnClearRound').addEventListener('click', clearCurrentRoundScores);
+
+    // Bidding Modal
+    btnCloseBiddingModal.addEventListener('click', closeBiddingModal);
+    btnBiddingDone.addEventListener('click', closeBiddingModal);
+    btnSaveBidsAndPlay.addEventListener('click', handleSaveBidsAndPlay);
+
+    // Scoring Modal
+    btnCloseScoringModal.addEventListener('click', closeScoringModal);
+    btnBackToBidding.addEventListener('click', () => {
+      closeScoringModal();
+      openBiddingModal(currentModalRound);
+    });
+    btnSaveScoring.addEventListener('click', handleSaveScoringAndNext);
 
     btnPrevRound.addEventListener('click', () => {
-      if (fastModalRoundIndex > 0) {
-        fastModalRoundIndex--;
-        renderFastModalContent();
+      if (currentModalRound > 0) {
+        currentModalRound--;
+        renderScoringModalContent();
       }
     });
 
     btnNextRound.addEventListener('click', () => {
-      if (fastModalRoundIndex < TOTAL_ROUNDS - 1) {
-        fastModalRoundIndex++;
-        renderFastModalContent();
+      if (currentModalRound < TOTAL_ROUNDS - 1) {
+        currentModalRound++;
+        renderScoringModalContent();
       }
     });
 
-    document.getElementById('btnFastNextStep').addEventListener('click', () => {
-      if (fastModalRoundIndex < TOTAL_ROUNDS - 1) {
-        fastModalRoundIndex++;
-        renderFastModalContent();
-      } else {
-        closeFastEntryModal();
-      }
-    });
-
-    // Scoreboard Card Buttons
-    document.getElementById('btnScrollToActive').addEventListener('click', scrollToActiveRound);
-    document.getElementById('btnClearRound').addEventListener('click', clearCurrentRoundScores);
-
-    // Players Modal
-    document.getElementById('btnClosePlayersModal').addEventListener('click', closePlayersModal);
-    btnSavePlayers.addEventListener('click', handleSavePlayers);
-    btnAddPlayer.addEventListener('click', handleAddPlayer);
-    btnResetDefaultPlayers.addEventListener('click', handleResetDefaultPlayers);
+    // Roster Modal
+    btnClosePlayersModal.addEventListener('click', closePlayersModal);
+    btnSaveRoster.addEventListener('click', handleSaveRoster);
+    btnAddPlayer.addEventListener('click', handleAddPlayerToRoster);
+    btnResetDefaultPlayers.addEventListener('click', handleResetDefaultRoster);
     newPlayerNameInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') handleAddPlayer();
+      if (e.key === 'Enter') handleAddPlayerToRoster();
     });
 
     // New Game Modal
@@ -1065,23 +1314,20 @@
     // History Modal
     document.getElementById('btnCloseHistoryModal').addEventListener('click', closeHistoryModal);
     document.getElementById('btnCloseHistoryFooter').addEventListener('click', closeHistoryModal);
-    btnClearAllHistory.addEventListener('click', clearAllHistory);
+    document.getElementById('btnClearAllHistory').addEventListener('click', clearAllHistory);
 
     // Victory Modal
     document.getElementById('btnCloseVictoryModal').addEventListener('click', () => {
       modalVictory.classList.remove('open');
       stopConfetti();
     });
-    document.getElementById('btnVictoryShare').addEventListener('click', () => {
-      shareGame();
-    });
+    document.getElementById('btnVictoryShare').addEventListener('click', shareGame);
     document.getElementById('btnVictoryNewGame').addEventListener('click', () => {
       modalVictory.classList.remove('open');
       stopConfetti();
       openNewGameModal();
     });
 
-    // Resize canvas on window resize
     window.addEventListener('resize', () => {
       confettiCanvas.width = window.innerWidth;
       confettiCanvas.height = window.innerHeight;
@@ -1103,11 +1349,7 @@
 
   function triggerHaptic(pattern = 15) {
     if ('vibrate' in navigator) {
-      try {
-        navigator.vibrate(pattern);
-      } catch (e) {
-        // Ignored
-      }
+      try { navigator.vibrate(pattern); } catch (e) {}
     }
   }
 
@@ -1121,7 +1363,5 @@
       .replace(/'/g, '&#039;');
   }
 
-  // Start app
   document.addEventListener('DOMContentLoaded', init);
-
 })();
