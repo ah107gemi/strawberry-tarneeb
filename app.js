@@ -24,7 +24,8 @@
     { id: 'p_hosam', name: 'Hosam', active: true },
     { id: 'p_shiba', name: 'Shiba', active: true },
     { id: 'p_furjani', name: 'Furjani', active: true },
-    { id: 'p_surum', name: 'Surum', active: false }
+    { id: 'p_naas', name: 'Naas', active: false },
+    { id: 'p_zentani', name: 'Zentani', active: false }
   ];
 
   // Application State
@@ -122,9 +123,20 @@
         const parsed = JSON.parse(saved);
         if (parsed.roster && Array.isArray(parsed.roster)) {
           state.roster = parsed.roster;
+          // Migration: rename Surum to Naas
+          state.roster.forEach(p => {
+            if (p.name === 'Surum') {
+              p.name = 'Naas';
+              if (p.id === 'p_surum') p.id = 'p_naas';
+            }
+          });
+          // Migration: add Zentani if not already present
+          if (!state.roster.some(p => p.name.toLowerCase() === 'zentani')) {
+            state.roster.push({ id: 'p_zentani', name: 'Zentani', active: false });
+          }
         }
         if (parsed.activePlayerIds && Array.isArray(parsed.activePlayerIds) && parsed.activePlayerIds.length === 4) {
-          state.activePlayerIds = parsed.activePlayerIds;
+          state.activePlayerIds = parsed.activePlayerIds.map(id => id === 'p_surum' ? 'p_naas' : id);
         } else {
           ensureFourActivePlayers();
         }
@@ -928,13 +940,13 @@
   }
 
   function handleResetDefaultRoster() {
-    if (confirm('Reset to default group ("Ahmed", "Hosam", "Shiba", "Furjani" active, "Surum" on bench)?')) {
+    if (confirm('Reset to default group ("Ahmed", "Hosam", "Shiba", "Furjani" active, "Naas" & "Zentani" on bench)?')) {
       state.roster = JSON.parse(JSON.stringify(DEFAULT_ROSTER));
       state.activePlayerIds = ['p_ahmed', 'p_hosam', 'p_shiba', 'p_furjani'];
       saveState();
       renderRosterManageLists();
       renderAll();
-      showToast('Reset to default group with Surum on bench.');
+      showToast('Reset to default group with Naas & Zentani on bench.');
     }
   }
 
