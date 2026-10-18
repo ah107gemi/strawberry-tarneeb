@@ -9,7 +9,7 @@ A modern, responsive, mobile-first Progressive Web App (PWA) customized specific
 ## 🂠 Exact Custom Game Rules
 
 1. **Table Roster & 4-Player Selection**:
-   - **Full Group Roster**: Default group includes "Ahmed", "Hosam", "Shiba", "Furjani", "Surum".
+   - **Full Group Roster**: Default group includes "Ahmed", "Hosam", "Shiba", "Furjani", "Naas", "Zentani".
    - **Table Seats (4 Active Players)**: Exactly 4 active players are chosen for the match.
    - **Bench / Sitting Out**: The remaining players are marked as "Sitting Out / Bench" with their stats and roster presence fully preserved. You can easily rotate players between active table seats and the bench anytime in the **Manage Players** modal (`👥`).
 
