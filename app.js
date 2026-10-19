@@ -115,9 +115,8 @@
     renderAll();
     checkGameCompletion(false);
 
-    // Restore saved mode (Scoreboard vs Online)
-    const savedMode = localStorage.getItem('tarneeb_app_mode') || 'scoreboard';
-    window.switchAppMode(savedMode);
+    // Always default to Scoreboard Mode on initial page load / refresh
+    window.switchAppMode('scoreboard');
   }
 
   function loadState() {
@@ -1321,6 +1320,7 @@
         viewOnline.style.display = 'none';
         viewOnline.classList.add('hidden-mode');
       }
+      document.getElementById('identityModal')?.classList.remove('open');
       renderAll();
     }
   };
