@@ -1299,16 +1299,28 @@
     if (mode === 'online') {
       btnOnline?.classList.add('active');
       btnScoreboard?.classList.remove('active');
-      if (viewScoreboard) viewScoreboard.style.display = 'none';
-      if (viewOnline) viewOnline.style.display = 'flex';
+      if (viewScoreboard) {
+        viewScoreboard.style.display = 'none';
+        viewScoreboard.classList.add('hidden-mode');
+      }
+      if (viewOnline) {
+        viewOnline.style.display = 'flex';
+        viewOnline.classList.remove('hidden-mode');
+      }
       if (typeof initOnlineGame === 'function') {
         initOnlineGame();
       }
     } else {
       btnScoreboard?.classList.add('active');
       btnOnline?.classList.remove('active');
-      if (viewScoreboard) viewScoreboard.style.display = 'flex';
-      if (viewOnline) viewOnline.style.display = 'none';
+      if (viewScoreboard) {
+        viewScoreboard.style.display = 'flex';
+        viewScoreboard.classList.remove('hidden-mode');
+      }
+      if (viewOnline) {
+        viewOnline.style.display = 'none';
+        viewOnline.classList.add('hidden-mode');
+      }
       renderAll();
     }
   };
