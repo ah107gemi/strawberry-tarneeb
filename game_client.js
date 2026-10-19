@@ -713,21 +713,20 @@ window.tarneebGame = new TarneebOnlineGame();
 
 let pendingSelectedName = '';
 let onlineEventsConfigured = false;
+let userActivelyIdentified = false;
 
 function initOnlineGame() {
   setupOnlineUIEvents();
 
-  // Check if identity was already selected in current session
-  const sessionName = sessionStorage.getItem('tarneeb_session_name') || window.tarneebGame.myName;
-  const sessionRole = sessionStorage.getItem('tarneeb_session_role') || window.tarneebGame.myRole || 'player';
-
-  if (sessionName) {
-    // Already identified in this session -> connect if not connected
+  // DO NOT auto-join from cached storage on page load!
+  // Always check if the user has actively chosen their role/name for the current session.
+  if (userActivelyIdentified && window.tarneebGame && window.tarneebGame.myName) {
+    // User has already actively identified in current session
     if (!window.tarneebGame.ws || window.tarneebGame.ws.readyState !== WebSocket.OPEN) {
-      connectWithIdentity(sessionName, sessionRole);
+      connectWithIdentity(window.tarneebGame.myName, window.tarneebGame.myRole || 'player');
     }
   } else {
-    // Not yet identified in this session -> prompt "Who are you?" modal
+    // If not actively identified in this session, ALWAYS display the "Who are you?" modal!
     openIdentityModal();
   }
 }
@@ -789,6 +788,33 @@ function closeIdentityModalAndBackToScoreboard() {
   }
 }
 
+function logoutAndSwitchName() {
+  userActivelyIdentified = false;
+  sessionStorage.removeItem('tarneeb_session_name');
+  sessionStorage.removeItem('tarneeb_session_role');
+
+  if (window.tarneebGame) {
+    if (window.tarneebGame.ws && window.tarneebGame.ws.readyState === WebSocket.OPEN) {
+      window.tarneebGame.send('leave', {});
+    }
+    window.tarneebGame.myName = null;
+    window.tarneebGame.myRole = null;
+    window.tarneebGame.myHand = [];
+  }
+
+  pendingSelectedName = '';
+  const input = document.getElementById('customNameInput');
+  if (input) input.value = '';
+  document.querySelectorAll('.roster-pick-btn').forEach(b => b.classList.remove('selected'));
+  const banner = document.getElementById('selectedIdentityBanner');
+  if (banner) banner.style.display = 'none';
+
+  const roleBadge = document.getElementById('onlineUserRoleBadge');
+  if (roleBadge) roleBadge.style.display = 'none';
+
+  openIdentityModal();
+}
+
 function handleJoinSubmit(role) {
   const input = document.getElementById('customNameInput');
   const inputVal = (input?.value || '').trim();
@@ -800,7 +826,7 @@ function handleJoinSubmit(role) {
     return;
   }
 
-  // Ensure role is explicitly set
+  userActivelyIdentified = true;
   const actualRole = (role === 'spectator') ? 'spectator' : 'player';
 
   // Persist identity & role in this session
@@ -871,6 +897,9 @@ function setupOnlineUIEvents() {
       openIdentityModal();
     }
   });
+
+  // Switch Name / Logout button in online header ("👤 Switch Name")
+  document.getElementById('btnSwitchName')?.addEventListener('click', logoutAndSwitchName);
 
   // Sort toggle
   document.getElementById('sortToggleBtn')?.addEventListener('click', () => {
