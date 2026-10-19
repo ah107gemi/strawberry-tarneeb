@@ -25,6 +25,23 @@
 
   <div class="app-container">
 
+    <!-- Top Mode Selector Navigation Bar (Persistent) -->
+    <nav class="mode-navigation-bar" aria-label="Game Mode Selector">
+      <button id="navModeScoreboard" class="mode-nav-btn active" type="button">
+        <span class="mode-nav-icon">📋</span>
+        <span class="mode-nav-label">Scoreboard Mode</span>
+      </button>
+      <button id="navModeOnline" class="mode-nav-btn" type="button">
+        <span class="mode-nav-icon">🃏</span>
+        <span class="mode-nav-label">Online Card Game</span>
+      </button>
+    </nav>
+
+    <!-- ======================================================================
+         MODE 1: IN-PERSON SCOREBOARD VIEW
+         ====================================================================== -->
+    <div id="viewScoreboard" class="mode-view">
+
     <!-- Top App Header -->
     <header class="app-header">
       <div class="brand-wrapper">
@@ -170,6 +187,97 @@
         </table>
       </div>
     </section>
+
+    </div> <!-- /viewScoreboard -->
+
+    <!-- ======================================================================
+         MODE 2: ONLINE MULTIPLAYER CARD GAME VIEW
+         ====================================================================== -->
+    <div id="viewOnlineGame" class="mode-view online-game-view" style="display: none;">
+      
+      <!-- Online Game Header & Status Bar -->
+      <div class="online-header-strip">
+        <div class="online-meta-wrap">
+          <span id="onlineRoundBadge" class="online-pill-badge round-pill">Round 1 of 15</span>
+          <span id="onlineDealerBadge" class="online-pill-badge dealer-pill">🂠 Dealer: -</span>
+          <span id="onlinePhaseInfo" class="online-pill-badge phase-pill">⏳ Waiting for table…</span>
+        </div>
+        <div class="online-actions-wrap">
+          <button id="sortToggleBtn" class="btn-subtle sort-btn" type="button" title="Switch auto/manual sort">🔀 Auto Sort ON</button>
+          <button id="smirkBtn" class="btn-subtle smirk-btn" type="button" title="Send Smirk">😏 Smirk</button>
+        </div>
+      </div>
+
+      <!-- Turn Indicator Banner -->
+      <div id="myTurnBanner" class="my-turn-banner" style="display: none;">
+        <span class="pulse-fire">🔥</span>
+        <span>YOUR TURN TO PLAY A CARD</span>
+        <span class="pulse-fire">🔥</span>
+      </div>
+
+      <!-- Smirk Prompt Floating Banner (When cutting with a Heart on non-Heart trick) -->
+      <div id="smirkPromptBanner" class="smirk-prompt-banner" style="display: none;">
+        <span>Cut with Hearts! 😏 Send Smirk?</span>
+        <button id="smirkPromptBtn" class="btn-smirk-action" type="button">Send Smirk 😏</button>
+      </div>
+
+      <!-- Main Felt Card Table Arena -->
+      <div id="onlineGameTable" class="online-table-arena">
+        
+        <!-- Opponent: Top -->
+        <div id="opponent-top" class="opponent-seat seat-top" style="display: none;">
+          <div class="opponent-name">Player</div>
+          <div class="opponent-bid-badge">Bid -</div>
+          <div class="opponent-cards-row"></div>
+        </div>
+
+        <!-- Opponent: Left -->
+        <div id="opponent-left" class="opponent-seat seat-left" style="display: none;">
+          <div class="opponent-name">Player</div>
+          <div class="opponent-bid-badge">Bid -</div>
+          <div class="opponent-cards-row"></div>
+        </div>
+
+        <!-- Center Trick Felt Area -->
+        <div class="table-felt-center">
+          <div class="felt-trump-watermark">♥</div>
+          <div id="trickCardsArea" class="trick-cards-container">
+            <div class="trick-empty-hint">Waiting for first card…</div>
+          </div>
+        </div>
+
+        <!-- Opponent: Right -->
+        <div id="opponent-right" class="opponent-seat seat-right" style="display: none;">
+          <div class="opponent-name">Player</div>
+          <div class="opponent-bid-badge">Bid -</div>
+          <div class="opponent-cards-row"></div>
+        </div>
+
+      </div> <!-- /onlineGameTable -->
+
+      <!-- Bidding Action Panel (Visible during bidding turn) -->
+      <div id="biddingPanel" class="online-bidding-panel" style="display: none;">
+        <!-- Injected dynamically via game_client.js -->
+      </div>
+
+      <!-- My Hand Dock (Bottom) -->
+      <div class="my-hand-dock">
+        <div class="hand-dock-header">
+          <span class="hand-title">🂠 Your Hand (13 Cards)</span>
+          <span class="hand-hint">Tap card once to select, tap again to play</span>
+        </div>
+        <div id="myHandContainer" class="my-hand-scroll-wrap">
+          <!-- Cards injected dynamically -->
+        </div>
+      </div>
+
+      <!-- Live Standing & Spectators Sidebar/Strip -->
+      <div id="onlineScoreboard" class="online-scores-panel">
+        <!-- Injected via game_client.js -->
+      </div>
+
+      <div id="onlineStatus" class="online-connection-status">Connecting to server…</div>
+    </div> <!-- /viewOnlineGame -->
 
   </div> <!-- /app-container -->
 
@@ -399,6 +507,73 @@
     <span id="toastMessage">Scores saved!</span>
   </div>
 
+  <!-- ==========================================================================
+       MODAL: Online Identity & Seating ("Who are you?")
+       ========================================================================== -->
+  <div id="identityModal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-content modal-identity-content">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <span>🃏</span>
+          <span>Who are you?</span>
+        </h3>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 12px; line-height: 1.4;">
+          Pick your name from the group roster to take your seat, or enter a custom nickname:
+        </p>
+        <div id="identityRosterGrid" class="identity-roster-grid">
+          <!-- Injected via game_client.js -->
+        </div>
+
+        <div class="custom-identity-divider">
+          <span>or enter custom name</span>
+        </div>
+
+        <div class="custom-identity-row">
+          <input type="text" id="customNameInput" class="player-name-input" placeholder="Your name / nickname..." maxlength="16">
+          <button id="btnJoinCustom" class="btn-primary" type="button" onclick="submitCustomName()">Join Table</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL: Online Round Summary
+       ========================================================================== -->
+  <div id="modalRoundSummary" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color: #fde047;">Round Complete!</h3>
+        <button class="modal-close" id="closeRoundSummaryBtn">&times;</button>
+      </div>
+      <div class="modal-body" id="roundSummaryContent"></div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL: Online Game Victory
+       ========================================================================== -->
+  <div id="modalVictoryOnline" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-content" style="text-align: center;">
+      <div class="modal-header" style="justify-content: center; position: relative;">
+        <h3 class="modal-title" style="color: #fde047;">🎉 GAME OVER! 🎉</h3>
+        <button class="modal-close" id="closeVictoryOnlineBtn" style="position: absolute; right: 12px;">&times;</button>
+      </div>
+      <div class="modal-body" style="align-items: center; gap: 14px; padding: 24px 16px;">
+        <div style="font-size: 3.5rem;">👑</div>
+        <h2 id="victoryWinnerOnline" style="font-size: 1.8rem; font-weight: 900; color: #fff;">Winner</h2>
+        <p id="victoryScoreOnline" style="font-size: 1.2rem; font-weight: 800; color: #fde047;">0 pts</p>
+        <div id="victoryStandingsOnline" style="width: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 8px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Online Floating Toast -->
+  <div id="onlineToast" class="online-toast"></div>
+
+  <!-- Game Client Scripts -->
+  <script src="game_client.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
