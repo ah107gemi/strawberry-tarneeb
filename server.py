@@ -136,11 +136,20 @@ class Player:
     def id(self) -> str:
         return self.token
 
+    @property
+    def is_spectator(self) -> bool:
+        return self.role == "spectator"
+
+    @is_spectator.setter
+    def is_spectator(self, val: bool):
+        self.role = "spectator" if val else "player"
+
     def to_dict(self, include_hand: bool = False) -> Dict:
         d = {
             "id": self.id,
             "name": self.name,
             "role": self.role,
+            "is_spectator": self.is_spectator,
             "seat": self.seat,
             "connected": self.is_connected,
             "card_count": len(self.hand),
@@ -323,7 +332,7 @@ class ConnectionManager:
             await self.send_to(token, {"type": "error", "data": {"message": "Invalid JSON"}})
             return
 
-        mtype = msg.get("type", "")
+        mtype = str(msg.get("type", "")).strip().lower()
         data = msg.get("data")
         if data is None or not isinstance(data, dict):
             data = msg
@@ -334,6 +343,8 @@ class ConnectionManager:
             "play_card": self._handle_play_card,
             "smirk": self._handle_smirk,
             "request_state": self._handle_request_state,
+            "switch_role": self._handle_switch_role,
+            "change_role": self._handle_switch_role,
         }
 
         handler = handlers.get(mtype)
@@ -348,59 +359,160 @@ class ConnectionManager:
 
     async def _handle_join(self, token: str, data: Dict):
         game = self.game
-        player = game.players[token]
+        player = game.players.get(token)
+        if not player:
+            return
 
         # Allow roster pick or custom name
-        chosen_name = data.get("name", "").strip() or data.get("roster_pick", "").strip()
+        chosen_name = (data.get("name") or "").strip() or (data.get("roster_pick") or "").strip()
         if not chosen_name:
             chosen_name = f"Player {len(game.players)}"
 
-        # Check if name already taken by another active token
-        for tok, p in game.players.items():
+        # If previous disconnected session with same name exists, reclaim or clean up
+        for tok, p in list(game.players.items()):
             if tok != token and p.name.lower() == chosen_name.lower():
-                await self.send_to(token, {"type": "error", "data": {"message": f"'{chosen_name}' is already taken."}})
-                return
+                if p.is_connected:
+                    await self.send_to(token, {"type": "error", "data": {"message": f"'{chosen_name}' is currently active in another session."}})
+                    return
+                else:
+                    # Clean up old disconnected session for same name and transfer seat
+                    if p.seat is not None:
+                        player.seat = p.seat
+                        game.seats[p.seat] = token
+                    player.hand = p.hand
+                    p.seat = None
+                    game.players.pop(tok, None)
 
         player.name = chosen_name
-        is_spectator_requested = bool(data.get("as_spectator")) or data.get("role") == "spectator"
 
-        if is_spectator_requested:
+        # Check explicit spectator request
+        role_req = str(data.get("role", "")).strip().lower()
+        as_spectator = bool(data.get("as_spectator")) or bool(data.get("is_spectator")) or (role_req == "spectator")
+
+        if as_spectator:
             # Explicit spectator request
             if player.seat is not None:
                 game.seats[player.seat] = None
                 player.seat = None
             player.role = "spectator"
-            log.info("%s joined as spectator", player.name)
+            player.is_spectator = True
+            log.info("%s joined explicitly as spectator", player.name)
         else:
-            # Active player request
-            if player.seat is None:
+            # Active player request (role == 'player' or not spectator)
+            if player.seat is not None:
+                # Already seated
+                player.role = "player"
+                player.is_spectator = False
+                log.info("%s re-confirmed as active player at seat %d", player.name, player.seat)
+            else:
+                # Check for an empty seat among the 4 active seats (0 to 3)
                 empty_seat = next((i for i, s in enumerate(game.seats) if s is None), None)
+
+                # In lobby, if all seats seem taken, check if any seated player is disconnected
+                if empty_seat is None and game.phase == "lobby":
+                    empty_seat = next((i for i, s in enumerate(game.seats) if s and not game.players.get(s, Player("", "", None, "")).is_connected), None)
+                    if empty_seat is not None:
+                        old_tok = game.seats[empty_seat]
+                        old_p = game.players.get(old_tok)
+                        if old_p:
+                            old_p.seat = None
+                            old_p.role = "spectator"
+                            old_p.is_spectator = True
+                        game.seats[empty_seat] = None
+
                 if empty_seat is not None:
+                    # Assign the player to the next open seat (Seat 1 to 4)
                     player.seat = empty_seat
                     player.role = "player"
+                    player.is_spectator = False
                     game.seats[empty_seat] = token
-                    log.info("%s joined as player at seat %d", player.name, empty_seat)
+                    log.info("%s assigned active seat %d (Seat %d)", player.name, empty_seat, empty_seat + 1)
                 else:
-                    log.info("%s attempted to join as player but table is full", player.name)
+                    # All 4 active seats are already occupied
+                    player.role = "spectator"
+                    player.is_spectator = True
+                    log.info("%s table full, placed as spectator", player.name)
                     await self.send_to(token, {
                         "type": "error",
                         "data": {
-                            "message": "The card table is currently full (all 4 seats taken). Please join as a Bench / Spectator to watch!",
+                            "message": "All 4 active seats are already occupied. You have joined as a Spectator.",
                             "code": "TABLE_FULL"
                         }
                     })
-                    return
-            else:
-                player.role = "player"
-                log.info("%s re-confirmed as player at seat %d", player.name, player.seat)
 
+        # Broadcast updated table state with the player seated in their active position
         await self.broadcast({
             "type": "player_joined",
-            "data": {"id": token, "name": player.name, "role": player.role, "seat": player.seat},
+            "data": {"id": token, "name": player.name, "role": player.role, "is_spectator": player.is_spectator, "seat": player.seat},
         })
         await self.broadcast_game_state()
 
-        # Auto-start if all 4 seats filled and game is in lobby
+        # When 4 active players are seated, automatically deal the cards and start Round 1
+        if game.phase == "lobby" and game.all_seats_filled():
+            await self._start_round()
+
+    # ------------------------------------------------------------------
+    # Handler: switch_role / change_role
+    # ------------------------------------------------------------------
+
+    async def _handle_switch_role(self, token: str, data: Dict):
+        game = self.game
+        player = game.players.get(token)
+        if not player:
+            return
+
+        if player.role == "player":
+            # Active player clicks switch role -> move to spectators and free up their seat
+            if player.seat is not None:
+                old_seat = player.seat
+                game.seats[old_seat] = None
+                player.seat = None
+                log.info("%s vacated seat %d and moved to spectators", player.name, old_seat)
+            player.role = "spectator"
+            player.is_spectator = True
+            player.hand = []
+            await self.send_to(token, {
+                "type": "role_changed",
+                "data": {"role": "spectator", "seat": None, "message": "You moved to Bench / Spectator."}
+            })
+        else:
+            # Spectator clicks switch role -> if there is an open seat (< 4 players), assign to active seat
+            empty_seat = next((i for i, s in enumerate(game.seats) if s is None), None)
+            if empty_seat is None and game.phase == "lobby":
+                empty_seat = next((i for i, s in enumerate(game.seats) if s and not game.players.get(s, Player("", "", None, "")).is_connected), None)
+                if empty_seat is not None:
+                    old_tok = game.seats[empty_seat]
+                    old_p = game.players.get(old_tok)
+                    if old_p:
+                        old_p.seat = None
+                        old_p.role = "spectator"
+                        old_p.is_spectator = True
+                    game.seats[empty_seat] = None
+
+            if empty_seat is not None:
+                player.seat = empty_seat
+                player.role = "player"
+                player.is_spectator = False
+                game.seats[empty_seat] = token
+                log.info("%s switched to active seat %d (Seat %d)", player.name, empty_seat, empty_seat + 1)
+                await self.send_to(token, {
+                    "type": "role_changed",
+                    "data": {"role": "player", "seat": empty_seat, "message": f"You took Seat {empty_seat + 1}!"}
+                })
+            else:
+                await self.send_to(token, {
+                    "type": "error",
+                    "data": {"message": "All 4 table seats are full! Cannot switch to active player.", "code": "TABLE_FULL"}
+                })
+                return
+
+        await self.broadcast({
+            "type": "player_joined",
+            "data": {"id": token, "name": player.name, "role": player.role, "is_spectator": player.is_spectator, "seat": player.seat},
+        })
+        await self.broadcast_game_state()
+
+        # When 4 active players are seated, automatically deal the cards and start Round 1
         if game.phase == "lobby" and game.all_seats_filled():
             await self._start_round()
 
