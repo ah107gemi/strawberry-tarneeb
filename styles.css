@@ -91,12 +91,69 @@ body::before {
 .app-container {
   position: relative;
   z-index: 1;
-  max-width: 900px;
+  width: 100%;
+  max-width: 480px;
   margin: 0 auto;
-  padding: 12px 14px 90px 14px;
+  min-height: 100vh;
+  padding: 0 0 40px 0;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* Mode Views */
+.mode-view {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mode-view.hidden-mode,
+#viewScoreboard[style*="display: none"],
+#viewOnlineGame[style*="display: none"] {
+  display: none !important;
+}
+
+/* Mode 1: Main Scoreboard Container (Vertical Flow) */
+#viewScoreboard {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 12px;
+  box-sizing: border-box;
   gap: 14px;
+  overflow-x: hidden;
+}
+
+/* Mode 2: Online Card Game Container */
+#viewOnlineGame {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 12px;
+  box-sizing: border-box;
+  gap: 12px;
+  overflow-x: hidden;
+}
+
+/* Ensure all child cards stack vertically at 100% width in single scrollable column */
+#viewScoreboard > *,
+.app-header,
+.pwa-banner,
+.status-strip,
+.leaderboard-card,
+.table-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 /* Top App Header */
@@ -1416,37 +1473,60 @@ body::before {
 
 .pwa-banner {
   background: linear-gradient(135deg, #1e1b4b, #2b112c);
-  border: 1px solid #e11d4866;
+  border: 1px solid rgba(225, 29, 72, 0.4);
   border-radius: var(--radius-md);
   padding: 10px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   box-shadow: 0 4px 16px rgba(225, 29, 72, 0.2);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  margin: 0;
 }
 
 .pwa-banner-text {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.8rem;
   color: #f1f5f9;
+  line-height: 1.35;
 }
 
 .pwa-banner-text strong {
   color: #fda4af;
   display: block;
   font-size: 0.85rem;
+  margin-bottom: 2px;
+}
+
+.pwa-banner-text span {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 .btn-install {
-  padding: 6px 12px;
+  flex-shrink: 0;
+  padding: 8px 14px;
   background: var(--crimson-600);
   border: none;
   border-radius: var(--radius-full);
   color: #fff;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all var(--transition-fast);
+}
+
+.btn-install:hover {
+  background: var(--crimson-500);
+  transform: translateY(-1px);
 }
 
 .winner-celebration-canvas {
@@ -1464,13 +1544,16 @@ body::before {
    ========================================================================== */
 .mode-navigation-bar {
   display: flex;
+  width: calc(100% - 24px);
+  max-width: 480px;
+  margin: 12px auto 4px auto;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
   padding: 4px;
   gap: 6px;
   box-shadow: var(--shadow-card);
-  margin-bottom: 4px;
+  box-sizing: border-box;
 }
 
 .mode-nav-btn {
