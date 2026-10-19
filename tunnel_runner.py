@@ -55,7 +55,7 @@ def main():
     # 3. Start Cloudflare Tunnel
     print("[2/3] Starting Cloudflare Tunnel...")
     cf_proc = subprocess.Popen(
-        [CLOUDFLARED, "tunnel", "--url", "http://localhost:8000", "--no-autoupdate"],
+        [CLOUDFLARED, "tunnel", "--url", "http://127.0.0.1:8000", "--no-autoupdate"],
         cwd=BASE_DIR,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
