@@ -969,9 +969,14 @@ async def startup_event():
     log.info("Strawberry Tarneeb server started on port 8000")
 
 
+@app.get("/healthz")
+def health():
+    return {"status": "ok"}
+
+
 @app.get("/health")
-async def health():
-    """Simple health-check endpoint."""
+async def health_detail():
+    """Detailed health-check endpoint."""
     game = manager.game
     return {
         "status": "ok",
