@@ -362,17 +362,37 @@ class ConnectionManager:
                 return
 
         player.name = chosen_name
+        is_spectator_requested = bool(data.get("as_spectator")) or data.get("role") == "spectator"
 
-        # Assign seat if available
-        if player.role == "spectator":
-            empty_seat = next((i for i, s in enumerate(game.seats) if s is None), None)
-            if empty_seat is not None:
-                player.seat = empty_seat
-                player.role = "player"
-                game.seats[empty_seat] = token
-                log.info("%s joined as player at seat %d", player.name, empty_seat)
+        if is_spectator_requested:
+            # Explicit spectator request
+            if player.seat is not None:
+                game.seats[player.seat] = None
+                player.seat = None
+            player.role = "spectator"
+            log.info("%s joined as spectator", player.name)
+        else:
+            # Active player request
+            if player.seat is None:
+                empty_seat = next((i for i, s in enumerate(game.seats) if s is None), None)
+                if empty_seat is not None:
+                    player.seat = empty_seat
+                    player.role = "player"
+                    game.seats[empty_seat] = token
+                    log.info("%s joined as player at seat %d", player.name, empty_seat)
+                else:
+                    log.info("%s attempted to join as player but table is full", player.name)
+                    await self.send_to(token, {
+                        "type": "error",
+                        "data": {
+                            "message": "The card table is currently full (all 4 seats taken). Please join as a Bench / Spectator to watch!",
+                            "code": "TABLE_FULL"
+                        }
+                    })
+                    return
             else:
-                log.info("%s joined as spectator", player.name)
+                player.role = "player"
+                log.info("%s re-confirmed as player at seat %d", player.name, player.seat)
 
         await self.broadcast({
             "type": "player_joined",
