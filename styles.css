@@ -1643,6 +1643,18 @@ body::before {
   border-color: rgba(56, 189, 248, 0.3);
 }
 
+.online-pill-badge.role-pill {
+  color: #a7f3d0;
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.online-pill-badge.role-pill.spectator {
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.4);
+  background: rgba(51, 65, 85, 0.4);
+}
+
 .online-actions-wrap {
   display: flex;
   align-items: center;
@@ -2187,6 +2199,13 @@ body::before {
   transform: translateY(-2px);
 }
 
+.roster-pick-btn.selected {
+  background: linear-gradient(135deg, var(--crimson-600), #e11d48);
+  border-color: #f43f5e;
+  box-shadow: 0 0 14px rgba(225, 29, 72, 0.45);
+  transform: translateY(-1px);
+}
+
 .custom-identity-divider {
   text-align: center;
   position: relative;
@@ -2218,6 +2237,112 @@ body::before {
 .custom-identity-row {
   display: flex;
   gap: 8px;
+  margin-bottom: 4px;
+}
+
+/* Selected Identity Indicator */
+.selected-identity-banner {
+  margin: 10px 0 6px 0;
+  padding: 8px 12px;
+  background: rgba(225, 29, 72, 0.15);
+  border: 1px solid rgba(225, 29, 72, 0.35);
+  border-radius: var(--radius-md);
+  text-align: center;
+  font-size: 0.88rem;
+  color: #fecdd3;
+  animation: fadeIn 0.2s ease;
+}
+
+.selected-identity-banner strong {
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+/* Action Buttons for Role Selection */
+.identity-action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.btn-join-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  gap: 3px;
+  width: 100%;
+  text-align: center;
+}
+
+.btn-join-choice .btn-hint-text {
+  font-size: 0.72rem;
+  font-weight: 500;
+  opacity: 0.82;
+}
+
+.btn-join-choice.btn-secondary {
+  background: #1e293b;
+  border: 1px solid #475569;
+  color: #e2e8f0;
+}
+
+.btn-join-choice.btn-secondary:hover {
+  background: #334155;
+  border-color: #94a3b8;
+}
+
+.cancel-identity-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.cancel-identity-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-subtle);
+}
+
+/* Spectator Dock View */
+.spectator-hand-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px 14px;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+  border-radius: var(--radius-md);
+  width: 100%;
+}
+
+.spectator-hand-notice .spec-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #cbd5e1;
+}
+
+.spectator-hand-notice .spec-desc {
+  font-size: 0.78rem;
+  color: var(--text-dim);
 }
 
 /* Online Toast */
