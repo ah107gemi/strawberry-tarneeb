@@ -1688,6 +1688,20 @@ body::before {
   color: #fff;
 }
 
+.btn-subtle.switch-name-btn {
+  background: rgba(148, 163, 184, 0.15);
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #cbd5e1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-subtle.switch-name-btn:hover {
+  background: rgba(148, 163, 184, 0.3);
+  border-color: #f1f5f9;
+  color: #fff;
+}
+
 .smirk-pulse {
   animation: smirkPulseAnim 1s infinite alternate;
 }
