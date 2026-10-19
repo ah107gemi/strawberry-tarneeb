@@ -32,6 +32,13 @@ class TarneebOnlineGame {
   // CONNECTION
   // =========================================================================
   connect(playerToken) {
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) && this.myId === playerToken) {
+      if (this.ws.readyState === WebSocket.OPEN) {
+        this.sendJoinMessage();
+      }
+      return;
+    }
+
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = location.host;
     const wsUrl = `${protocol}//${host}/ws/${playerToken}`;
@@ -40,6 +47,8 @@ class TarneebOnlineGame {
     this.ws.onopen = () => {
       this.reconnectAttempts = 0;
       this.showStatus('🟢 Connected to game server');
+      this.sendJoinMessage();
+      this.flushPendingMessages();
     };
     this.ws.onmessage = (evt) => this.handleServerMessage(JSON.parse(evt.data));
     this.ws.onclose = () => {
@@ -63,9 +72,35 @@ class TarneebOnlineGame {
   }
 
   send(type, payload = {}) {
+    const msg = JSON.stringify({ type, ...payload });
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ type, ...payload }));
+      this.ws.send(msg);
+    } else {
+      this.pendingMessages = this.pendingMessages || [];
+      this.pendingMessages.push(msg);
     }
+  }
+
+  flushPendingMessages() {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN && this.pendingMessages) {
+      while (this.pendingMessages.length > 0) {
+        const msg = this.pendingMessages.shift();
+        this.ws.send(msg);
+      }
+    }
+  }
+
+  sendJoinMessage() {
+    if (!this.myName) return;
+    const isSpec = (this.myRole === 'spectator');
+    const roleToSend = isSpec ? 'spectator' : 'player';
+    this.send('JOIN', {
+      name: this.myName,
+      roster_pick: this.myName,
+      role: roleToSend,
+      is_spectator: isSpec,
+      as_spectator: isSpec
+    });
   }
 
   // =========================================================================
@@ -82,6 +117,12 @@ class TarneebOnlineGame {
 
       case 'player_joined':
         this.showToast(`${data.name} joined as ${data.role === 'spectator' ? 'Spectator 👁️' : 'Player 🂠'}`);
+        break;
+
+      case 'role_changed':
+        this.myRole = data.role;
+        sessionStorage.setItem('tarneeb_session_role', data.role);
+        this.showToast(data.message || `Switched to ${data.role}`, 'info');
         break;
 
       case 'trick_complete':
@@ -110,8 +151,7 @@ class TarneebOnlineGame {
         if (data.code === 'TABLE_FULL') {
           setTimeout(() => {
             alert(errMsg);
-            openIdentityModal();
-          }, 350);
+          }, 250);
         }
         break;
     }
@@ -153,7 +193,15 @@ class TarneebOnlineGame {
 
     // Render user role tag
     const me = gs.players.find(p => p.id === this.myId);
-    const isSpectator = me ? me.role === 'spectator' : (this.myRole === 'spectator');
+    let isSpectator = false;
+    if (me) {
+      isSpectator = (me.role === 'spectator' || me.is_spectator === true);
+      this.myRole = isSpectator ? 'spectator' : 'player';
+      sessionStorage.setItem('tarneeb_session_role', this.myRole);
+    } else {
+      isSpectator = (this.myRole === 'spectator');
+    }
+
     const roleBadge = document.getElementById('onlineUserRoleBadge');
     if (roleBadge) {
       roleBadge.style.display = 'inline-block';
@@ -164,6 +212,18 @@ class TarneebOnlineGame {
         roleBadge.className = 'online-pill-badge role-pill';
         const seatStr = (me && me.seat !== null && me.seat !== undefined) ? ` (Seat ${me.seat + 1})` : '';
         roleBadge.textContent = `🎮 Player: ${this.myName || me?.name || 'Player'}${seatStr}`;
+      }
+    }
+
+    // Role Switch Button in header ("🔄 Change Role")
+    const switchRoleBtn = document.getElementById('btnSwitchIdentity');
+    if (switchRoleBtn) {
+      if (isSpectator) {
+        switchRoleBtn.innerHTML = '🎮 Take Table Seat';
+        switchRoleBtn.title = 'Switch from Spectator to Active Table Seat';
+      } else {
+        switchRoleBtn.innerHTML = '👀 Move to Bench';
+        switchRoleBtn.title = 'Switch from Active Player to Bench Spectator';
       }
     }
 
@@ -740,20 +800,24 @@ function handleJoinSubmit(role) {
     return;
   }
 
+  // Ensure role is explicitly set
+  const actualRole = (role === 'spectator') ? 'spectator' : 'player';
+
   // Persist identity & role in this session
   sessionStorage.setItem('tarneeb_session_name', chosenName);
-  sessionStorage.setItem('tarneeb_session_role', role);
+  sessionStorage.setItem('tarneeb_session_role', actualRole);
 
   // Close identity modal
   document.getElementById('identityModal')?.classList.remove('open');
 
   // Connect to server
-  connectWithIdentity(chosenName, role);
+  connectWithIdentity(chosenName, actualRole);
 }
 
 function connectWithIdentity(name, role) {
+  const actualRole = (role === 'spectator') ? 'spectator' : 'player';
   window.tarneebGame.myName = name;
-  window.tarneebGame.myRole = role;
+  window.tarneebGame.myRole = actualRole;
 
   let token = localStorage.getItem('tarneeb_token_' + name.toLowerCase());
   if (!token) {
@@ -765,16 +829,9 @@ function connectWithIdentity(name, role) {
   const onlineTable = document.getElementById('onlineGameTable');
   if (onlineTable) onlineTable.style.display = 'flex';
 
-  // Join server
+  // Connect to server (will send JOIN on open or immediately if already connected)
   window.tarneebGame.connect(token);
-  setTimeout(() => {
-    window.tarneebGame.send('join', {
-      name: name,
-      roster_pick: name,
-      role: role,
-      as_spectator: (role === 'spectator')
-    });
-  }, 400);
+  window.tarneebGame.sendJoinMessage();
 }
 
 function setupOnlineUIEvents() {
@@ -806,9 +863,13 @@ function setupOnlineUIEvents() {
     });
   }
 
-  // Switch Identity button in online header
+  // Role Switch button in online header ("🔄 Change Role")
   document.getElementById('btnSwitchIdentity')?.addEventListener('click', () => {
-    openIdentityModal();
+    if (window.tarneebGame.ws && window.tarneebGame.ws.readyState === WebSocket.OPEN) {
+      window.tarneebGame.send('switch_role', {});
+    } else {
+      openIdentityModal();
+    }
   });
 
   // Sort toggle
