@@ -201,10 +201,12 @@
           <span id="onlineRoundBadge" class="online-pill-badge round-pill">Round 1 of 15</span>
           <span id="onlineDealerBadge" class="online-pill-badge dealer-pill">🂠 Dealer: -</span>
           <span id="onlinePhaseInfo" class="online-pill-badge phase-pill">⏳ Waiting for table…</span>
+          <span id="onlineUserRoleBadge" class="online-pill-badge role-pill" style="display: none;">👀 Spectating</span>
         </div>
         <div class="online-actions-wrap">
           <button id="sortToggleBtn" class="btn-subtle sort-btn" type="button" title="Switch auto/manual sort">🔀 Auto Sort ON</button>
           <button id="smirkBtn" class="btn-subtle smirk-btn" type="button" title="Send Smirk">😏 Smirk</button>
+          <button id="btnSwitchIdentity" class="btn-subtle switch-id-btn" type="button" title="Change Player / Role">🔄 Change Role</button>
         </div>
       </div>
 
@@ -517,11 +519,14 @@
           <span>🃏</span>
           <span>Who are you?</span>
         </h3>
+        <button class="modal-close" id="btnCloseIdentityModal" type="button" aria-label="Close modal">&times;</button>
       </div>
       <div class="modal-body">
         <p style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 12px; line-height: 1.4;">
-          Pick your name from the group roster to take your seat, or enter a custom nickname:
+          Pick your name from the group roster or enter a custom nickname:
         </p>
+
+        <!-- Roster Quick Select Grid -->
         <div id="identityRosterGrid" class="identity-roster-grid">
           <!-- Injected via game_client.js -->
         </div>
@@ -532,8 +537,29 @@
 
         <div class="custom-identity-row">
           <input type="text" id="customNameInput" class="player-name-input" placeholder="Your name / nickname..." maxlength="16">
-          <button id="btnJoinCustom" class="btn-primary" type="button" onclick="submitCustomName()">Join Table</button>
         </div>
+
+        <!-- Selected Identity Preview Banner -->
+        <div id="selectedIdentityBanner" class="selected-identity-banner" style="display: none;">
+          <span>Selected: <strong id="selectedIdentityNameDisplay"></strong></span>
+        </div>
+
+        <!-- Distinct Action Buttons for Role Selection -->
+        <div class="identity-action-buttons">
+          <button id="btnJoinAsPlayer" class="btn-primary btn-join-choice" type="button">
+            <span>🎮 Join as Active Player</span>
+            <small class="btn-hint-text">Takes seats 1–4 to play cards</small>
+          </button>
+          <button id="btnJoinAsSpectator" class="btn-secondary btn-join-choice" type="button">
+            <span>👀 Join as Bench / Spectator</span>
+            <small class="btn-hint-text">Watches match, tricks & live scores</small>
+          </button>
+        </div>
+
+        <!-- Cancel / Return to Scoreboard -->
+        <button id="btnCancelIdentity" class="btn-subtle cancel-identity-btn" type="button">
+          ← Cancel / Back to Scoreboard
+        </button>
       </div>
     </div>
   </div>
