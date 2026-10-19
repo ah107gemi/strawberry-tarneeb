@@ -298,28 +298,32 @@ class ConnectionManager:
                 log.warning("send_to %s failed: %s", token, exc)
 
     async def broadcast(self, msg: Dict, exclude: Optional[str] = None):
-        """Send a message to every connected client."""
-        for token, player in self.game.players.items():
+        """Send a message to every connected client safely."""
+        for token, player in list(self.game.players.items()):
             if token == exclude:
                 continue
-            if player.is_connected:
+            if player and player.is_connected and player.ws:
                 try:
                     await player.ws.send_json(msg)
                 except Exception as exc:
-                    log.warning("broadcast to %s failed: %s", token, exc)
+                    log.warning("broadcast to %s failed, marking disconnected: %s", token, exc)
+                    player.ws = None
+                    player.disconnected_at = time.time()
 
     async def broadcast_game_state(self):
         """
         Send a personalised game_state to every connected client.
-        Each player gets their own hand; spectators get empty hand.
+        Safely iterate over copies and discard dead sockets silently.
         """
-        for token, player in self.game.players.items():
-            if player.is_connected:
-                state = self.game.public_state(for_token=token)
+        for token, player in list(self.game.players.items()):
+            if player and player.is_connected and player.ws:
                 try:
+                    state = self.game.public_state(for_token=token)
                     await player.ws.send_json({"type": "game_state", "data": state})
                 except Exception as exc:
-                    log.warning("broadcast_game_state to %s failed: %s", token, exc)
+                    log.warning("broadcast_game_state to %s failed, marking disconnected: %s", token, exc)
+                    player.ws = None
+                    player.disconnected_at = time.time()
 
     # ------------------------------------------------------------------
     # Message routing
@@ -345,11 +349,19 @@ class ConnectionManager:
             "request_state": self._handle_request_state,
             "switch_role": self._handle_switch_role,
             "change_role": self._handle_switch_role,
+            "leave": self._handle_leave,
+            "logout": self._handle_leave,
         }
 
         handler = handlers.get(mtype)
         if handler:
-            await handler(token, data)
+            try:
+                await handler(token, data)
+            except Exception as exc:
+                import traceback
+                print(f"[ERROR] Handler '{mtype}' for token {token} failed:")
+                traceback.print_exc()
+                await self.send_to(token, {"type": "error", "data": {"message": f"Server error handling {mtype}"}})
         else:
             await self.send_to(token, {"type": "error", "data": {"message": f"Unknown message type: {mtype}"}})
 
@@ -368,20 +380,50 @@ class ConnectionManager:
         if not chosen_name:
             chosen_name = f"Player {len(game.players)}"
 
-        # If previous disconnected session with same name exists, reclaim or clean up
-        for tok, p in list(game.players.items()):
-            if tok != token and p.name.lower() == chosen_name.lower():
-                if p.is_connected:
-                    await self.send_to(token, {"type": "error", "data": {"message": f"'{chosen_name}' is currently active in another session."}})
-                    return
+        # Handle duplicate player names gracefully:
+        # If a connection claims a name that is already in active_players or spectators,
+        # replace the old WebSocket connection instead of raising a KeyError or mutation error.
+        for old_tok, old_player in list(game.players.items()):
+            if old_tok != token and old_player.name and old_player.name.lower() == chosen_name.lower():
+                log.info("Player '%s' connecting with new token %s (replacing old %s)", chosen_name, token, old_tok)
+                if old_player.ws:
+                    try:
+                        await old_player.ws.close(code=1000, reason="Replaced by new session")
+                    except Exception:
+                        pass
+                    old_player.ws = None
+
+                # Transfer seat, role, hand, and scores from old player to new player
+                if old_player.seat is not None:
+                    player.seat = old_player.seat
+                    game.seats[old_player.seat] = token
+                    player.role = "player"
+                    player.is_spectator = False
                 else:
-                    # Clean up old disconnected session for same name and transfer seat
-                    if p.seat is not None:
-                        player.seat = p.seat
-                        game.seats[p.seat] = token
-                    player.hand = p.hand
-                    p.seat = None
-                    game.players.pop(tok, None)
+                    player.seat = None
+                    player.role = old_player.role
+                    player.is_spectator = old_player.is_spectator
+
+                player.hand = list(old_player.hand)
+
+                if old_tok in game.scores:
+                    game.scores[token] = game.scores.pop(old_tok)
+                if old_tok in game.round_scores:
+                    game.round_scores[token] = game.round_scores.pop(old_tok)
+                if old_tok in game.tricks_taken:
+                    game.tricks_taken[token] = game.tricks_taken.pop(old_tok)
+                if old_tok in game.bids:
+                    game.bids[token] = game.bids.pop(old_tok)
+
+                for play in game.trick_cards:
+                    if play.get("player_id") == old_tok:
+                        play["player_id"] = token
+
+                if game.bid_order:
+                    game.bid_order = [token if t == old_tok else t for t in game.bid_order]
+
+                game.players.pop(old_tok, None)
+                break
 
         player.name = chosen_name
 
@@ -396,6 +438,7 @@ class ConnectionManager:
                 player.seat = None
             player.role = "spectator"
             player.is_spectator = True
+            player.hand = []
             log.info("%s joined explicitly as spectator", player.name)
         else:
             # Active player request (role == 'player' or not spectator)
@@ -403,7 +446,7 @@ class ConnectionManager:
                 # Already seated
                 player.role = "player"
                 player.is_spectator = False
-                log.info("%s re-confirmed as active player at seat %d", player.name, player.seat)
+                log.info("%s confirmed active player at seat %d", player.name, player.seat)
             else:
                 # Check for an empty seat among the 4 active seats (0 to 3)
                 empty_seat = next((i for i, s in enumerate(game.seats) if s is None), None)
@@ -450,6 +493,32 @@ class ConnectionManager:
         # When 4 active players are seated, automatically deal the cards and start Round 1
         if game.phase == "lobby" and game.all_seats_filled():
             await self._start_round()
+
+    # ------------------------------------------------------------------
+    # Handler: leave / logout
+    # ------------------------------------------------------------------
+
+    async def _handle_leave(self, token: str, data: Dict):
+        game = self.game
+        player = game.players.get(token)
+        if not player:
+            return
+
+        old_name = player.name
+        if player.seat is not None:
+            game.seats[player.seat] = None
+            player.seat = None
+        player.role = "spectator"
+        player.is_spectator = True
+        player.hand = []
+        player.name = ""
+
+        log.info("Player '%s' (%s) left / switched name", old_name, token)
+        await self.broadcast({
+            "type": "player_left",
+            "data": {"id": token, "name": old_name},
+        })
+        await self.broadcast_game_state()
 
     # ------------------------------------------------------------------
     # Handler: switch_role / change_role
@@ -665,6 +734,24 @@ class ConnectionManager:
 
     async def _start_round(self):
         game = self.game
+
+        # Guard: only allow starting from lobby (round 1) or round_end (subsequent rounds)
+        if game.phase not in ("lobby", "round_end"):
+            log.warning("Attempted to start round while phase is '%s', ignoring", game.phase)
+            return
+
+        # Verify all 4 seats are valid and present in players dictionary
+        if not game.all_seats_filled():
+            log.warning("Cannot start round: not all 4 seats are filled (%s)", game.seats)
+            return
+
+        for seat_idx, tok in enumerate(game.seats):
+            if not tok or tok not in game.players:
+                log.error("Invalid seat %d token: %s", seat_idx, tok)
+                return
+
+        # Immediate state transition guard so concurrent calls cannot re-enter
+        game.phase = "starting"
         game.round += 1
         log.info("=== Starting Round %d ===", game.round)
 
@@ -683,10 +770,13 @@ class ConnectionManager:
 
         # Deal cards (13 each)
         deck = make_deck()
-        seated = [game.seats[i] for i in range(MAX_PLAYERS)]
-        for i, tok in enumerate(seated):
-            if tok:
-                game.players[tok].hand = sorted(deck[i * 13:(i + 1) * 13], key=lambda c: (card_suit(c), card_rank_value(c)))
+        for i in range(MAX_PLAYERS):
+            tok = game.seats[i]
+            if tok and tok in game.players:
+                game.players[tok].hand = sorted(
+                    deck[i * 13:(i + 1) * 13],
+                    key=lambda c: (card_suit(c), card_rank_value(c))
+                )
 
         if game.round == 1:
             # No bidding in round 1
@@ -906,7 +996,16 @@ async def websocket_endpoint(ws: WebSocket, player_token: str):
         await ws.send_json({"type": "game_state", "data": state})
 
         async for raw_msg in ws.iter_text():
-            await manager.handle_message(player_token, raw_msg)
+            try:
+                await manager.handle_message(player_token, raw_msg)
+            except Exception as e:
+                import traceback
+                print(f"[ERROR] Exception processing message from {player_token}: {e}")
+                traceback.print_exc()
+                try:
+                    await ws.send_json({"type": "error", "data": {"message": "Server error processing message."}})
+                except Exception:
+                    pass
 
     except WebSocketDisconnect:
         manager.disconnect(player_token)
@@ -915,7 +1014,9 @@ async def websocket_endpoint(ws: WebSocket, player_token: str):
             "data": {"id": player_token, "name": player.name},
         })
     except Exception as exc:
-        log.exception("Unhandled error for token %s: %s", player_token, exc)
+        import traceback
+        print(f"[ERROR] WebSocket fatal error for token {player_token}: {exc}")
+        traceback.print_exc()
         manager.disconnect(player_token)
 
 
