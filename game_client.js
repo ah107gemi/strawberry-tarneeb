@@ -105,7 +105,14 @@ class TarneebOnlineGame {
         break;
 
       case 'error':
-        this.showToast(`❌ ${data.message || msg.message}`, 'error');
+        const errMsg = data.message || msg.message || 'Error occurred';
+        this.showToast(`❌ ${errMsg}`, 'error');
+        if (data.code === 'TABLE_FULL') {
+          setTimeout(() => {
+            alert(errMsg);
+            openIdentityModal();
+          }, 350);
+        }
         break;
     }
   }
@@ -144,6 +151,22 @@ class TarneebOnlineGame {
     document.getElementById('onlineRoundBadge').textContent = `Round ${gs.round} of 15`;
     document.getElementById('onlineDealerBadge').textContent = `🂠 Dealer: ${dealer ? dealer.name : '-'}`;
 
+    // Render user role tag
+    const me = gs.players.find(p => p.id === this.myId);
+    const isSpectator = me ? me.role === 'spectator' : (this.myRole === 'spectator');
+    const roleBadge = document.getElementById('onlineUserRoleBadge');
+    if (roleBadge) {
+      roleBadge.style.display = 'inline-block';
+      if (isSpectator) {
+        roleBadge.className = 'online-pill-badge role-pill spectator';
+        roleBadge.textContent = `👀 Spectating: ${this.myName || me?.name || 'Spectator'}`;
+      } else {
+        roleBadge.className = 'online-pill-badge role-pill';
+        const seatStr = (me && me.seat !== null && me.seat !== undefined) ? ` (Seat ${me.seat + 1})` : '';
+        roleBadge.textContent = `🎮 Player: ${this.myName || me?.name || 'Player'}${seatStr}`;
+      }
+    }
+
     // Render live scores sidebar
     this.renderScoreSidebar(gs);
 
@@ -159,8 +182,8 @@ class TarneebOnlineGame {
     // Show/hide bidding UI
     this.renderBiddingPanel(gs);
 
-    // Turn indicator
-    const myTurn = gs.current_turn === this.myId;
+    // Turn indicator (never shown to spectators)
+    const myTurn = !isSpectator && gs.current_turn === this.myId;
     document.getElementById('myTurnBanner').style.display = myTurn && gs.phase === 'playing' ? 'flex' : 'none';
 
     // Highlight playable cards
@@ -196,7 +219,7 @@ class TarneebOnlineGame {
 
       html += `
         <div class="score-row ${isMe ? 'is-me' : ''} ${isCurrent ? 'is-turn' : ''}">
-          <span class="score-medal">${medals[idx]}</span>
+          <span class="score-medal">${medals[idx] || '🎖️'}</span>
           <span class="score-name">${this.esc(p.name)}${isMe ? ' (You)' : ''}</span>
           <div class="score-details">
             ${bid !== undefined && bid !== null ? `<span class="bid-chip">Bid ${bid}</span>` : ''}
@@ -240,7 +263,8 @@ class TarneebOnlineGame {
   }
 
   renderOpponents(gs) {
-    const seats = gs.players.filter(p => p.role === 'player' && p.id !== this.myId);
+    const me = gs.players.find(p => p.id === this.myId);
+    const isSpectator = me ? me.role === 'spectator' : (this.myRole === 'spectator');
     const positions = ['left', 'top', 'right'];
 
     // Clear all
@@ -249,7 +273,11 @@ class TarneebOnlineGame {
       if (el) el.style.display = 'none';
     });
 
-    seats.slice(0, 3).forEach((player, idx) => {
+    const activePlayers = isSpectator
+      ? gs.players.filter(p => p.role === 'player')
+      : gs.players.filter(p => p.role === 'player' && p.id !== this.myId);
+
+    activePlayers.slice(0, 3).forEach((player, idx) => {
       const pos = positions[idx];
       const el = document.getElementById(`opponent-${pos}`);
       if (!el) return;
@@ -260,7 +288,7 @@ class TarneebOnlineGame {
       const bid = gs.bids[player.id];
       const isCurrent = player.id === gs.current_turn;
 
-      const cardBacks = Array.from({ length: cardCount }, () =>
+      const cardBacks = Array.from({ length: Math.max(0, cardCount) }, () =>
         `<div class="card-back ${pos === 'top' ? 'card-back-horizontal' : ''}"></div>`
       ).join('');
 
@@ -274,8 +302,29 @@ class TarneebOnlineGame {
 
   renderMyHand(gs) {
     const container = document.getElementById('myHandContainer');
+    const me = gs.players.find(p => p.id === this.myId);
+    const isSpectator = me ? me.role === 'spectator' : (this.myRole === 'spectator');
+
+    const handTitle = document.querySelector('.my-hand-dock .hand-title');
+    const handHint = document.querySelector('.my-hand-dock .hand-hint');
+
+    if (isSpectator) {
+      if (handTitle) handTitle.textContent = '👀 Bench / Spectator Lounge';
+      if (handHint) handHint.textContent = 'Watching match • Table tricks and scores update live';
+      container.innerHTML = `
+        <div class="spectator-hand-notice">
+          <div class="spec-title">👀 Spectating: <strong>${this.esc(this.myName || me?.name || 'Spectator')}</strong></div>
+          <div class="spec-desc">You are on the bench enjoying the match. Active players are taking tricks on the felt table above!</div>
+        </div>
+      `;
+      return;
+    }
+
+    if (handTitle) handTitle.textContent = `🂠 Your Hand (${this.myHand ? this.myHand.length : 0} Cards)`;
+    if (handHint) handHint.textContent = 'Tap card once to select, tap again to play';
+
     if (!this.myHand || this.myHand.length === 0) {
-      container.innerHTML = '<div class="hand-empty">No cards in hand</div>';
+      container.innerHTML = '<div class="hand-empty">Waiting for deal…</div>';
       return;
     }
 
@@ -330,7 +379,12 @@ class TarneebOnlineGame {
     const seated = gs.players.filter(p => p.role === 'player');
     const myIdx = seated.findIndex(p => p.id === this.myId);
     const theirIdx = seated.findIndex(p => p.id === playerId);
-    if (myIdx === -1 || theirIdx === -1) return 'top';
+    if (myIdx === -1 || theirIdx === -1) {
+      if (theirIdx !== -1) {
+        return ['bottom', 'left', 'top', 'right'][theirIdx % 4];
+      }
+      return 'top';
+    }
     const diff = (theirIdx - myIdx + 4) % 4;
     return ['bottom', 'left', 'top', 'right'][diff];
   }
@@ -340,6 +394,14 @@ class TarneebOnlineGame {
   // =========================================================================
   renderBiddingPanel(gs) {
     const panel = document.getElementById('biddingPanel');
+    const me = gs.players.find(p => p.id === this.myId);
+    const isSpectator = me ? me.role === 'spectator' : (this.myRole === 'spectator');
+
+    if (isSpectator) {
+      panel.style.display = 'none';
+      return;
+    }
+
     const myTurnToBid = gs.phase === 'bidding' && gs.current_turn === this.myId;
 
     panel.style.display = myTurnToBid ? 'flex' : 'none';
@@ -586,20 +648,168 @@ class TarneebOnlineGame {
 window.tarneebGame = new TarneebOnlineGame();
 
 // =========================================================================
-// ONLINE GAME UI INIT
+// ONLINE GAME UI INIT & IDENTITY LOBBY FLOW
 // =========================================================================
-function initOnlineGame() {
-  // Show identity modal
-  document.getElementById('identityModal')?.classList.add('open');
 
-  // Populate roster quick-select
+let pendingSelectedName = '';
+let onlineEventsConfigured = false;
+
+function initOnlineGame() {
+  setupOnlineUIEvents();
+
+  // Check if identity was already selected in current session
+  const sessionName = sessionStorage.getItem('tarneeb_session_name') || window.tarneebGame.myName;
+  const sessionRole = sessionStorage.getItem('tarneeb_session_role') || window.tarneebGame.myRole || 'player';
+
+  if (sessionName) {
+    // Already identified in this session -> connect if not connected
+    if (!window.tarneebGame.ws || window.tarneebGame.ws.readyState !== WebSocket.OPEN) {
+      connectWithIdentity(sessionName, sessionRole);
+    }
+  } else {
+    // Not yet identified in this session -> prompt "Who are you?" modal
+    openIdentityModal();
+  }
+}
+
+function openIdentityModal() {
+  const modal = document.getElementById('identityModal');
+  if (!modal) return;
+  modal.classList.add('open');
+
+  // Populate roster quick-select buttons
   const roster = ['Ahmed', 'Hosam', 'Shiba', 'Furjani', 'Naas', 'Zentani'];
   const grid = document.getElementById('identityRosterGrid');
   if (grid) {
     grid.innerHTML = roster.map(name => `
-      <button type="button" class="roster-pick-btn" onclick="selectIdentity('${name}')">${name}</button>
+      <button type="button" class="roster-pick-btn ${pendingSelectedName === name ? 'selected' : ''}" onclick="selectRosterName('${name}')">${name}</button>
     `).join('');
   }
+
+  // Pre-fill input if name was selected
+  const input = document.getElementById('customNameInput');
+  if (input) {
+    input.value = pendingSelectedName || '';
+  }
+
+  updateSelectedIdentityDisplay();
+}
+
+function selectRosterName(name) {
+  pendingSelectedName = name;
+  const input = document.getElementById('customNameInput');
+  if (input) input.value = name;
+
+  document.querySelectorAll('.roster-pick-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.textContent.trim() === name);
+  });
+
+  updateSelectedIdentityDisplay();
+}
+
+function updateSelectedIdentityDisplay() {
+  const banner = document.getElementById('selectedIdentityBanner');
+  const nameDisplay = document.getElementById('selectedIdentityNameDisplay');
+  if (!banner || !nameDisplay) return;
+
+  const trimmed = (pendingSelectedName || '').trim();
+  if (trimmed) {
+    nameDisplay.textContent = trimmed;
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+function closeIdentityModalAndBackToScoreboard() {
+  const modal = document.getElementById('identityModal');
+  if (modal) modal.classList.remove('open');
+  if (typeof window.switchAppMode === 'function') {
+    window.switchAppMode('scoreboard');
+  }
+}
+
+function handleJoinSubmit(role) {
+  const input = document.getElementById('customNameInput');
+  const inputVal = (input?.value || '').trim();
+  const chosenName = inputVal || (pendingSelectedName || '').trim();
+
+  if (!chosenName) {
+    alert('Please pick your name from the group roster or enter a custom nickname first!');
+    input?.focus();
+    return;
+  }
+
+  // Persist identity & role in this session
+  sessionStorage.setItem('tarneeb_session_name', chosenName);
+  sessionStorage.setItem('tarneeb_session_role', role);
+
+  // Close identity modal
+  document.getElementById('identityModal')?.classList.remove('open');
+
+  // Connect to server
+  connectWithIdentity(chosenName, role);
+}
+
+function connectWithIdentity(name, role) {
+  window.tarneebGame.myName = name;
+  window.tarneebGame.myRole = role;
+
+  let token = localStorage.getItem('tarneeb_token_' + name.toLowerCase());
+  if (!token) {
+    token = btoa(name + ':' + Math.random().toString(36).substring(2, 9));
+    localStorage.setItem('tarneeb_token_' + name.toLowerCase(), token);
+  }
+  window.tarneebGame.myId = token;
+
+  const onlineTable = document.getElementById('onlineGameTable');
+  if (onlineTable) onlineTable.style.display = 'flex';
+
+  // Join server
+  window.tarneebGame.connect(token);
+  setTimeout(() => {
+    window.tarneebGame.send('join', {
+      name: name,
+      roster_pick: name,
+      role: role,
+      as_spectator: (role === 'spectator')
+    });
+  }, 400);
+}
+
+function setupOnlineUIEvents() {
+  if (onlineEventsConfigured) return;
+  onlineEventsConfigured = true;
+
+  // Modal Close ("✕") and Cancel ("← Back to Scoreboard")
+  document.getElementById('btnCloseIdentityModal')?.addEventListener('click', closeIdentityModalAndBackToScoreboard);
+  document.getElementById('btnCancelIdentity')?.addEventListener('click', closeIdentityModalAndBackToScoreboard);
+
+  // Role Action Buttons
+  document.getElementById('btnJoinAsPlayer')?.addEventListener('click', () => handleJoinSubmit('player'));
+  document.getElementById('btnJoinAsSpectator')?.addEventListener('click', () => handleJoinSubmit('spectator'));
+
+  // Custom Name Input Sync
+  const customInput = document.getElementById('customNameInput');
+  if (customInput) {
+    customInput.addEventListener('input', (e) => {
+      pendingSelectedName = e.target.value.trim();
+      document.querySelectorAll('.roster-pick-btn').forEach(btn => {
+        btn.classList.toggle('selected', btn.textContent.trim().toLowerCase() === pendingSelectedName.toLowerCase());
+      });
+      updateSelectedIdentityDisplay();
+    });
+    customInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        handleJoinSubmit('player');
+      }
+    });
+  }
+
+  // Switch Identity button in online header
+  document.getElementById('btnSwitchIdentity')?.addEventListener('click', () => {
+    openIdentityModal();
+  });
 
   // Sort toggle
   document.getElementById('sortToggleBtn')?.addEventListener('click', () => {
@@ -607,20 +817,16 @@ function initOnlineGame() {
   });
 
   // Smirk button
-  const smirkBtn = document.getElementById('smirkBtn');
-  if (smirkBtn) {
-    smirkBtn.addEventListener('click', () => window.tarneebGame.sendSmirk());
-  }
+  document.getElementById('smirkBtn')?.addEventListener('click', () => {
+    window.tarneebGame.sendSmirk();
+  });
 
   // Smirk prompt button
-  const smirkPromptBtn = document.getElementById('smirkPromptBtn');
-  if (smirkPromptBtn) {
-    smirkPromptBtn.addEventListener('click', () => {
-      window.tarneebGame.sendSmirk();
-      const banner = document.getElementById('smirkPromptBanner');
-      if (banner) banner.style.display = 'none';
-    });
-  }
+  document.getElementById('smirkPromptBtn')?.addEventListener('click', () => {
+    window.tarneebGame.sendSmirk();
+    const banner = document.getElementById('smirkPromptBanner');
+    if (banner) banner.style.display = 'none';
+  });
 
   // Round summary close
   document.getElementById('closeRoundSummaryBtn')?.addEventListener('click', () => {
@@ -631,36 +837,4 @@ function initOnlineGame() {
   document.getElementById('closeVictoryOnlineBtn')?.addEventListener('click', () => {
     document.getElementById('modalVictoryOnline')?.classList.remove('open');
   });
-}
-
-function selectIdentity(name) {
-  connectAsPlayer(name);
-}
-
-function submitCustomName() {
-  const input = document.getElementById('customNameInput');
-  const name = (input?.value || '').trim();
-  if (!name) return;
-  connectAsPlayer(name);
-}
-
-function connectAsPlayer(name) {
-  window.tarneebGame.myName = name;
-  let token = localStorage.getItem('tarneeb_token_' + name.toLowerCase());
-  if (!token) {
-    token = btoa(name + ':' + Math.random().toString(36).substring(2, 9));
-    localStorage.setItem('tarneeb_token_' + name.toLowerCase(), token);
-  }
-  window.tarneebGame.myId = token;
-
-  // Close identity modal
-  document.getElementById('identityModal')?.classList.remove('open');
-  const onlineTable = document.getElementById('onlineGameTable');
-  if (onlineTable) onlineTable.style.display = 'flex';
-
-  // Join server
-  window.tarneebGame.connect(token);
-  setTimeout(() => {
-    window.tarneebGame.send('join', { name, roster_pick: name });
-  }, 400);
 }
