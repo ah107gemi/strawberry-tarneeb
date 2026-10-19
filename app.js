@@ -114,6 +114,10 @@
     setupEventListeners();
     renderAll();
     checkGameCompletion(false);
+
+    // Restore saved mode (Scoreboard vs Online)
+    const savedMode = localStorage.getItem('tarneeb_app_mode') || 'scoreboard';
+    window.switchAppMode(savedMode);
   }
 
   function loadState() {
@@ -234,12 +238,20 @@
 
   /**
    * Exact Game Rules:
-   *  - Bid 0: +5 points if made (0 tricks), -5 points if failed (>= 1 trick)
-   *  - Bid 7: +14 points if made (>= 7 tricks), -14 points if failed (< 7 tricks)
-   *  - General Bids (2-6, 8-13): +Bid points if made (tricks >= bid), -Bid points if failed (tricks < bid)
-   *  - Note: Bid 1 is strictly prohibited in bidding phase.
+   *  - Round 1 Exception: Skip pre-round bidding entirely; score directly as +1 point per trick taken ("get what you take").
+   *  - Rounds 2 to 15:
+   *      * Bid 0: +5 points if made (0 tricks), -5 points if failed (>= 1 trick)
+   *      * Bid 7: +14 points if made (>= 7 tricks), -14 points if failed (< 7 tricks)
+   *      * General Bids (2-6, 8-13): +Bid points if made (tricks >= bid), -Bid points if failed (tricks < bid)
+   *      * Note: Bid 1 is strictly prohibited in bidding phase.
    */
-  function calculateRoundScore(bid, tricks) {
+  function calculateRoundScore(bid, tricks, roundIndex = null) {
+    if (roundIndex === 0) {
+      if (tricks === null || tricks === undefined || isNaN(tricks)) {
+        return null;
+      }
+      return Number(tricks); // Get what you take: +1 pt per trick
+    }
     if (bid === null || tricks === null || isNaN(bid) || isNaN(tricks)) {
       return null;
     }
@@ -489,6 +501,10 @@
   }
 
   window.handleScoreCellClick = function (roundIndex) {
+    if (roundIndex === 0) {
+      openScoringModal(0);
+      return;
+    }
     const roundObj = state.rounds[roundIndex];
     const actives = getActivePlayers();
     const hasBids = actives.every(p => roundObj.bids[p.id] !== null && roundObj.bids[p.id] !== undefined);
@@ -528,6 +544,11 @@
 
   function openBiddingModal(roundIndex = null) {
     if (roundIndex === null) roundIndex = state.activeRound;
+    if (roundIndex === 0) {
+      showToast('Round 1 has no bidding! Score tricks directly ⚡');
+      openScoringModal(0);
+      return;
+    }
     currentModalRound = Math.min(Math.max(0, roundIndex), TOTAL_ROUNDS - 1);
 
     const roundNum = currentModalRound + 1;
@@ -658,17 +679,18 @@
     btnNextRound.disabled = currentModalRound >= TOTAL_ROUNDS - 1;
 
     let html = '';
+    const isRound1 = currentModalRound === 0;
     actives.forEach((player) => {
       const bid = roundObj.bids[player.id];
       const tricks = roundObj.tricks[player.id] ?? 0;
-      const score = calculateRoundScore(bid, tricks);
+      const score = calculateRoundScore(bid, tricks, currentModalRound);
 
       html += `
         <div class="scoring-player-card" data-player-id="${player.id}">
           <div class="scoring-player-info">
             <span class="scoring-player-name">${escapeHtml(player.name)}</span>
             <span class="scoring-bid-badge num">
-              ${bid !== null && bid !== undefined ? `Bid: ${bid}` : 'No Bid'}
+              ${isRound1 ? 'Round 1: +1/trick' : (bid !== null && bid !== undefined ? `Bid: ${bid}` : 'No Bid')}
             </span>
           </div>
 
@@ -742,7 +764,7 @@
     actives.forEach((player) => {
       const bid = roundObj.bids[player.id];
       const tricks = roundObj.tricks[player.id] ?? 0;
-      const score = calculateRoundScore(bid, tricks);
+      const score = calculateRoundScore(bid, tricks, currentModalRound);
 
       roundObj.scores[player.id] = score;
 
@@ -1264,10 +1286,42 @@
   }
 
   // ==========================================================================
+  // MODE SWITCHER (Scoreboard vs Online Game)
+  // ==========================================================================
+
+  window.switchAppMode = function (mode) {
+    localStorage.setItem('tarneeb_app_mode', mode);
+    const btnScoreboard = document.getElementById('navModeScoreboard');
+    const btnOnline = document.getElementById('navModeOnline');
+    const viewScoreboard = document.getElementById('viewScoreboard');
+    const viewOnline = document.getElementById('viewOnlineGame');
+
+    if (mode === 'online') {
+      btnOnline?.classList.add('active');
+      btnScoreboard?.classList.remove('active');
+      if (viewScoreboard) viewScoreboard.style.display = 'none';
+      if (viewOnline) viewOnline.style.display = 'flex';
+      if (typeof initOnlineGame === 'function') {
+        initOnlineGame();
+      }
+    } else {
+      btnScoreboard?.classList.add('active');
+      btnOnline?.classList.remove('active');
+      if (viewScoreboard) viewScoreboard.style.display = 'flex';
+      if (viewOnline) viewOnline.style.display = 'none';
+      renderAll();
+    }
+  };
+
+  // ==========================================================================
   // EVENT LISTENERS & HELPERS
   // ==========================================================================
 
   function setupEventListeners() {
+    // Mode Switcher Navigation
+    document.getElementById('navModeScoreboard')?.addEventListener('click', () => window.switchAppMode('scoreboard'));
+    document.getElementById('navModeOnline')?.addEventListener('click', () => window.switchAppMode('online'));
+
     // Header Buttons
     document.getElementById('btnOpenPlayers').addEventListener('click', openPlayersModal);
     document.getElementById('btnOpenHistory').addEventListener('click', openHistoryModal);
@@ -1275,7 +1329,14 @@
     document.getElementById('btnNewGame').addEventListener('click', openNewGameModal);
 
     // Status strip triggers
-    document.getElementById('btnTriggerBidding').addEventListener('click', () => openBiddingModal());
+    document.getElementById('btnTriggerBidding').addEventListener('click', () => {
+      if (state.activeRound === 0) {
+        showToast('Round 1 has no bidding! Score tricks directly ⚡');
+        openScoringModal(0);
+      } else {
+        openBiddingModal();
+      }
+    });
     document.getElementById('btnTriggerScoring').addEventListener('click', () => openScoringModal());
 
     // Scoreboard Table controls
@@ -1290,6 +1351,10 @@
     // Scoring Modal
     btnCloseScoringModal.addEventListener('click', closeScoringModal);
     btnBackToBidding.addEventListener('click', () => {
+      if (currentModalRound === 0) {
+        showToast('Round 1 has no bidding!');
+        return;
+      }
       closeScoringModal();
       openBiddingModal(currentModalRound);
     });
