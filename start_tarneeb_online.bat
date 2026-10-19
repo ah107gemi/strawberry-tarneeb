@@ -1,6 +1,9 @@
 @echo off
 title Strawberry Tarneeb - Online Card Game
 cd /d "%~dp0"
+
+:loop
+cls
 echo ====================================================
 echo Starting Strawberry Tarneeb Online Multiplayer...
 echo ====================================================
@@ -13,8 +16,11 @@ if %ERRORLEVEL% EQU 0 (
     python tunnel_runner.py
 )
 
-if %ERRORLEVEL% NEQ 0 (
-    echo.
-    echo [!] Server exited with an error.
-    pause
-)
+echo.
+echo ====================================================
+echo [!] Server or tunnel process ended.
+echo ====================================================
+echo.
+echo Press any key to restart Strawberry Tarneeb, or close this window to exit.
+pause >nul
+goto loop
