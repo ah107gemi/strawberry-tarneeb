@@ -222,14 +222,19 @@ class GameState:
     def public_state(self, for_token: Optional[str] = None) -> Dict:
         if self.phase == "bidding":
             current_turn = self.bid_order[self.bidding_idx] if (self.bid_order and self.bidding_idx < len(self.bid_order)) else None
+        elif len(self.trick_cards) >= MAX_PLAYERS:
+            current_turn = None
         else:
             current_turn = self.token_at_seat(self.current_turn_seat)
+
+        current_trick = min(13, sum(self.tricks_taken.values()) + 1)
 
         state = {
             "phase": self.phase,
             "round": self.round,
             "dealer": self.token_at_seat(self.dealer_seat),
             "current_turn": current_turn,
+            "current_trick": current_trick,
             "bids": dict(self.bids),
             "tricks_taken": dict(self.tricks_taken),
             "trick_cards": list(self.trick_cards),
@@ -639,12 +644,19 @@ class ConnectionManager:
             await self.send_to(token, {"type": "error", "data": {"message": "Not in playing phase."}})
             return
 
+        if len(game.trick_cards) >= MAX_PLAYERS:
+            await self.send_to(token, {"type": "error", "data": {"message": "Trick is resolving. Please wait."}})
+            return
+
         expected_token = game.token_at_seat(game.current_turn_seat)
         if token != expected_token:
             await self.send_to(token, {"type": "error", "data": {"message": "Not your turn to play."}})
             return
 
-        player = game.players[token]
+        player = game.players.get(token)
+        if not player:
+            return
+
         card = data.get("card", "").strip().upper()
 
         if card not in player.hand:
@@ -675,16 +687,17 @@ class ConnectionManager:
                     "data": {"message": "Send Smirk 😏?"}
                 })
 
-        log.info("%s played %s", player.name, card)
+        log.info("%s played %s (trick cards: %d)", player.name, card, len(game.trick_cards))
 
         # Move to next seat
         game.current_turn_seat = self.game.player_left_of(game.current_turn_seat)
 
+        # Broadcast the updated table state immediately on each play
+        await self.broadcast_game_state()
+
         if len(game.trick_cards) == MAX_PLAYERS:
-            # Trick complete
-            await self._resolve_trick()
-        else:
-            await self.broadcast_game_state()
+            # All 4 players have played: resolve trick after 1.5s pause
+            asyncio.create_task(self._resolve_trick())
 
     def _validate_play(self, player: Player, card: str) -> tuple[bool, str]:
         """
@@ -807,7 +820,7 @@ class ConnectionManager:
         led = game.led_suit
         winner_play = trick_winner(game.trick_cards, led)
         winner_token = winner_play["player_id"]
-        winner_name = game.players[winner_token].name
+        winner_name = game.players[winner_token].name if winner_token in game.players else "Winner"
 
         game.tricks_taken[winner_token] = game.tricks_taken.get(winner_token, 0) + 1
 
@@ -826,21 +839,25 @@ class ConnectionManager:
         trick_summary = {
             "winner_id": winner_token,
             "winner_name": winner_name,
+            "winning_card": winner_play["card"],
             "cards": list(game.trick_cards),
             "special_kh": special_kh_token,
             "special_ah": special_ah_token,
         }
 
+        # Pause 1.5 seconds so all players can see the completed trick
+        await asyncio.sleep(1.5)
+
         await self.broadcast({"type": "trick_complete", "data": trick_summary})
 
-        # Reset for next trick
-        completed_trick = list(game.trick_cards)
+        # Clear the table and reset led suit
         game.trick_cards = []
         game.led_suit = None
 
         # Winner leads next trick
         winner_seat = game.seat_of_token(winner_token)
-        game.current_turn_seat = winner_seat
+        if winner_seat is not None:
+            game.current_turn_seat = winner_seat
 
         # Check if round is over (all cards played = 13 tricks)
         total_tricks = sum(game.tricks_taken.values())
