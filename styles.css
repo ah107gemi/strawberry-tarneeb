@@ -1893,7 +1893,13 @@ body::before {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
+}
+
+.trick-card-slot .card {
+  width: 48px;
+  height: 72px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.7);
 }
 
 .trick-card-slot.pos-top { grid-area: top; }
@@ -1902,47 +1908,54 @@ body::before {
 .trick-card-slot.pos-bottom { grid-area: bottom; }
 
 .trick-player-label {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #cbd5e1;
-  background: rgba(0,0,0,0.6);
-  padding: 1px 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #f1f5f9;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 1px 7px;
   border-radius: 4px;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
 .trick-empty-hint {
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.5);
   font-style: italic;
+  font-weight: 600;
 }
 
 /* Playing Cards */
 .card {
-  width: 52px;
-  height: 76px;
-  background: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  width: 44px;
+  height: 66px;
+  background: linear-gradient(160deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 6px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.65);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 4px 6px;
+  padding: 3px 4px;
   user-select: none;
   position: relative;
-  color: var(--card-color, #1e293b);
+  color: var(--card-color, #ffffff);
   font-weight: 900;
   line-height: 1;
+  box-sizing: border-box;
 }
 
 .card-face {
-  border: 1px solid rgba(0,0,0,0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .card-top-rank, .card-bot-rank {
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   display: flex;
   align-items: center;
   gap: 1px;
+  letter-spacing: -0.5px;
 }
 
 .card-bot-rank {
@@ -1950,12 +1963,13 @@ body::before {
 }
 
 .card-suit-small {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
 }
 
 .card-center-suit {
   align-self: center;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 .card-highlighted {
@@ -1968,10 +1982,13 @@ body::before {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 12px;
+  padding: 8px 6px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
 }
 
 .hand-dock-header {
@@ -1979,7 +1996,7 @@ body::before {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 6px;
+  padding-bottom: 4px;
 }
 
 .hand-title {
@@ -1995,40 +2012,76 @@ body::before {
 
 .my-hand-scroll-wrap {
   display: flex;
-  overflow-x: auto;
-  padding: 8px 4px 14px 4px;
-  gap: 6px;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
+  justify-content: center;
+  align-items: flex-end;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: visible;
+  padding: 18px 4px 8px 4px;
+  box-sizing: border-box;
+  position: relative;
+  min-height: 94px;
 }
 
 .hand-card {
   flex-shrink: 0;
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  margin-left: -18px;
+  transition: transform 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.18s ease-out;
+  touch-action: manipulation;
+}
+
+.hand-card:first-child {
+  margin-left: 0;
 }
 
 .hand-card:hover {
-  transform: translateY(-8px);
+  transform: translateY(-14px);
+  z-index: 50 !important;
 }
 
 .hand-card.selected {
   transform: translateY(-16px);
-  filter: drop-shadow(0 0 8px #f59e0b);
+  z-index: 50 !important;
+  filter: drop-shadow(0 0 10px #f59e0b);
 }
 
 .hand-card.playable .card {
-  border: 2px solid #34d399;
-  box-shadow: 0 0 10px rgba(52, 211, 153, 0.5);
+  border: 1.5px solid #34d399;
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.6);
 }
 
 .hand-card.not-playable {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .hand-card.dragging {
   opacity: 0.3;
+}
+
+@media (max-width: 400px) {
+  .my-hand-dock {
+    padding: 6px 4px;
+  }
+  .card {
+    width: 40px;
+    height: 62px;
+    padding: 2px 3px;
+  }
+  .hand-card {
+    margin-left: -20px;
+  }
+  .card-top-rank, .card-bot-rank {
+    font-size: 0.7rem;
+  }
+  .card-suit-small {
+    font-size: 0.66rem;
+  }
+  .card-center-suit {
+    font-size: 1.1rem;
+  }
 }
 
 /* Online Bidding Panel */
