@@ -33,6 +33,8 @@ class TarneebOnlineGame {
     this._lastScoreHash = null;
     this._lastOppHash = null;
     this._forceTrickRerender = false;
+    this._lastSortPromptedRound = 0;
+    this.matchHistory = [];
   }
 
   // =========================================================================
@@ -140,7 +142,20 @@ class TarneebOnlineGame {
       case 'game_state':
         this.gameState = data;
         this.myHand = data.my_hand || this.myHand;
+        if (data.history && Array.isArray(data.history)) {
+          this.matchHistory = data.history;
+        }
         this.isSubmittingPlay = false;
+
+        // Auto-Sort Prompt: Prompt human player immediately after cards are distributed in a new round
+        if (data.my_hand && data.my_hand.length === 13 && data.round > 0 && this._lastSortPromptedRound !== data.round) {
+          const me = data.players?.find(p => p.id === this.myId);
+          if (me && !me.is_spectator && me.role === 'player') {
+            this._lastSortPromptedRound = data.round;
+            this.showAutoSortPrompt(data.round);
+          }
+        }
+
         this.renderGame();
         break;
 
@@ -178,6 +193,9 @@ class TarneebOnlineGame {
         break;
 
       case 'round_complete':
+        if (data && !this.matchHistory.some(h => h.round === data.round)) {
+          this.matchHistory.push(data);
+        }
         this.showRoundSummary(data);
         break;
 
@@ -340,6 +358,7 @@ class TarneebOnlineGame {
       const score = gs.scores[p.id] || 0;
       const bid = gs.bids[p.id];
       const tricks = gs.tricks_taken[p.id] || 0;
+      const isComplete = (bid !== undefined && bid !== null && Number(bid) > 0 && tricks >= Number(bid));
       const isMe = p.id === this.myId;
       const isCurrent = p.id === gs.current_turn;
       const medals = ['🥇','🥈','🥉','4️⃣'];
@@ -347,10 +366,10 @@ class TarneebOnlineGame {
       html += `
         <div class="score-row ${isMe ? 'is-me' : ''} ${isCurrent ? 'is-turn' : ''}">
           <span class="score-medal">${medals[idx] || '🎖️'}</span>
-          <span class="score-name">${this.esc(p.name)}${isMe ? ' (You)' : ''}</span>
+          <span class="score-name">${this.esc(p.name)}${isMe ? ' (You)' : ''}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''}</span>
           <div class="score-details">
             ${bid !== undefined && bid !== null ? `<span class="bid-chip">Bid ${bid}</span>` : ''}
-            ${gs.phase === 'playing' ? `<span class="tricks-chip">${tricks}T</span>` : ''}
+            ${gs.phase === 'playing' ? `<span class="tricks-chip">${tricks}(eat)</span>` : ''}
             <span class="score-num">${score >= 0 ? '+' : ''}${score}</span>
           </div>
         </div>
@@ -430,6 +449,7 @@ class TarneebOnlineGame {
       const cardCount = player.card_count || 13;
       const tricks = gs.tricks_taken[player.id] || 0;
       const bid = gs.bids[player.id];
+      const isComplete = (bid !== undefined && bid !== null && Number(bid) > 0 && tricks >= Number(bid));
       const isCurrent = player.id === gs.current_turn;
 
       const cardBacks = Array.from({ length: Math.max(0, cardCount) }, () =>
@@ -437,8 +457,8 @@ class TarneebOnlineGame {
       ).join('');
 
       el.innerHTML = `
-        <div class="opponent-name ${isCurrent ? 'is-current-turn' : ''}">${this.esc(player.name)} ${isCurrent ? '🔥' : ''}</div>
-        ${bid !== undefined && bid !== null ? `<div class="opponent-bid-badge">Bid ${bid} • ${tricks}T</div>` : ''}
+        <div class="opponent-name ${isCurrent ? 'is-current-turn' : ''}">${this.esc(player.name)}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''} ${isCurrent ? '🔥' : ''}</div>
+        ${bid !== undefined && bid !== null ? `<div class="opponent-bid-badge">Bid ${bid} • ${tricks}(eat)</div>` : ''}
         <div class="opponent-cards-row">${cardBacks}</div>
       `;
     });
@@ -470,8 +490,11 @@ class TarneebOnlineGame {
     }
     this._lastHandSpectator = false;
 
-    if (handTitle) handTitle.textContent = `🂠 Your Hand (${this.myHand ? this.myHand.length : 0} Cards)`;
-    if (handHint) handHint.textContent = 'Tap card once to select, tap again to play';
+    const myBid = gs.bids?.[this.myId];
+    const myTricks = gs.tricks_taken?.[this.myId] || 0;
+    const isComplete = (myBid !== undefined && myBid !== null && Number(myBid) > 0 && myTricks >= Number(myBid));
+    if (handTitle) handTitle.innerHTML = `🂠 Your Hand (${this.myHand ? this.myHand.length : 0} Cards)${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''}`;
+    if (handHint) handHint.textContent = 'Tap card to play instantly';
 
     if (!this.myHand || this.myHand.length === 0) {
       if (this._lastHandHash !== 'empty') {
@@ -490,8 +513,11 @@ class TarneebOnlineGame {
     }
     this._lastHandHash = handHash;
 
-    // Sort toggle
-    document.getElementById('sortToggleBtn').textContent = this.sortMode === 'auto' ? '🔀 Auto Sort ON' : '🔀 Manual Mode';
+    // Sort toggle (if present)
+    const sortBtn = document.getElementById('sortToggleBtn');
+    if (sortBtn) {
+      sortBtn.textContent = this.sortMode === 'auto' ? '🔀 Auto Sort ON' : '🔀 Manual Mode';
+    }
 
     let html = '';
     displayHand.forEach((cardStr, idx) => {
@@ -505,6 +531,7 @@ class TarneebOnlineGame {
           data-card="${cardStr}"
           data-idx="${idx}"
           ${this.sortMode === 'manual' ? 'draggable="true"' : ''}
+          onpointerdown="window.tarneebGame.handleCardPointerDown(event, '${cardStr}')"
           onclick="window.tarneebGame.handleCardClick('${cardStr}')">
           ${this.renderCard(cardStr, true, isSelected)}
         </div>
@@ -614,6 +641,13 @@ class TarneebOnlineGame {
   // =========================================================================
   // USER ACTIONS
   // =========================================================================
+  handleCardPointerDown(e, cardStr) {
+    if (e && (e.pointerType === 'touch' || e.pointerType === 'pen')) {
+      e.preventDefault();
+      this.handleCardClick(cardStr);
+    }
+  }
+
   handleCardClick(cardStr) {
     if (!this.gameState || this.gameState.phase !== 'playing') return;
     if (this.isSubmittingPlay) return;
@@ -625,47 +659,42 @@ class TarneebOnlineGame {
       this.showToast('You must follow the led suit!', 'warning');
       return;
     }
-    if (this.selectedCard === cardStr) {
-      // Second click confirms play
-      this.isSubmittingPlay = true;
 
-      // 1. Immediately animate card leaving hand
-      const cardEl = document.querySelector(`.hand-card[data-card="${cardStr}"]`);
-      if (cardEl) {
-        cardEl.classList.add('playing-flying');
-      }
+    // Instant card play on first tap
+    this.isSubmittingPlay = true;
 
-      // 2. Optimistically render card onto table in player's bottom slot
-      const trickArea = document.getElementById('trickCardsArea');
-      if (trickArea) {
-        const emptyHint = trickArea.querySelector('.trick-empty-hint');
-        if (emptyHint) emptyHint.style.display = 'none';
-        const existingBottom = trickArea.querySelector('.trick-card-slot.pos-bottom');
-        if (!existingBottom) {
-          const slot = document.createElement('div');
-          slot.className = 'trick-card-slot pos-bottom optimistic-play';
-          slot.innerHTML = `
-            ${this.renderCard(cardStr, true, false)}
-            <div class="trick-player-label">${this.esc(this.myName || 'You')}</div>
-          `;
-          trickArea.appendChild(slot);
-        }
-      }
-
-      // 3. Immediately dismiss YOUR TURN banner
-      const banner = document.getElementById('myTurnBanner');
-      if (banner) banner.style.display = 'none';
-
-      // 4. Send play to server
-      this._forceTrickRerender = true;
-      this.send('play_card', { card: cardStr });
-      this.selectedCard = null;
-      setTimeout(() => { this.isSubmittingPlay = false; }, 800);
-    } else {
-      this.selectedCard = cardStr;
-      this._lastHandHash = null;
-      this.renderMyHand(this.gameState);
+    // 1. Immediately animate card leaving hand
+    const cardEl = document.querySelector(`.hand-card[data-card="${cardStr}"]`);
+    if (cardEl) {
+      cardEl.classList.add('playing-flying');
     }
+
+    // 2. Optimistically render card onto table in player's bottom slot
+    const trickArea = document.getElementById('trickCardsArea');
+    if (trickArea) {
+      const emptyHint = trickArea.querySelector('.trick-empty-hint');
+      if (emptyHint) emptyHint.style.display = 'none';
+      const existingBottom = trickArea.querySelector('.trick-card-slot.pos-bottom');
+      if (!existingBottom) {
+        const slot = document.createElement('div');
+        slot.className = 'trick-card-slot pos-bottom optimistic-play';
+        slot.innerHTML = `
+          ${this.renderCard(cardStr, true, false)}
+          <div class="trick-player-label">${this.esc(this.myName || 'You')}</div>
+        `;
+        trickArea.appendChild(slot);
+      }
+    }
+
+    // 3. Immediately dismiss YOUR TURN banner
+    const banner = document.getElementById('myTurnBanner');
+    if (banner) banner.style.display = 'none';
+
+    // 4. Send play to server
+    this._forceTrickRerender = true;
+    this.send('play_card', { card: cardStr });
+    this.selectedCard = null;
+    setTimeout(() => { this.isSubmittingPlay = false; }, 300);
   }
 
   showDealerSelectModal(data) {
@@ -707,6 +736,11 @@ class TarneebOnlineGame {
   chooseDealer(seat) {
     this.send('set_dealer', { seat: seat });
     this.hideDealerSelectModal();
+  }
+
+  rotateDealer() {
+    this.send('rotate_dealer', {});
+    this.showToast('🂠 Rotating dealer to next player…', 'info');
   }
 
   placeBid(amount) {
@@ -817,10 +851,11 @@ class TarneebOnlineGame {
       const rScore = data.round_scores?.[p.id] ?? 0;
       const total = data.cumulative_scores?.[p.id] ?? (this.gameState?.scores?.[p.id] ?? 0);
       const pts = rScore >= 0 ? `+${rScore}` : `${rScore}`;
+      const isComplete = (bid !== '-' && Number(bid) > 0 && tricks >= Number(bid));
       html += `
         <div style="display:flex;justify-content:space-between;align-items:center;background:#0f172a;padding:8px 12px;border-radius:8px;">
-          <span style="font-weight:700;">${this.esc(p.name)}</span>
-          <span style="color:#94a3b8;font-size:0.85rem;">Bid ${bid} • ${tricks}T → <strong style="color:${rScore >= 0 ? '#4ade80' : '#f87171'}">${pts}</strong></span>
+          <span style="font-weight:700;">${this.esc(p.name)}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''}</span>
+          <span style="color:#94a3b8;font-size:0.85rem;">Bid ${bid} • ${tricks}(eat) → <strong style="color:${rScore >= 0 ? '#4ade80' : '#f87171'}">${pts}</strong></span>
           <span style="color:#fde047;font-weight:800;">${total} pts</span>
         </div>
       `;
@@ -835,6 +870,95 @@ class TarneebOnlineGame {
     }
     content.innerHTML = html;
     modal.classList.add('open');
+  }
+
+  showAutoSortPrompt(round) {
+    const modal = document.getElementById('modalAutoSortPrompt');
+    const title = document.getElementById('autoSortRoundTitle');
+    if (title) title.textContent = `Round ${round}: Cards Dealt!`;
+    if (modal) modal.style.display = 'flex';
+  }
+
+  hideAutoSortPrompt() {
+    const modal = document.getElementById('modalAutoSortPrompt');
+    if (modal) modal.style.display = 'none';
+  }
+
+  showMatchHistoryModal() {
+    const modal = document.getElementById('modalMatchHistory');
+    const content = document.getElementById('matchHistoryContent');
+    if (!modal || !content) return;
+
+    const history = (this.gameState && this.gameState.history) || this.matchHistory || [];
+    if (!history || history.length === 0) {
+      content.innerHTML = `
+        <div class="empty-history-notice">
+          <div style="font-size: 2.2rem; margin-bottom: 6px;">📜</div>
+          <strong>No completed rounds yet</strong>
+          <p style="margin-top: 4px; font-size: 0.8rem; opacity: 0.8;">Play through rounds to view each player's bids, tricks taken (eat), and round scores here.</p>
+        </div>
+      `;
+    } else {
+      const players = this.gameState ? this.gameState.players.filter(p => p.role === 'player') : [];
+      let html = '';
+      history.forEach(item => {
+        const rNum = item.round;
+        const dealerName = item.dealer_name || (item.dealer_seat !== undefined ? `Seat ${item.dealer_seat + 1}` : '—');
+        html += `
+          <div class="history-round-card">
+            <div class="history-round-header">
+              <span>Round ${rNum}</span>
+              <span class="history-round-dealer">🂠 Dealer: ${this.esc(dealerName)}</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+        `;
+        const playerIds = Object.keys(item.bids || {});
+        const displayPlayers = playerIds.length > 0 ? playerIds : (players.map(p => p.id));
+        displayPlayers.forEach(pId => {
+          const pObj = players.find(p => p.id === pId);
+          const pName = pObj ? pObj.name : `Player (${pId.substring(0, 4)})`;
+          const bidVal = item.bids?.[pId];
+          const bidText = rNum === 1 ? 'Round 1' : (bidVal !== undefined ? `Bid ${bidVal}` : 'No Bid');
+          const tricks = item.tricks_taken?.[pId] ?? 0;
+          const rScore = item.round_scores?.[pId] ?? 0;
+          const cumScore = item.cumulative_scores?.[pId] ?? 0;
+          const scoreClass = rScore > 0 ? 'pos' : rScore < 0 ? 'neg' : '';
+          const scoreSign = rScore > 0 ? `+${rScore}` : `${rScore}`;
+          const isMade = (rNum > 1 && bidVal !== undefined && Number(bidVal) > 0 && tricks >= Number(bidVal));
+
+          html += `
+            <div class="history-player-row">
+              <span class="history-player-name">${this.esc(pName)}${isMade ? ' ✅' : ''}</span>
+              <span class="history-player-stats">${bidText} • ${tricks}(eat)</span>
+              <span class="history-player-score ${scoreClass}">${scoreSign} pts (${cumScore})</span>
+            </div>
+          `;
+        });
+
+        if (item.special_kh && item.special_ah) {
+          const khName = players.find(p => p.id === item.special_kh)?.name || 'K♥';
+          const ahName = players.find(p => p.id === item.special_ah)?.name || 'A♥';
+          html += `
+            <div style="font-size: 0.75rem; color: #fca5a5; margin-top: 4px; padding-top: 4px; border-top: 1px dashed rgba(239, 68, 68, 0.3);">
+              ⚡ King Snip: ${this.esc(khName)} (-5) • ${this.esc(ahName)} (+5)
+            </div>
+          `;
+        }
+
+        html += `
+            </div>
+          </div>
+        `;
+      });
+      content.innerHTML = html;
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  hideMatchHistoryModal() {
+    const modal = document.getElementById('modalMatchHistory');
+    if (modal) modal.style.display = 'none';
   }
 
   showGameVictory(data) {
@@ -1101,9 +1225,9 @@ function setupOnlineUIEvents() {
   // Switch Name / Logout button in online header ("👤 Switch Name")
   document.getElementById('btnSwitchName')?.addEventListener('click', logoutAndSwitchName);
 
-  // Dealer change button & badge
+  // Dealer change button (rotates dealer in order) & badge (modal picker)
   document.getElementById('btnChangeDealer')?.addEventListener('click', () => {
-    window.tarneebGame.showDealerSelectModal();
+    window.tarneebGame.rotateDealer();
   });
   document.getElementById('onlineDealerBadge')?.addEventListener('click', () => {
     window.tarneebGame.showDealerSelectModal();
@@ -1112,7 +1236,41 @@ function setupOnlineUIEvents() {
     window.tarneebGame.hideDealerSelectModal();
   });
 
-  // Sort toggle
+  // Match History Modal
+  document.getElementById('btnMatchHistory')?.addEventListener('click', () => {
+    window.tarneebGame.showMatchHistoryModal();
+  });
+  document.getElementById('btnCloseMatchHistory')?.addEventListener('click', () => {
+    window.tarneebGame.hideMatchHistoryModal();
+  });
+
+  // Auto-Sort Prompt buttons
+  document.getElementById('btnAutoSortYes')?.addEventListener('click', () => {
+    window.tarneebGame.sortMode = 'auto';
+    localStorage.setItem('tarneeb_sort_mode', 'auto');
+    window.tarneebGame._lastHandHash = null;
+    if (window.tarneebGame.gameState) {
+      window.tarneebGame.renderMyHand(window.tarneebGame.gameState);
+    }
+    window.tarneebGame.hideAutoSortPrompt();
+    window.tarneebGame.showToast('✨ Hand sorted automatically!', 'info');
+  });
+
+  document.getElementById('btnAutoSortNo')?.addEventListener('click', () => {
+    window.tarneebGame.sortMode = 'manual';
+    localStorage.setItem('tarneeb_sort_mode', 'manual');
+    window.tarneebGame._lastHandHash = null;
+    if (window.tarneebGame.gameState) {
+      window.tarneebGame.renderMyHand(window.tarneebGame.gameState);
+    }
+    window.tarneebGame.hideAutoSortPrompt();
+  });
+
+  document.getElementById('btnCloseAutoSortModal')?.addEventListener('click', () => {
+    window.tarneebGame.hideAutoSortPrompt();
+  });
+
+  // Sort toggle (if present in DOM)
   document.getElementById('sortToggleBtn')?.addEventListener('click', () => {
     window.tarneebGame.toggleSortMode();
   });
