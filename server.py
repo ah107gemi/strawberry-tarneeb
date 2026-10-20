@@ -189,6 +189,7 @@ class GameState:
         # Track bid order for bidding phase
         self.bid_order: List[str] = []    # list of tokens in bid order
         self.bidding_idx: int = 0          # index into bid_order
+        self.round_history: List[Dict] = []  # past rounds match history
 
     # ------------------------------------------------------------------
     # Seat / roster helpers
@@ -244,10 +245,12 @@ class GameState:
             "bids": dict(self.bids),
             "tricks_taken": dict(self.tricks_taken),
             "trick_cards": list(self.trick_cards),
+            "led_suit": self.led_suit,
             "scores": {k: v for k, v in self.scores.items()},
             "round_scores": {k: v for k, v in self.round_scores.items()},
             "trump_suit": self.trump_suit,
             "players": [p.to_dict() for p in self.players.values()],
+            "history": list(self.round_history),
         }
         # Attach private hand only for the requesting player
         if for_token and for_token in self.players:
@@ -369,6 +372,7 @@ class ConnectionManager:
             "ping": self._handle_ping,
             "set_dealer": self._handle_set_dealer,
             "change_dealer": self._handle_set_dealer,
+            "rotate_dealer": self._handle_set_dealer,
             "fill_bots": self._handle_fill_bots,
             "fill_table_with_bots": self._handle_fill_bots,
             "remove_bots": self._handle_remove_bots,
@@ -546,24 +550,27 @@ class ConnectionManager:
         player_id = data.get("player_id")
         if seat is None and player_id:
             seat = game.seat_of_token(player_id)
-        if seat is not None:
-            try:
-                chosen_seat = int(seat)
-            except (ValueError, TypeError):
-                return
-            if 0 <= chosen_seat < MAX_PLAYERS:
-                game.dealer_seat = chosen_seat
-                dealer_tok = game.seats[game.dealer_seat]
-                dealer_name = game.players[dealer_tok].name if dealer_tok and dealer_tok in game.players else f"Seat {game.dealer_seat + 1}"
-                log.info("Dealer selected: seat %d (%s)", game.dealer_seat, dealer_name)
-                await self.broadcast({
-                    "type": "dealer_updated",
-                    "data": {"dealer_seat": game.dealer_seat, "dealer_name": dealer_name}
-                })
-                if game.phase in ("lobby", "dealer_select") and game.all_seats_filled():
-                    await self._start_round(dealer_seat_override=chosen_seat)
-                else:
-                    await self.broadcast_game_state()
+        if seat is None:
+            # Rotate to next seat in order
+            seat = (game.dealer_seat + 1) % MAX_PLAYERS
+
+        try:
+            chosen_seat = int(seat)
+        except (ValueError, TypeError):
+            return
+        if 0 <= chosen_seat < MAX_PLAYERS:
+            game.dealer_seat = chosen_seat
+            dealer_tok = game.seats[game.dealer_seat]
+            dealer_name = game.players[dealer_tok].name if dealer_tok and dealer_tok in game.players else f"Seat {game.dealer_seat + 1}"
+            log.info("Dealer updated: seat %d (%s)", game.dealer_seat, dealer_name)
+            await self.broadcast({
+                "type": "dealer_updated",
+                "data": {"dealer_seat": game.dealer_seat, "dealer_name": dealer_name}
+            })
+            if game.phase in ("lobby", "dealer_select") and game.all_seats_filled():
+                await self._start_round(dealer_seat_override=chosen_seat)
+            else:
+                await self.broadcast_game_state()
 
 
 
@@ -849,12 +856,12 @@ class ConnectionManager:
 
         # Dealer rotation:
         # In Round 1: use dealer_seat_override if provided, else keep current game.dealer_seat
-        # In subsequent rounds: dealer automatically shifts to the player on the RIGHT of previous dealer!
+        # In subsequent rounds: dealer automatically advances to the next player in order!
         if game.round == 1:
             if dealer_seat_override is not None:
                 game.dealer_seat = dealer_seat_override
         else:
-            game.dealer_seat = game.player_right_of(game.dealer_seat)
+            game.dealer_seat = (game.dealer_seat + 1) % MAX_PLAYERS
 
         # Reset per-round state
         game.bids = {}
@@ -930,8 +937,8 @@ class ConnectionManager:
             "special_ah": special_ah_token,
         }
 
-        # Pause 1.5 seconds so all players can see the completed trick
-        await asyncio.sleep(1.5)
+        # Snappy pause so players can see the completed trick
+        await asyncio.sleep(0.75)
 
         await self.broadcast({"type": "trick_complete", "data": trick_summary})
 
@@ -972,11 +979,14 @@ class ConnectionManager:
                 made = tricks >= bid
 
                 if bid == 0:
-                    round_score = SCORE_BID_0_MADE if made else SCORE_BID_0_FAILED
+                    # 0-Bid Penalty: If a player bids 0 and takes at least 1 trick, apply -5 point penalty
+                    round_score = SCORE_BID_0_MADE if tricks == 0 else SCORE_BID_0_FAILED
                 elif bid == 7:
-                    round_score = SCORE_BID_7_MADE if made else SCORE_BID_7_FAILED
+                    # Bid 7: +14 if made (>= 7 tricks), -14 if failed (< 7 tricks)
+                    round_score = SCORE_BID_7_MADE if tricks >= 7 else SCORE_BID_7_FAILED
                 else:
-                    round_score = bid if made else -bid
+                    # Bids 2-6 and 8-13: +Bid if made (tricks >= bid), -Bid if failed (tricks < bid)
+                    round_score = bid if tricks >= bid else -bid
 
             game.round_scores[tok] = round_score
             game.scores[tok] = game.scores.get(tok, 0) + round_score
@@ -993,6 +1003,8 @@ class ConnectionManager:
 
         round_summary = {
             "round": game.round,
+            "dealer_seat": game.dealer_seat,
+            "dealer_name": game.players[game.seats[game.dealer_seat]].name if game.seats[game.dealer_seat] in game.players else f"Seat {game.dealer_seat + 1}",
             "tricks_taken": dict(game.tricks_taken),
             "bids": dict(game.bids),
             "round_scores": dict(game.round_scores),
@@ -1000,6 +1012,7 @@ class ConnectionManager:
             "special_kh": special_kh_token,
             "special_ah": special_ah_token,
         }
+        game.round_history.append(dict(round_summary))
 
         await self.broadcast({"type": "round_complete", "data": round_summary})
         await self.broadcast_game_state()
@@ -1007,8 +1020,8 @@ class ConnectionManager:
         if game.round >= TOTAL_ROUNDS:
             await self._end_game()
         else:
-            # Wait a moment then start next round
-            await asyncio.sleep(4)
+            # Snappy delay then start next round
+            await asyncio.sleep(2.0)
             await self._start_round()
 
     async def _end_game(self):
@@ -1145,8 +1158,8 @@ class ConnectionManager:
 
     async def _run_bot_turn(self, token: str, action: str):
         try:
-            # Realistic thinking pause: 1.0 to 1.4 seconds
-            await asyncio.sleep(random.uniform(1.0, 1.4))
+            # Fast, snappy thinking pause: 0.35 to 0.55 seconds
+            await asyncio.sleep(random.uniform(0.35, 0.55))
             game = self.game
             player = game.players.get(token)
             if not player or not getattr(player, "is_bot", False):
