@@ -125,12 +125,13 @@ class Player:
         self.role = role          # 'player' | 'spectator'
         self.hand: List[str] = []
         self.ws: Optional[WebSocket] = None
+        self.is_bot: bool = False
         self.connected_at: float = time.time()
         self.disconnected_at: Optional[float] = None
 
     @property
     def is_connected(self) -> bool:
-        return self.ws is not None
+        return self.is_bot or (self.ws is not None)
 
     @property
     def id(self) -> str:
@@ -153,6 +154,7 @@ class Player:
             "seat": self.seat,
             "connected": self.is_connected,
             "card_count": len(self.hand),
+            "is_bot": self.is_bot,
         }
         if include_hand:
             d["hand"] = self.hand
@@ -264,6 +266,7 @@ class ConnectionManager:
 
     def __init__(self):
         self.game = GameState()
+        self._bot_turn_in_progress: bool = False
 
     # ------------------------------------------------------------------
     # Connection lifecycle
@@ -334,6 +337,9 @@ class ConnectionManager:
                     player.ws = None
                     player.disconnected_at = time.time()
 
+        # Check and trigger bot turn if active
+        self._trigger_bot_turn_if_needed()
+
     # ------------------------------------------------------------------
     # Message routing
     # ------------------------------------------------------------------
@@ -363,6 +369,9 @@ class ConnectionManager:
             "ping": self._handle_ping,
             "set_dealer": self._handle_set_dealer,
             "change_dealer": self._handle_set_dealer,
+            "fill_bots": self._handle_fill_bots,
+            "fill_table_with_bots": self._handle_fill_bots,
+            "remove_bots": self._handle_remove_bots,
         }
 
         handler = handlers.get(mtype)
@@ -502,8 +511,11 @@ class ConnectionManager:
         })
         await self.broadcast_game_state()
 
-        # When 4 active players are seated in lobby, prompt for Round 1 dealer:
-        if game.phase == "lobby" and game.all_seats_filled() and game.round == 0:
+        # If client requested to fill table with bots on join:
+        if data.get("fill_bots"):
+            await self._handle_fill_bots(token, data)
+        elif game.phase == "lobby" and game.all_seats_filled() and game.round == 0:
+            # When 4 active players are seated in lobby, prompt for Round 1 dealer:
             game.phase = "dealer_select"
             await self.broadcast({
                 "type": "prompt_select_dealer",
@@ -1030,6 +1042,8 @@ class ConnectionManager:
             now = time.time()
             to_remove = []
             for tok, player in list(self.game.players.items()):
+                if getattr(player, "is_bot", False):
+                    continue
                 if not player.is_connected and player.disconnected_at:
                     if now - player.disconnected_at > RECONNECT_TIMEOUT:
                         to_remove.append(tok)
@@ -1043,6 +1057,200 @@ class ConnectionManager:
                         "type": "player_left",
                         "data": {"id": tok, "name": player.name},
                     })
+
+    # ------------------------------------------------------------------
+    # Bot automation & Solo simulation
+    # ------------------------------------------------------------------
+
+    async def _handle_fill_bots(self, token: str, data: Dict):
+        game = self.game
+        BOT_NAMES = ["Bot Hosam", "Bot Furjani", "Bot Shiba", "Bot Ahmed", "Bot Naas", "Bot Zentani"]
+        existing_names = {p.name.strip().lower() for p in game.players.values()}
+        available_names = [n for n in BOT_NAMES if n.lower() not in existing_names]
+
+        added_bots = []
+        for seat_idx in range(MAX_PLAYERS):
+            if game.seats[seat_idx] is None:
+                bot_name = available_names.pop(0) if available_names else f"Bot {seat_idx + 1}"
+                bot_token = f"bot_{uuid.uuid4().hex[:8]}"
+                bot_p = Player(token=bot_token, name=bot_name, seat=seat_idx, role="player")
+                bot_p.is_bot = True
+                game.players[bot_token] = bot_p
+                game.seats[seat_idx] = bot_token
+                added_bots.append(bot_p)
+                log.info("🤖 Seated %s at seat %d (%s)", bot_name, seat_idx, bot_token)
+
+        for b in added_bots:
+            await self.broadcast({
+                "type": "player_joined",
+                "data": {"id": b.token, "name": b.name, "role": b.role, "is_spectator": False, "seat": b.seat, "is_bot": True},
+            })
+
+        # Start Round 1 automatically if all 4 seats are filled
+        if game.all_seats_filled() and game.round == 0:
+            log.info("Table full with bots; auto-starting Round 1 with dealer seat %d", game.dealer_seat)
+            await self._start_round(dealer_seat_override=game.dealer_seat)
+        else:
+            await self.broadcast_game_state()
+
+    async def _handle_remove_bots(self, token: str, data: Dict):
+        game = self.game
+        removed = []
+        for seat_idx, tok in enumerate(list(game.seats)):
+            if tok:
+                p = game.players.get(tok)
+                if p and getattr(p, "is_bot", False):
+                    game.seats[seat_idx] = None
+                    game.players.pop(tok, None)
+                    removed.append(p.name)
+
+        if removed:
+            log.info("Removed bots: %s", ", ".join(removed))
+            if game.phase != "lobby":
+                game.phase = "lobby"
+                game.round = 0
+                game.trick_cards = []
+                game.led_suit = None
+                game.bids = {}
+                game.tricks_taken = {}
+                for p in game.players.values():
+                    p.hand = []
+            await self.broadcast({
+                "type": "bots_removed",
+                "data": {"removed": removed}
+            })
+            await self.broadcast_game_state()
+
+    def _trigger_bot_turn_if_needed(self):
+        if self._bot_turn_in_progress:
+            return
+        game = self.game
+        if game.phase == "bidding":
+            if game.bidding_idx < len(game.bid_order):
+                expected_token = game.bid_order[game.bidding_idx]
+                player = game.players.get(expected_token)
+                if player and getattr(player, "is_bot", False):
+                    self._bot_turn_in_progress = True
+                    asyncio.create_task(self._run_bot_turn(expected_token, "bid"))
+        elif game.phase == "playing":
+            if len(game.trick_cards) >= MAX_PLAYERS:
+                return  # Trick resolution in progress
+            expected_token = game.token_at_seat(game.current_turn_seat)
+            if not expected_token:
+                return
+            player = game.players.get(expected_token)
+            if player and getattr(player, "is_bot", False):
+                self._bot_turn_in_progress = True
+                asyncio.create_task(self._run_bot_turn(expected_token, "play"))
+
+    async def _run_bot_turn(self, token: str, action: str):
+        try:
+            # Realistic thinking pause: 1.0 to 1.4 seconds
+            await asyncio.sleep(random.uniform(1.0, 1.4))
+            game = self.game
+            player = game.players.get(token)
+            if not player or not getattr(player, "is_bot", False):
+                return
+
+            if action == "bid" and game.phase == "bidding":
+                if game.bidding_idx < len(game.bid_order) and game.bid_order[game.bidding_idx] == token:
+                    bid_amount = self._calculate_bot_bid(player)
+                    log.info("🤖 Bot %s bids %d", player.name, bid_amount)
+                    await self._handle_bid(token, {"amount": bid_amount})
+            elif action == "play" and game.phase == "playing":
+                if len(game.trick_cards) < MAX_PLAYERS and game.token_at_seat(game.current_turn_seat) == token:
+                    card_to_play = self._choose_bot_card(player)
+                    if card_to_play:
+                        log.info("🤖 Bot %s plays %s", player.name, card_to_play)
+                        await self._handle_play_card(token, {"card": card_to_play})
+        except Exception as exc:
+            log.exception("Error in bot turn for %s: %s", token, exc)
+        finally:
+            self._bot_turn_in_progress = False
+            self._trigger_bot_turn_if_needed()
+
+    def _choose_bot_card(self, player: Player) -> Optional[str]:
+        if not player.hand:
+            return None
+
+        # Filter all strictly legal cards
+        legal_cards = [c for c in player.hand if self._validate_play(player, c)[0]]
+        if not legal_cards:
+            legal_cards = list(player.hand)
+
+        game = self.game
+        # Case 1: Leading the trick
+        if not game.trick_cards or not game.led_suit:
+            non_trumps = [c for c in legal_cards if card_suit(c) != TRUMP_SUIT]
+            high_non_trumps = [c for c in non_trumps if card_rank(c) in ("A", "K", "Q")]
+            if high_non_trumps:
+                return max(high_non_trumps, key=card_rank_value)
+            elif non_trumps:
+                return min(non_trumps, key=card_rank_value)
+            return max(legal_cards, key=card_rank_value)
+
+        # Case 2: Following a led suit
+        led = game.led_suit
+        following = [c for c in legal_cards if card_suit(c) == led]
+        if following:
+            cur_winner = trick_winner(game.trick_cards, led)
+            win_card = cur_winner["card"]
+            win_suit = card_suit(win_card)
+
+            # If current winner cut with trump, led suit cannot win
+            if win_suit == TRUMP_SUIT and led != TRUMP_SUIT:
+                return min(following, key=card_rank_value)
+
+            win_val = card_rank_value(win_card)
+            winning_cards = [c for c in following if card_rank_value(c) > win_val]
+            if winning_cards:
+                return min(winning_cards, key=card_rank_value)
+            return min(following, key=card_rank_value)
+
+        # Case 3: Void in led suit (trump cut or slough)
+        trumps = [c for c in legal_cards if card_suit(c) == TRUMP_SUIT]
+        cur_winner = trick_winner(game.trick_cards, led)
+        win_card = cur_winner["card"]
+        win_suit = card_suit(win_card)
+
+        if win_suit == TRUMP_SUIT:
+            win_trump_val = card_rank_value(win_card)
+            over_trumps = [c for c in trumps if card_rank_value(c) > win_trump_val]
+            if over_trumps:
+                return min(over_trumps, key=card_rank_value)
+        else:
+            if trumps:
+                return min(trumps, key=card_rank_value)
+
+        # Slough lowest non-trump, or lowest card in hand
+        non_trumps = [c for c in legal_cards if card_suit(c) != TRUMP_SUIT]
+        if non_trumps:
+            return min(non_trumps, key=card_rank_value)
+        return min(legal_cards, key=card_rank_value)
+
+    def _calculate_bot_bid(self, player: Player) -> int:
+        trumps = [c for c in player.hand if card_suit(c) == TRUMP_SUIT]
+        aces = [c for c in player.hand if card_rank(c) == "A"]
+        kings = [c for c in player.hand if card_rank(c) == "K"]
+
+        trump_count = len(trumps)
+        high_trumps = sum(1 for c in trumps if card_rank(c) in ("A", "K", "Q", "J"))
+
+        est = len(aces) + int(len(kings) * 0.6) + max(0, trump_count - 3) + high_trumps * 0.5
+        est_tricks = int(round(est))
+
+        # Tarneeb bidding rules:
+        # Bid 0 is allowed (+5/-5).
+        # Bid 1 is PROHIBITED.
+        # Bids 2-13 are allowed.
+        if est_tricks <= 0 and len(aces) == 0 and trump_count <= 1:
+            return 0
+        if est_tricks <= 1:
+            return 2  # Bid 1 prohibited, minimum positive bid is 2
+        bid = min(13, max(2, est_tricks))
+        if bid == 1:
+            bid = 2
+        return bid
 
 
 # ---------------------------------------------------------------------------
