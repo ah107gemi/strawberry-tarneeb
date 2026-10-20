@@ -199,11 +199,12 @@
       <div class="online-header-strip">
         <div class="online-meta-wrap">
           <span id="onlineRoundBadge" class="online-pill-badge round-pill">Round 1 of 15</span>
-          <span id="onlineDealerBadge" class="online-pill-badge dealer-pill">🂠 Dealer: -</span>
+          <button id="onlineDealerBadge" class="online-pill-badge dealer-pill" type="button" title="Click to Change Dealer">🂠 Dealer: -</button>
           <span id="onlinePhaseInfo" class="online-pill-badge phase-pill">⏳ Waiting for table…</span>
           <span id="onlineUserRoleBadge" class="online-pill-badge role-pill" style="display: none;">👀 Spectating</span>
         </div>
         <div class="online-actions-wrap">
+          <button id="btnChangeDealer" class="btn-subtle dealer-select-btn" type="button" title="Select or change dealer">🂠 Change Dealer</button>
           <button id="sortToggleBtn" class="btn-subtle sort-btn" type="button" title="Switch auto/manual sort">🔀 Auto Sort ON</button>
           <button id="smirkBtn" class="btn-subtle smirk-btn" type="button" title="Send Smirk">😏 Smirk</button>
           <button id="btnSwitchIdentity" class="btn-subtle switch-id-btn" type="button" title="Change Player / Role">🔄 Change Role</button>
@@ -508,6 +509,29 @@
   <div id="toastNotice" class="toast-notice">
     <span id="toastIcon">✓</span>
     <span id="toastMessage">Scores saved!</span>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL: Online Dealer Selection ("Who is dealing Round 1?")
+       ========================================================================== -->
+  <div id="modalDealerSelect" class="modal-overlay" role="dialog" aria-modal="true" style="display: none;">
+    <div class="modal-content" style="max-width: 380px; text-align: center;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color: #fde047;">
+          <span>🂠</span>
+          <span id="dealerModalTitle">Select Dealer</span>
+        </h3>
+        <button class="modal-close" id="btnCloseDealerModal" type="button" aria-label="Close dealer modal">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <p id="dealerModalPromptText" style="font-size: 0.9rem; color: #cbd5e1; margin: 0; line-height: 1.4;">
+          Who is dealing Round 1? (Play will rotate to their right)
+        </p>
+        <div id="dealerSelectButtonsGrid" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- Dynamically populated buttons for seated players -->
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ==========================================================================
