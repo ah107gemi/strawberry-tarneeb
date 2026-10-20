@@ -24,8 +24,9 @@ class TarneebOnlineGame {
     this.suitOrder = { H: 0, S: 1, D: 2, C: 3 };
     this.rankOrder = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13,'A':14 };
     this.suitSymbols = { H: '♥', S: '♠', D: '♦', C: '♣' };
-    this.suitColors = { H: '#ef4444', S: '#f8fafc', D: '#ef4444', C: '#f8fafc' };
+    this.suitColors = { H: '#ef4444', S: '#ffffff', D: '#ef4444', C: '#fbbf24' };
     this.suitNames = { H: 'Hearts', S: 'Spades', D: 'Diamonds', C: 'Clubs' };
+    this.isSubmittingPlay = false;
   }
 
   // =========================================================================
@@ -112,6 +113,7 @@ class TarneebOnlineGame {
       case 'game_state':
         this.gameState = data;
         this.myHand = data.my_hand || this.myHand;
+        this.isSubmittingPlay = false;
         this.renderGame();
         break;
 
@@ -304,7 +306,12 @@ class TarneebOnlineGame {
     const cards = gs.trick_cards || [];
 
     if (cards.length === 0) {
-      area.innerHTML = '<div class="trick-empty-hint">Waiting for first card…</div>';
+      const leader = gs.players.find(p => p.id === gs.current_turn);
+      const isMe = gs.current_turn === this.myId;
+      const leaderText = isMe
+        ? '🔥 Your turn to lead — play any card to start trick'
+        : (leader ? `Waiting for ${this.esc(leader.name)} to lead…` : 'Waiting for first card…');
+      area.innerHTML = `<div class="trick-empty-hint">${leaderText}</div>`;
       return;
     }
 
@@ -314,8 +321,8 @@ class TarneebOnlineGame {
       const pos = this.getRelativePosition(player_id, gs);
       html += `
         <div class="trick-card-slot pos-${pos}">
-          ${this.renderCard(card, false, false)}
-          <div class="trick-player-label">${this.esc(player?.name || '')}</div>
+          ${this.renderCard(card, true, false)}
+          <div class="trick-player-label">${this.esc(player?.name || 'Player')}</div>
         </div>
       `;
     });
@@ -402,6 +409,7 @@ class TarneebOnlineGame {
 
       html += `
         <div class="hand-card ${isSelected ? 'selected' : ''} ${!myTurn ? '' : isPlayable ? 'playable' : 'not-playable'}"
+          style="z-index: ${idx + 1};"
           data-card="${cardStr}"
           data-idx="${idx}"
           ${this.sortMode === 'manual' ? 'draggable="true"' : ''}
@@ -516,6 +524,7 @@ class TarneebOnlineGame {
   // =========================================================================
   handleCardClick(cardStr) {
     if (!this.gameState || this.gameState.phase !== 'playing') return;
+    if (this.isSubmittingPlay) return;
     if (this.gameState.current_turn !== this.myId) {
       this.showToast("It's not your turn!", 'warning');
       return;
@@ -526,8 +535,10 @@ class TarneebOnlineGame {
     }
     if (this.selectedCard === cardStr) {
       // Second click confirms play
+      this.isSubmittingPlay = true;
       this.send('play_card', { card: cardStr });
       this.selectedCard = null;
+      setTimeout(() => { this.isSubmittingPlay = false; }, 800);
     } else {
       this.selectedCard = cardStr;
       this.renderMyHand(this.gameState);
