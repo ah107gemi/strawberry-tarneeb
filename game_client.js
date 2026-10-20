@@ -156,7 +156,15 @@ class TarneebOnlineGame {
         break;
 
       case 'player_joined':
-        this.showToast(`${data.name} joined as ${data.role === 'spectator' ? 'Spectator 👁️' : 'Player 🂠'}`);
+        if (data.is_bot) {
+          this.showToast(`🤖 ${data.name} joined the table!`, 'info');
+        } else {
+          this.showToast(`${data.name} joined as ${data.role === 'spectator' ? 'Spectator 👁️' : 'Player 🂠'}`);
+        }
+        break;
+
+      case 'bots_removed':
+        this.showToast('🤖 Bots removed from table', 'info');
         break;
 
       case 'role_changed':
@@ -1038,6 +1046,31 @@ function setupOnlineUIEvents() {
   // Role Action Buttons
   document.getElementById('btnJoinAsPlayer')?.addEventListener('click', () => handleJoinSubmit('player'));
   document.getElementById('btnJoinAsSpectator')?.addEventListener('click', () => handleJoinSubmit('spectator'));
+
+  // Solo Play (Fill with Bots) button in identity modal
+  document.getElementById('btnFillBotsModal')?.addEventListener('click', () => {
+    const customInput = document.getElementById('customNameInput');
+    const chosenName = pendingSelectedName || customInput?.value.trim();
+    if (!chosenName) {
+      alert('Please pick your name from the group roster or enter a custom nickname first!');
+      customInput?.focus();
+      return;
+    }
+    handleJoinSubmit('player');
+    setTimeout(() => {
+      window.tarneebGame.send('fill_bots', {});
+    }, 200);
+  });
+
+  // Fill with Bots button in online header
+  document.getElementById('btnFillBots')?.addEventListener('click', () => {
+    if (window.tarneebGame.ws && window.tarneebGame.ws.readyState === WebSocket.OPEN) {
+      window.tarneebGame.send('fill_bots', {});
+      window.tarneebGame.showToast('🤖 Filling table with bots…', 'info');
+    } else {
+      openIdentityModal();
+    }
+  });
 
   // Custom Name Input Sync
   const customInput = document.getElementById('customNameInput');
