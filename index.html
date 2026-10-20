@@ -206,7 +206,7 @@
         <div class="online-actions-wrap">
           <button id="btnFillBots" class="btn-subtle fill-bots-btn" type="button" title="Fill remaining seats with AI bots">🤖 Fill Table with Bots</button>
           <button id="btnChangeDealer" class="btn-subtle dealer-select-btn" type="button" title="Select or change dealer">🂠 Change Dealer</button>
-          <button id="sortToggleBtn" class="btn-subtle sort-btn" type="button" title="Switch auto/manual sort">🔀 Auto Sort ON</button>
+          <button id="btnMatchHistory" class="btn-subtle history-btn" type="button" title="View Match History">📜 Match History</button>
           <button id="smirkBtn" class="btn-subtle smirk-btn" type="button" title="Send Smirk">😏 Smirk</button>
           <button id="btnSwitchIdentity" class="btn-subtle switch-id-btn" type="button" title="Change Player / Role">🔄 Change Role</button>
           <button id="btnSwitchName" class="btn-subtle switch-name-btn" type="button" title="Switch Name / Logout">👤 Switch Name</button>
@@ -621,6 +621,54 @@
         <h2 id="victoryWinnerOnline" style="font-size: 1.8rem; font-weight: 900; color: #fff;">Winner</h2>
         <p id="victoryScoreOnline" style="font-size: 1.2rem; font-weight: 800; color: #fde047;">0 pts</p>
         <div id="victoryStandingsOnline" style="width: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 8px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL: Auto-Sort Prompt (Cards Dealt)
+       ========================================================================== -->
+  <div id="modalAutoSortPrompt" class="modal-overlay" role="dialog" aria-modal="true" style="display: none;">
+    <div class="modal-content modal-sort-prompt-content" style="max-width: 360px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color: #60a5fa;">
+          <span>🂠</span>
+          <span id="autoSortRoundTitle">Cards Dealt!</span>
+        </h3>
+        <button class="modal-close" id="btnCloseAutoSortModal" type="button" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body" style="gap: 12px; padding: 16px;">
+        <p style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.4; margin-bottom: 4px;">
+          13 cards have been dealt to your hand. How would you like to arrange them?
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+          <button id="btnAutoSortYes" class="btn-primary btn-join-choice" type="button" style="background: linear-gradient(135deg, #2563eb, #1d4ed8);">
+            <span>✨ Sort Automatically</span>
+            <small class="btn-hint-text">Group by suit & order ranks low to high</small>
+          </button>
+          <button id="btnAutoSortNo" class="btn-secondary btn-join-choice" type="button">
+            <span>✋ Keep Manual Order</span>
+            <small class="btn-hint-text">Leave in dealt order (drag and drop to organize)</small>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL: Match History
+       ========================================================================== -->
+  <div id="modalMatchHistory" class="modal-overlay" role="dialog" aria-modal="true" style="display: none;">
+    <div class="modal-content modal-history-content" style="max-width: 500px; width: 95%;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color: #60a5fa;">
+          <span>📜</span>
+          <span>Match History</span>
+        </h3>
+        <button class="modal-close" id="btnCloseMatchHistory" type="button" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body" id="matchHistoryContent" style="max-height: 70vh; overflow-y: auto; padding: 12px; gap: 10px;">
+        <!-- Injected dynamically via game_client.js -->
       </div>
     </div>
   </div>
