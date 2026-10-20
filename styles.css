@@ -1702,6 +1702,81 @@ body::before {
   color: #fff;
 }
 
+.btn-subtle.dealer-select-btn {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: rgba(234, 179, 8, 0.4);
+  color: #fde047;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-subtle.dealer-select-btn:hover {
+  background: rgba(234, 179, 8, 0.3);
+  border-color: #fde047;
+  color: #fff;
+}
+
+.dealer-pill {
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dealer-pill:hover {
+  filter: brightness(1.2);
+  transform: scale(1.04);
+}
+
+.dealer-pick-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #1e293b;
+  border: 1.5px solid #334155;
+  border-radius: 8px;
+  color: #f8fafc;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.dealer-pick-btn:hover {
+  background: #334155;
+  border-color: #fde047;
+  color: #fde047;
+  transform: translateY(-1px);
+}
+
+.dealer-pick-btn.is-active-dealer {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  color: #fde047;
+}
+
+/* Instant responsive play feedback */
+.hand-card.playing-flying {
+  opacity: 0.25;
+  transform: translateY(-24px) scale(0.9);
+  transition: transform 0.12s ease-out, opacity 0.12s ease-out;
+  pointer-events: none;
+}
+
+.trick-card-slot.optimistic-play .card {
+  animation: cardPlaySnap 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes cardPlaySnap {
+  0% {
+    transform: translateY(20px) scale(0.8);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
 .smirk-pulse {
   animation: smirkPulseAnim 1s infinite alternate;
 }
@@ -1765,7 +1840,7 @@ body::before {
 .online-table-arena {
   position: relative;
   width: 100%;
-  min-height: 280px;
+  min-height: clamp(320px, 38vh, 440px);
   background: radial-gradient(circle at 50% 50%, #064e3b 0%, #022c22 80%, #011913 100%);
   border: 3px solid #047857;
   border-radius: 28px;
@@ -1867,10 +1942,10 @@ body::before {
 .table-felt-center {
   position: relative;
   align-self: center;
-  min-height: 120px;
+  min-height: 180px;
   width: 100%;
-  max-width: 320px;
-  margin: 14px auto;
+  max-width: 360px;
+  margin: 10px auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1883,7 +1958,9 @@ body::before {
     ". top ."
     "left . right"
     ". bottom .";
-  gap: 8px;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 10px;
   align-items: center;
   justify-items: center;
   width: 100%;
@@ -1893,13 +1970,29 @@ body::before {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
 }
 
 .trick-card-slot .card {
-  width: 48px;
-  height: 72px;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.7);
+  width: 56px;
+  height: 84px;
+  background: #11141d;
+  border: 1px solid #2a324b;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.75);
+}
+
+.trick-card-slot .card .card-top-rank,
+.trick-card-slot .card .card-bot-rank {
+  font-size: 0.95rem;
+  letter-spacing: -0.5px;
+}
+
+.trick-card-slot .card .card-suit-small {
+  font-size: 0.9rem;
+}
+
+.trick-card-slot .card .card-center-suit {
+  font-size: 1.65rem;
 }
 
 .trick-card-slot.pos-top { grid-area: top; }
@@ -1930,8 +2023,8 @@ body::before {
 .card {
   width: 44px;
   height: 66px;
-  background: linear-gradient(160deg, #1e293b 0%, #0f172a 100%);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: #11141d;
+  border: 1px solid #2a324b;
   border-radius: 6px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.65);
   display: flex;
@@ -1947,7 +2040,7 @@ body::before {
 }
 
 .card-face {
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid #2a324b;
 }
 
 .card-top-rank, .card-bot-rank {
@@ -1956,6 +2049,7 @@ body::before {
   align-items: center;
   gap: 1px;
   letter-spacing: -0.5px;
+  color: inherit;
 }
 
 .card-bot-rank {
@@ -1964,12 +2058,14 @@ body::before {
 
 .card-suit-small {
   font-size: 0.72rem;
+  color: inherit;
 }
 
 .card-center-suit {
   align-self: center;
   font-size: 1.25rem;
   line-height: 1;
+  color: inherit;
 }
 
 .card-highlighted {
