@@ -193,10 +193,10 @@ class GameState:
     # ------------------------------------------------------------------
 
     def seated_tokens_in_order(self, starting_seat: int = 0) -> List[str]:
-        """Return token list starting from given seat, wrapping around."""
+        """Return token list starting from given seat, rotating to the right (counter-clockwise)."""
         tokens = []
         for i in range(MAX_PLAYERS):
-            seat = (starting_seat + i) % MAX_PLAYERS
+            seat = (starting_seat - i + MAX_PLAYERS) % MAX_PLAYERS
             if self.seats[seat]:
                 tokens.append(self.seats[seat])
         return tokens
@@ -204,8 +204,12 @@ class GameState:
     def all_seats_filled(self) -> bool:
         return all(s is not None for s in self.seats)
 
+    def player_right_of(self, seat: int) -> int:
+        """Right-hand (counter-clockwise) next seat in Tarneeb."""
+        return (seat - 1 + MAX_PLAYERS) % MAX_PLAYERS
+
     def player_left_of(self, seat: int) -> int:
-        """Clockwise next seat."""
+        """Left-hand (clockwise) seat in Tarneeb."""
         return (seat + 1) % MAX_PLAYERS
 
     def token_at_seat(self, seat: int) -> Optional[str]:
@@ -356,6 +360,9 @@ class ConnectionManager:
             "change_role": self._handle_switch_role,
             "leave": self._handle_leave,
             "logout": self._handle_leave,
+            "ping": self._handle_ping,
+            "set_dealer": self._handle_set_dealer,
+            "change_dealer": self._handle_set_dealer,
         }
 
         handler = handlers.get(mtype)
@@ -495,9 +502,58 @@ class ConnectionManager:
         })
         await self.broadcast_game_state()
 
-        # When 4 active players are seated, automatically deal the cards and start Round 1
-        if game.phase == "lobby" and game.all_seats_filled():
-            await self._start_round()
+        # When 4 active players are seated in lobby, prompt for Round 1 dealer:
+        if game.phase == "lobby" and game.all_seats_filled() and game.round == 0:
+            game.phase = "dealer_select"
+            await self.broadcast({
+                "type": "prompt_select_dealer",
+                "data": {
+                    "message": "Who is dealing Round 1?",
+                    "seated_players": [
+                        {"seat": i, "name": game.players[s].name, "id": s}
+                        for i, s in enumerate(game.seats) if s and s in game.players
+                    ]
+                }
+            })
+            await self.broadcast_game_state()
+
+    # ------------------------------------------------------------------
+    # Handler: ping / heartbeat
+    # ------------------------------------------------------------------
+
+    async def _handle_ping(self, token: str, data: Dict):
+        await self.send_to(token, {"type": "pong"})
+
+    # ------------------------------------------------------------------
+    # Handler: set_dealer / change_dealer
+    # ------------------------------------------------------------------
+
+    async def _handle_set_dealer(self, token: str, data: Dict):
+        game = self.game
+        seat = data.get("seat")
+        player_id = data.get("player_id")
+        if seat is None and player_id:
+            seat = game.seat_of_token(player_id)
+        if seat is not None:
+            try:
+                chosen_seat = int(seat)
+            except (ValueError, TypeError):
+                return
+            if 0 <= chosen_seat < MAX_PLAYERS:
+                game.dealer_seat = chosen_seat
+                dealer_tok = game.seats[game.dealer_seat]
+                dealer_name = game.players[dealer_tok].name if dealer_tok and dealer_tok in game.players else f"Seat {game.dealer_seat + 1}"
+                log.info("Dealer selected: seat %d (%s)", game.dealer_seat, dealer_name)
+                await self.broadcast({
+                    "type": "dealer_updated",
+                    "data": {"dealer_seat": game.dealer_seat, "dealer_name": dealer_name}
+                })
+                if game.phase in ("lobby", "dealer_select") and game.all_seats_filled():
+                    await self._start_round(dealer_seat_override=chosen_seat)
+                else:
+                    await self.broadcast_game_state()
+
+
 
     # ------------------------------------------------------------------
     # Handler: leave / logout
@@ -586,9 +642,20 @@ class ConnectionManager:
         })
         await self.broadcast_game_state()
 
-        # When 4 active players are seated, automatically deal the cards and start Round 1
-        if game.phase == "lobby" and game.all_seats_filled():
-            await self._start_round()
+        # When 4 active players are seated in lobby, prompt for Round 1 dealer:
+        if game.phase == "lobby" and game.all_seats_filled() and game.round == 0:
+            game.phase = "dealer_select"
+            await self.broadcast({
+                "type": "prompt_select_dealer",
+                "data": {
+                    "message": "Who is dealing Round 1?",
+                    "seated_players": [
+                        {"seat": i, "name": game.players[s].name, "id": s}
+                        for i, s in enumerate(game.seats) if s and s in game.players
+                    ]
+                }
+            })
+            await self.broadcast_game_state()
 
     # ------------------------------------------------------------------
     # Handler: bid
@@ -689,8 +756,8 @@ class ConnectionManager:
 
         log.info("%s played %s (trick cards: %d)", player.name, card, len(game.trick_cards))
 
-        # Move to next seat
-        game.current_turn_seat = self.game.player_left_of(game.current_turn_seat)
+        # Move to next seat (to the right in Tarneeb)
+        game.current_turn_seat = self.game.player_right_of(game.current_turn_seat)
 
         # Broadcast the updated table state immediately on each play
         await self.broadcast_game_state()
@@ -745,11 +812,11 @@ class ConnectionManager:
     # Game flow
     # ------------------------------------------------------------------
 
-    async def _start_round(self):
+    async def _start_round(self, dealer_seat_override: Optional[int] = None):
         game = self.game
 
-        # Guard: only allow starting from lobby (round 1) or round_end (subsequent rounds)
-        if game.phase not in ("lobby", "round_end"):
+        # Guard: only allow starting from lobby, dealer_select (round 1) or round_end (subsequent rounds)
+        if game.phase not in ("lobby", "dealer_select", "round_end"):
             log.warning("Attempted to start round while phase is '%s', ignoring", game.phase)
             return
 
@@ -768,8 +835,14 @@ class ConnectionManager:
         game.round += 1
         log.info("=== Starting Round %d ===", game.round)
 
-        # Rotate dealer clockwise each round (round 1 → seat 0)
-        game.dealer_seat = (game.round - 1) % MAX_PLAYERS
+        # Dealer rotation:
+        # In Round 1: use dealer_seat_override if provided, else keep current game.dealer_seat
+        # In subsequent rounds: dealer automatically shifts to the player on the RIGHT of previous dealer!
+        if game.round == 1:
+            if dealer_seat_override is not None:
+                game.dealer_seat = dealer_seat_override
+        else:
+            game.dealer_seat = game.player_right_of(game.dealer_seat)
 
         # Reset per-round state
         game.bids = {}
@@ -794,13 +867,13 @@ class ConnectionManager:
         if game.round == 1:
             # No bidding in round 1
             game.phase = "playing"
-            # First to play is left of dealer
-            first_seat = game.player_left_of(game.dealer_seat)
+            # First to play is RIGHT of dealer
+            first_seat = game.player_right_of(game.dealer_seat)
             game.current_turn_seat = first_seat
         else:
-            # Bidding starts left of dealer
+            # Bidding starts RIGHT of dealer
             game.phase = "bidding"
-            first_bid_seat = game.player_left_of(game.dealer_seat)
+            first_bid_seat = game.player_right_of(game.dealer_seat)
             game.bid_order = game.seated_tokens_in_order(first_bid_seat)
 
         await self.broadcast_game_state()
@@ -808,8 +881,8 @@ class ConnectionManager:
     async def _start_playing_phase(self):
         game = self.game
         game.phase = "playing"
-        # First to play is left of dealer
-        game.current_turn_seat = game.player_left_of(game.dealer_seat)
+        # First to play is RIGHT of dealer
+        game.current_turn_seat = game.player_right_of(game.dealer_seat)
         game.led_suit = None
         game.trick_cards = []
         log.info("Playing phase started. Bids: %s", game.bids)
