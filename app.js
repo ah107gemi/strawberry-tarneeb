@@ -457,7 +457,7 @@
           cellContent = `
             <div class="table-score-cell">
               <span class="cell-score-num ${isPos ? 'pos' : 'neg'} num">${isPos ? '+' : ''}${score}</span>
-              <span class="cell-sub-detail">Bid ${bid ?? '-'} • ${tricks ?? 0}T</span>
+              <span class="cell-sub-detail">Bid ${bid ?? '-'} • ${tricks ?? 0}(eat)</span>
             </div>
           `;
         } else if (bid !== null && bid !== undefined && !isNaN(bid)) {
