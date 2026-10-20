@@ -24,9 +24,34 @@ class TarneebOnlineGame {
     this.suitOrder = { H: 0, S: 1, D: 2, C: 3 };
     this.rankOrder = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13,'A':14 };
     this.suitSymbols = { H: '♥', S: '♠', D: '♦', C: '♣' };
-    this.suitColors = { H: '#ef4444', S: '#ffffff', D: '#ef4444', C: '#fbbf24' };
+    this.suitColors = { H: '#FF3B5C', S: '#FFFFFF', D: '#FF3B5C', C: '#FFFFFF' };
     this.suitNames = { H: 'Hearts', S: 'Spades', D: 'Diamonds', C: 'Clubs' };
     this.isSubmittingPlay = false;
+    this.heartbeatTimer = null;
+    this._lastHandHash = null;
+    this._lastTrickHash = null;
+    this._lastScoreHash = null;
+    this._lastOppHash = null;
+    this._forceTrickRerender = false;
+  }
+
+  // =========================================================================
+  // HEARTBEAT
+  // =========================================================================
+  startHeartbeat() {
+    this.stopHeartbeat();
+    this.heartbeatTimer = setInterval(() => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.send('ping');
+      }
+    }, 15000);
+  }
+
+  stopHeartbeat() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
   }
 
   // =========================================================================
@@ -48,11 +73,13 @@ class TarneebOnlineGame {
     this.ws.onopen = () => {
       this.reconnectAttempts = 0;
       this.showStatus('🟢 Connected to game server');
+      this.startHeartbeat();
       this.sendJoinMessage();
       this.flushPendingMessages();
     };
     this.ws.onmessage = (evt) => this.handleServerMessage(JSON.parse(evt.data));
     this.ws.onclose = () => {
+      this.stopHeartbeat();
       this.showStatus('🔴 Disconnected. Reconnecting…');
       this.scheduleReconnect(playerToken);
     };
@@ -115,6 +142,17 @@ class TarneebOnlineGame {
         this.myHand = data.my_hand || this.myHand;
         this.isSubmittingPlay = false;
         this.renderGame();
+        break;
+
+      case 'pong':
+        break;
+
+      case 'prompt_select_dealer':
+        this.showDealerSelectModal(data);
+        break;
+
+      case 'dealer_updated':
+        this.showToast(`🂠 Dealer set to ${data.dealer_name}`, 'info');
         break;
 
       case 'player_joined':
@@ -186,12 +224,25 @@ class TarneebOnlineGame {
     const gs = this.gameState;
 
     // Phase routing
-    document.getElementById('onlinePhaseInfo').textContent = this.getPhaseLabel(gs);
+    const phaseLabel = this.getPhaseLabel(gs);
+    const phaseEl = document.getElementById('onlinePhaseInfo');
+    if (phaseEl && phaseEl.textContent !== phaseLabel) phaseEl.textContent = phaseLabel;
 
     // Render dealer + round info
     const dealer = gs.players.find(p => p.id === gs.dealer);
-    document.getElementById('onlineRoundBadge').textContent = `Round ${gs.round} of 15`;
-    document.getElementById('onlineDealerBadge').textContent = `🂠 Dealer: ${dealer ? dealer.name : '-'}`;
+    const roundText = `Round ${gs.round} of 15`;
+    const dealerText = `🂠 Dealer: ${dealer ? dealer.name : '-'}`;
+    const roundEl = document.getElementById('onlineRoundBadge');
+    if (roundEl && roundEl.textContent !== roundText) roundEl.textContent = roundText;
+    const dealerEl = document.getElementById('onlineDealerBadge');
+    if (dealerEl && dealerEl.textContent !== dealerText) dealerEl.textContent = dealerText;
+
+    // Dealer selection phase popup handling
+    if (gs.phase === 'dealer_select') {
+      this.showDealerSelectModal();
+    } else {
+      this.hideDealerSelectModal();
+    }
 
     // Render user role tag
     const me = gs.players.find(p => p.id === this.myId);
@@ -257,6 +308,7 @@ class TarneebOnlineGame {
   getPhaseLabel(gs) {
     switch (gs.phase) {
       case 'lobby': return '⏳ Waiting for players to join…';
+      case 'dealer_select': return '🂠 Selecting Round 1 Dealer…';
       case 'bidding': return `🎯 Bidding Phase — Round ${gs.round}`;
       case 'playing': return `🃏 Playing — Trick ${gs.current_trick || 1} of 13`;
       case 'round_end': return `📊 Round ${gs.round} Complete`;
@@ -267,7 +319,12 @@ class TarneebOnlineGame {
 
   renderScoreSidebar(gs) {
     const container = document.getElementById('onlineScoreboard');
+    if (!container) return;
     const players = [...gs.players].filter(p => p.role === 'player');
+    const scoreHash = players.map(p => `${p.id}:${gs.scores[p.id]}:${gs.bids[p.id]}:${gs.tricks_taken[p.id]}:${p.id===gs.current_turn}`).join(';') + '|' + gs.phase;
+    if (this._lastScoreHash === scoreHash) return;
+    this._lastScoreHash = scoreHash;
+
     players.sort((a, b) => (gs.scores[b.id] || 0) - (gs.scores[a.id] || 0));
 
     let html = '<div class="score-sidebar-title">📊 Live Scores</div>';
@@ -303,7 +360,15 @@ class TarneebOnlineGame {
 
   renderTrickArea(gs) {
     const area = document.getElementById('trickCardsArea');
+    if (!area) return;
     const cards = gs.trick_cards || [];
+    const leaderId = gs.current_turn;
+    const trickHash = cards.map(c => c.player_id + ':' + c.card).join(',') + '|' + (leaderId || '');
+    if (this._lastTrickHash === trickHash && !this._forceTrickRerender) {
+      return;
+    }
+    this._lastTrickHash = trickHash;
+    this._forceTrickRerender = false;
 
     if (cards.length === 0) {
       const leader = gs.players.find(p => p.id === gs.current_turn);
@@ -334,15 +399,19 @@ class TarneebOnlineGame {
     const isSpectator = me ? me.role === 'spectator' : (this.myRole === 'spectator');
     const positions = ['left', 'top', 'right'];
 
+    const activePlayers = isSpectator
+      ? gs.players.filter(p => p.role === 'player')
+      : gs.players.filter(p => p.role === 'player' && p.id !== this.myId);
+
+    const oppHash = activePlayers.map(p => `${p.id}:${p.card_count}:${gs.bids[p.id]}:${gs.tricks_taken[p.id]}:${p.id===gs.current_turn}`).join(';') + '|' + (isSpectator ? 'spec' : 'play');
+    if (this._lastOppHash === oppHash) return;
+    this._lastOppHash = oppHash;
+
     // Clear all
     ['left', 'top', 'right'].forEach(pos => {
       const el = document.getElementById(`opponent-${pos}`);
       if (el) el.style.display = 'none';
     });
-
-    const activePlayers = isSpectator
-      ? gs.players.filter(p => p.role === 'player')
-      : gs.players.filter(p => p.role === 'player' && p.id !== this.myId);
 
     activePlayers.slice(0, 3).forEach((player, idx) => {
       const pos = positions[idx];
@@ -369,34 +438,49 @@ class TarneebOnlineGame {
 
   renderMyHand(gs) {
     const container = document.getElementById('myHandContainer');
+    if (!container) return;
     const me = gs.players.find(p => p.id === this.myId);
-    const isSpectator = me ? me.role === 'spectator' : (this.myRole === 'spectator');
+    const isSpectator = me ? (me.role === 'spectator' || me.is_spectator) : (this.myRole === 'spectator');
 
     const handTitle = document.querySelector('.my-hand-dock .hand-title');
     const handHint = document.querySelector('.my-hand-dock .hand-hint');
 
     if (isSpectator) {
-      if (handTitle) handTitle.textContent = '👀 Bench / Spectator Lounge';
-      if (handHint) handHint.textContent = 'Watching match • Table tricks and scores update live';
-      container.innerHTML = `
-        <div class="spectator-hand-notice">
-          <div class="spec-title">👀 Spectating: <strong>${this.esc(this.myName || me?.name || 'Spectator')}</strong></div>
-          <div class="spec-desc">You are on the bench enjoying the match. Active players are taking tricks on the felt table above!</div>
-        </div>
-      `;
+      if (this._lastHandSpectator !== true) {
+        this._lastHandSpectator = true;
+        this._lastHandHash = null;
+        if (handTitle) handTitle.textContent = '👀 Bench / Spectator Lounge';
+        if (handHint) handHint.textContent = 'Watching match • Table tricks and scores update live';
+        container.innerHTML = `
+          <div class="spectator-hand-notice">
+            <div class="spec-title">👀 Spectating: <strong>${this.esc(this.myName || me?.name || 'Spectator')}</strong></div>
+            <div class="spec-desc">You are on the bench enjoying the match. Active players are taking tricks on the felt table above!</div>
+          </div>
+        `;
+      }
       return;
     }
+    this._lastHandSpectator = false;
 
     if (handTitle) handTitle.textContent = `🂠 Your Hand (${this.myHand ? this.myHand.length : 0} Cards)`;
     if (handHint) handHint.textContent = 'Tap card once to select, tap again to play';
 
     if (!this.myHand || this.myHand.length === 0) {
-      container.innerHTML = '<div class="hand-empty">Waiting for deal…</div>';
+      if (this._lastHandHash !== 'empty') {
+        this._lastHandHash = 'empty';
+        container.innerHTML = '<div class="hand-empty">Waiting for deal…</div>';
+      }
       return;
     }
 
     const displayHand = this.sortMode === 'auto' ? this.getSortedHand() : this.myHand;
     const myTurn = gs.current_turn === this.myId && gs.phase === 'playing';
+
+    const handHash = displayHand.join(',') + '|' + (this.selectedCard || '') + '|' + (myTurn ? 'turn' : 'wait') + '|' + (gs.trick_cards?.[0]?.card || '') + '|' + this.sortMode;
+    if (this._lastHandHash === handHash) {
+      return;
+    }
+    this._lastHandHash = handHash;
 
     // Sort toggle
     document.getElementById('sortToggleBtn').textContent = this.sortMode === 'auto' ? '🔀 Auto Sort ON' : '🔀 Manual Mode';
@@ -536,13 +620,85 @@ class TarneebOnlineGame {
     if (this.selectedCard === cardStr) {
       // Second click confirms play
       this.isSubmittingPlay = true;
+
+      // 1. Immediately animate card leaving hand
+      const cardEl = document.querySelector(`.hand-card[data-card="${cardStr}"]`);
+      if (cardEl) {
+        cardEl.classList.add('playing-flying');
+      }
+
+      // 2. Optimistically render card onto table in player's bottom slot
+      const trickArea = document.getElementById('trickCardsArea');
+      if (trickArea) {
+        const emptyHint = trickArea.querySelector('.trick-empty-hint');
+        if (emptyHint) emptyHint.style.display = 'none';
+        const existingBottom = trickArea.querySelector('.trick-card-slot.pos-bottom');
+        if (!existingBottom) {
+          const slot = document.createElement('div');
+          slot.className = 'trick-card-slot pos-bottom optimistic-play';
+          slot.innerHTML = `
+            ${this.renderCard(cardStr, true, false)}
+            <div class="trick-player-label">${this.esc(this.myName || 'You')}</div>
+          `;
+          trickArea.appendChild(slot);
+        }
+      }
+
+      // 3. Immediately dismiss YOUR TURN banner
+      const banner = document.getElementById('myTurnBanner');
+      if (banner) banner.style.display = 'none';
+
+      // 4. Send play to server
+      this._forceTrickRerender = true;
       this.send('play_card', { card: cardStr });
       this.selectedCard = null;
       setTimeout(() => { this.isSubmittingPlay = false; }, 800);
     } else {
       this.selectedCard = cardStr;
+      this._lastHandHash = null;
       this.renderMyHand(this.gameState);
     }
+  }
+
+  showDealerSelectModal(data) {
+    const modal = document.getElementById('modalDealerSelect');
+    const grid = document.getElementById('dealerSelectButtonsGrid');
+    const promptText = document.getElementById('dealerModalPromptText');
+    if (!modal || !grid) return;
+
+    const gs = this.gameState;
+    const players = (data && data.seated_players) || (gs ? gs.players.filter(p => p.role === 'player') : []);
+    if (!players || players.length === 0) return;
+
+    if (promptText) {
+      promptText.textContent = (gs && gs.round > 1)
+        ? `Select dealer for Round ${gs.round} (Play rotates to their right):`
+        : `Who is dealing Round 1? (Play rotates to their right)`;
+    }
+
+    let html = '';
+    players.forEach(p => {
+      const seat = (p.seat !== undefined && p.seat !== null) ? p.seat : (gs ? gs.players.findIndex(x => x.id === p.id) : 0);
+      const isCurrent = gs && gs.dealer === p.id;
+      html += `
+        <button type="button" class="dealer-pick-btn ${isCurrent ? 'is-active-dealer' : ''}" onclick="window.tarneebGame.chooseDealer(${seat})">
+          <span>🂠 ${this.esc(p.name)}</span>
+          <span style="font-size:0.8rem;opacity:0.8;">Seat ${seat + 1}${isCurrent ? ' (Current)' : ''}</span>
+        </button>
+      `;
+    });
+    grid.innerHTML = html;
+    modal.style.display = 'flex';
+  }
+
+  hideDealerSelectModal() {
+    const modal = document.getElementById('modalDealerSelect');
+    if (modal) modal.style.display = 'none';
+  }
+
+  chooseDealer(seat) {
+    this.send('set_dealer', { seat: seat });
+    this.hideDealerSelectModal();
   }
 
   placeBid(amount) {
@@ -911,6 +1067,17 @@ function setupOnlineUIEvents() {
 
   // Switch Name / Logout button in online header ("👤 Switch Name")
   document.getElementById('btnSwitchName')?.addEventListener('click', logoutAndSwitchName);
+
+  // Dealer change button & badge
+  document.getElementById('btnChangeDealer')?.addEventListener('click', () => {
+    window.tarneebGame.showDealerSelectModal();
+  });
+  document.getElementById('onlineDealerBadge')?.addEventListener('click', () => {
+    window.tarneebGame.showDealerSelectModal();
+  });
+  document.getElementById('btnCloseDealerModal')?.addEventListener('click', () => {
+    window.tarneebGame.hideDealerSelectModal();
+  });
 
   // Sort toggle
   document.getElementById('sortToggleBtn')?.addEventListener('click', () => {
