@@ -1800,27 +1800,9 @@ body::before {
   100% { transform: scale(1.08); box-shadow: 0 0 16px rgba(234, 179, 8, 0.6); }
 }
 
-/* Turn Banner */
+/* Turn Banner - Retired floating banner; subtle status bar is now docked above hand */
 .my-turn-banner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 8px 14px;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(225, 29, 72, 0.4));
-  border: 1px solid var(--crimson-500);
-  border-radius: var(--radius-md);
-  font-weight: 800;
-  font-size: 0.85rem;
-  letter-spacing: 0.5px;
-  color: #fff;
-  box-shadow: 0 0 15px rgba(225, 29, 72, 0.3);
-  animation: turnBannerGlow 1.5s infinite alternate;
-}
-
-@keyframes turnBannerGlow {
-  0% { box-shadow: 0 0 8px rgba(225, 29, 72, 0.2); }
-  100% { box-shadow: 0 0 20px rgba(225, 29, 72, 0.6); }
+  display: none !important;
 }
 
 /* Smirk Prompt Banner */
@@ -1859,7 +1841,7 @@ body::before {
   border: 3px solid #047857;
   border-radius: 28px;
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.7), 0 12px 36px rgba(0, 0, 0, 0.5);
-  padding: 12px;
+  padding: 10px;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -1876,46 +1858,108 @@ body::before {
   user-select: none;
 }
 
-/* Opponent Seats - Cleanly anchored against inside felt borders */
+/* Opponent Seats */
 .opponent-seat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   z-index: 4;
 }
 
+/* Top Player Hand (North) - Strictly docked against top edge to never overlap center trick */
 .seat-top {
   position: absolute;
-  top: 10px;
+  top: 4px;
   left: 50%;
   transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  z-index: 4;
 }
 
+.opponent-meta-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.seat-top .opponent-cards-row {
+  display: flex;
+  justify-content: center;
+  max-width: 170px;
+}
+
+.seat-top .card-back {
+  width: 18px;
+  height: 24px;
+  margin-left: -11px;
+}
+
+.seat-top .card-back:first-child {
+  margin-left: 0;
+}
+
+/* Left and Right Decks (West & East) - Arranged vertically along inner edges, centered vertically */
 .seat-left {
   position: absolute;
-  left: 10px;
+  left: 8px;
   top: 50%;
   transform: translateY(-50%);
-  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  z-index: 4;
 }
 
 .seat-right {
   position: absolute;
-  right: 10px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  z-index: 4;
+}
+
+.seat-left .opponent-cards-row,
+.seat-right .opponent-cards-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  margin: 2px 0;
+}
+
+.seat-left .card-back,
+.seat-right .card-back {
+  width: 26px;
+  height: 15px;
+  margin-left: 0;
+  margin-top: -11px;
+  flex-shrink: 0;
+}
+
+.seat-left .card-back:first-child,
+.seat-right .card-back:first-child {
+  margin-top: 0;
+  margin-left: 0;
 }
 
 .opponent-name {
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   font-weight: 800;
   color: #f8fafc;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(15, 23, 42, 0.88);
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   white-space: nowrap;
 }
 
@@ -1926,33 +1970,17 @@ body::before {
 }
 
 .opponent-bid-badge {
-  font-size: 0.65rem;
+  font-size: 0.64rem;
   color: #cbd5e1;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.55);
   padding: 1px 6px;
   border-radius: var(--radius-full);
   white-space: nowrap;
 }
 
-.opponent-cards-row {
-  display: flex;
-  align-items: center;
-}
-
-.seat-top .opponent-cards-row {
-  justify-content: center;
-  max-width: 180px;
-}
-
-.seat-left .opponent-cards-row,
-.seat-right .opponent-cards-row {
-  max-width: 58px;
-  justify-content: center;
-}
-
 .card-back {
   width: 20px;
-  height: 30px;
+  height: 28px;
   background: linear-gradient(135deg, #881337, #4c0519);
   border: 1px solid #fda4af;
   border-radius: 4px;
@@ -1965,31 +1993,19 @@ body::before {
   margin-left: 0;
 }
 
-.seat-left .card-back,
-.seat-right .card-back {
-  width: 16px;
-  height: 25px;
-  margin-left: -13px;
-}
-
-.seat-left .card-back:first-child,
-.seat-right .card-back:first-child {
-  margin-left: 0;
-}
-
 .card-back-horizontal {
-  width: 16px;
-  height: 25px;
+  width: 26px;
+  height: 15px;
 }
 
 /* Center Trick Table - Exclusively reserved center square for the 4 played trick cards */
 .table-felt-center {
   position: absolute;
-  top: 50%;
+  top: calc(50% + 14px);
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(240px, calc(100% - 140px));
-  height: 210px;
+  width: min(230px, calc(100% - 100px));
+  height: 190px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -2133,6 +2149,62 @@ body::before {
   overflow: visible;
 }
 
+/* Permanent Integrated Turn Status Bar Docked Directly Above Hand */
+.hand-turn-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #94a3b8;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-sizing: border-box;
+  margin-bottom: 4px;
+  transition: all 0.25s ease;
+}
+
+.hand-turn-status-bar.is-my-turn {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(225, 29, 72, 0.25));
+  border-color: rgba(245, 158, 11, 0.55);
+  color: #fef08a;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.28);
+}
+
+.hand-turn-status-bar.not-my-turn {
+  background: rgba(15, 23, 42, 0.7);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+}
+
+.turn-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #64748b;
+  flex-shrink: 0;
+  transition: all 0.25s ease;
+}
+
+.hand-turn-status-bar.is-my-turn .turn-status-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+  animation: pulseDot 1.2s infinite alternate;
+}
+
+@keyframes pulseDot {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  100% { transform: scale(1.3); opacity: 1; }
+}
+
+.turn-status-text {
+  letter-spacing: 0.2px;
+}
+
 .hand-dock-header {
   display: flex;
   align-items: center;
@@ -2165,13 +2237,36 @@ body::before {
   min-height: 94px;
 }
 
+/* Card Dealing Staggered Animation & Transitions */
+@keyframes dealCardIn {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .hand-card {
   flex-shrink: 0;
   cursor: pointer;
   position: relative;
   margin-left: -18px;
-  transition: transform 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.18s ease-out;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.18s ease-out, opacity 0.25s ease;
   touch-action: manipulation;
+  will-change: transform, opacity;
+}
+
+.hand-card.card-dealing {
+  animation: dealCardIn 0.32s cubic-bezier(0.25, 1, 0.5, 1) both;
+  animation-delay: calc(var(--card-i, 0) * 30ms);
+}
+
+.card-back.card-dealing {
+  animation: dealCardIn 0.24s cubic-bezier(0.25, 1, 0.5, 1) both;
+  animation-delay: calc(var(--card-i, 0) * 20ms);
 }
 
 .hand-card:first-child {
@@ -2755,32 +2850,41 @@ body::before {
   }
 
   .seat-top {
-    top: 16px;
+    top: 8px;
+  }
+
+  .seat-top .card-back {
+    width: 22px;
+    height: 30px;
+    margin-left: -13px;
   }
 
   .seat-left {
-    left: 18px;
+    left: 16px;
   }
 
   .seat-right {
-    right: 18px;
+    right: 16px;
   }
 
   .seat-left .opponent-cards-row,
   .seat-right .opponent-cards-row {
-    max-width: 76px;
+    width: 36px;
+    margin: 4px 0;
   }
 
   .seat-left .card-back,
   .seat-right .card-back {
-    width: 20px;
-    height: 30px;
-    margin-left: -15px;
+    width: 34px;
+    height: 18px;
+    margin-left: 0;
+    margin-top: -13px;
   }
 
   .table-felt-center {
     width: 280px;
     height: 240px;
+    top: calc(50% + 14px);
   }
 
   .trick-card-slot .card {
