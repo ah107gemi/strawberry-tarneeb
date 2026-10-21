@@ -335,9 +335,49 @@ class TarneebOnlineGame {
     // Show/hide bidding UI
     this.renderBiddingPanel(gs);
 
-    // Turn indicator (never shown to spectators)
+    // Turn status update in permanent subtle dock bar (no abrupt popping banners)
     const myTurn = !isSpectator && gs.current_turn === this.myId;
-    document.getElementById('myTurnBanner').style.display = myTurn && gs.phase === 'playing' ? 'flex' : 'none';
+    const turnBar = document.getElementById('turnStatusBar');
+    const turnText = document.getElementById('turnStatusText');
+    if (turnBar && turnText) {
+      if (isSpectator) {
+        turnBar.className = 'hand-turn-status-bar not-my-turn';
+        const curPlayer = gs.players.find(p => p.id === gs.current_turn);
+        turnText.innerHTML = `👀 Spectating • Active player turn: <strong>${this.esc(curPlayer ? curPlayer.name : '—')}</strong>`;
+      } else if (gs.phase === 'bidding') {
+        const isMyBid = gs.bidding_idx < (gs.bid_order?.length || 0) && gs.bid_order[gs.bidding_idx] === this.myId;
+        const bidderName = gs.players.find(p => p.id === (gs.bid_order?.[gs.bidding_idx]))?.name || 'Player';
+        if (isMyBid) {
+          turnBar.className = 'hand-turn-status-bar is-my-turn';
+          turnText.innerHTML = '🎯 <strong>YOUR TURN TO BID</strong> • Select your target tricks (0, 2–13)';
+        } else {
+          turnBar.className = 'hand-turn-status-bar not-my-turn';
+          turnText.innerHTML = `⏳ Bidding Phase • Waiting for <strong>${this.esc(bidderName)}</strong> to bid…`;
+        }
+      } else if (gs.phase === 'playing') {
+        const curPlayer = gs.players.find(p => p.id === gs.current_turn);
+        const curName = curPlayer ? curPlayer.name : 'Player';
+        if (myTurn) {
+          turnBar.className = 'hand-turn-status-bar is-my-turn';
+          const isLead = !gs.trick_cards || gs.trick_cards.length === 0;
+          turnText.innerHTML = isLead
+            ? '🔥 <strong>YOUR TURN TO LEAD</strong> • Play any card to start trick'
+            : '🔥 <strong>YOUR TURN TO PLAY</strong> • Tap card to play';
+        } else {
+          turnBar.className = 'hand-turn-status-bar not-my-turn';
+          turnText.innerHTML = `⏳ Current Turn: <strong>${this.esc(curName)}</strong> is playing…`;
+        }
+      } else if (gs.phase === 'dealer_select') {
+        turnBar.className = 'hand-turn-status-bar not-my-turn';
+        turnText.innerHTML = '🂠 Selecting dealer for Round 1…';
+      } else if (gs.phase === 'round_end') {
+        turnBar.className = 'hand-turn-status-bar not-my-turn';
+        turnText.innerHTML = `📊 Round ${gs.round} Complete • Next round starting shortly…`;
+      } else {
+        turnBar.className = 'hand-turn-status-bar not-my-turn';
+        turnText.innerHTML = '⏳ Waiting for round to start…';
+      }
+    }
 
     // Highlight playable cards
     if (myTurn && gs.phase === 'playing') {
@@ -448,6 +488,11 @@ class TarneebOnlineGame {
     if (this._lastOppHash === oppHash) return;
     this._lastOppHash = oppHash;
 
+    const isNewRoundDeal = gs.round > 0 && this._lastDealtRoundOpponents !== gs.round && activePlayers.some(p => (p.card_count || 13) === 13);
+    if (isNewRoundDeal) {
+      this._lastDealtRoundOpponents = gs.round;
+    }
+
     // Clear all
     ['left', 'top', 'right'].forEach(pos => {
       const el = document.getElementById(`opponent-${pos}`);
@@ -466,15 +511,25 @@ class TarneebOnlineGame {
       const isComplete = (bid !== undefined && bid !== null && Number(bid) > 0 && tricks >= Number(bid));
       const isCurrent = player.id === gs.current_turn;
 
-      const cardBacks = Array.from({ length: Math.max(0, cardCount) }, () =>
-        `<div class="card-back ${pos === 'top' ? 'card-back-horizontal' : ''}"></div>`
+      const cardBacks = Array.from({ length: Math.max(0, cardCount) }, (_, bIdx) =>
+        `<div class="card-back ${isNewRoundDeal ? 'card-dealing' : ''}" style="--card-i: ${bIdx};"></div>`
       ).join('');
 
-      el.innerHTML = `
-        <div class="opponent-name ${isCurrent ? 'is-current-turn' : ''}">${this.esc(player.name)}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''} ${isCurrent ? '🔥' : ''}</div>
-        ${bid !== undefined && bid !== null ? `<div class="opponent-bid-badge">Bid ${bid} • ${tricks}(eat)</div>` : ''}
-        <div class="opponent-cards-row">${cardBacks}</div>
-      `;
+      if (pos === 'top') {
+        el.innerHTML = `
+          <div class="opponent-meta-group">
+            <span class="opponent-name ${isCurrent ? 'is-current-turn' : ''}">${this.esc(player.name)}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''} ${isCurrent ? '🔥' : ''}</span>
+            ${bid !== undefined && bid !== null ? `<span class="opponent-bid-badge">Bid ${bid} • ${tricks}(eat)</span>` : ''}
+          </div>
+          <div class="opponent-cards-row">${cardBacks}</div>
+        `;
+      } else {
+        el.innerHTML = `
+          <div class="opponent-name ${isCurrent ? 'is-current-turn' : ''}">${this.esc(player.name)}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''} ${isCurrent ? '🔥' : ''}</div>
+          ${bid !== undefined && bid !== null ? `<div class="opponent-bid-badge">Bid ${bid} • ${tricks}(eat)</div>` : ''}
+          <div class="opponent-cards-row">${cardBacks}</div>
+        `;
+      }
     });
   }
 
@@ -533,6 +588,11 @@ class TarneebOnlineGame {
       sortBtn.textContent = this.sortMode === 'auto' ? '🔀 Auto Sort ON' : '🔀 Manual Mode';
     }
 
+    const isNewRoundDeal = gs.round > 0 && this._lastDealtRoundHand !== gs.round && displayHand.length === 13;
+    if (isNewRoundDeal) {
+      this._lastDealtRoundHand = gs.round;
+    }
+
     let html = '';
     displayHand.forEach((cardStr, idx) => {
       const { rank, suit } = this.parseCard(cardStr);
@@ -540,8 +600,8 @@ class TarneebOnlineGame {
       const isPlayable = myTurn && this.isCardPlayable(cardStr, gs);
 
       html += `
-        <div class="hand-card ${isSelected ? 'selected' : ''} ${!myTurn ? '' : isPlayable ? 'playable' : 'not-playable'}"
-          style="z-index: ${idx + 1};"
+        <div class="hand-card ${isNewRoundDeal ? 'card-dealing' : ''} ${isSelected ? 'selected' : ''} ${!myTurn ? '' : isPlayable ? 'playable' : 'not-playable'}"
+          style="--card-i: ${idx}; z-index: ${idx + 1};"
           data-card="${cardStr}"
           data-idx="${idx}"
           ${this.sortMode === 'manual' ? 'draggable="true"' : ''}
@@ -984,11 +1044,15 @@ class TarneebOnlineGame {
     }
 
     modal.style.display = 'flex';
+    modal.classList.add('open');
   }
 
   hideMatchHistoryModal() {
     const modal = document.getElementById('modalMatchHistory');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+      modal.classList.remove('open');
+      modal.style.display = 'none';
+    }
   }
 
   showGameVictory(data) {
@@ -1291,11 +1355,29 @@ function setupOnlineUIEvents() {
   });
 
   // Match History Modal
+  const historyModal = document.getElementById('modalMatchHistory');
   document.getElementById('btnMatchHistory')?.addEventListener('click', () => {
-    window.tarneebGame.showMatchHistoryModal();
+    if (window.tarneebGame) {
+      window.tarneebGame.showMatchHistoryModal();
+    }
   });
   document.getElementById('btnCloseMatchHistory')?.addEventListener('click', () => {
-    window.tarneebGame.hideMatchHistoryModal();
+    if (window.tarneebGame) {
+      window.tarneebGame.hideMatchHistoryModal();
+    } else if (historyModal) {
+      historyModal.classList.remove('open');
+      historyModal.style.display = 'none';
+    }
+  });
+  historyModal?.addEventListener('click', (e) => {
+    if (e.target === historyModal) {
+      if (window.tarneebGame) {
+        window.tarneebGame.hideMatchHistoryModal();
+      } else {
+        historyModal.classList.remove('open');
+        historyModal.style.display = 'none';
+      }
+    }
   });
 
   // Auto-Sort Prompt buttons
