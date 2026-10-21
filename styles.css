@@ -1652,26 +1652,142 @@ body::before {
   width: 100%;
 }
 
-.online-bottom-actions-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 10px;
-  width: 100%;
-  box-sizing: border-box;
-  margin-top: 4px;
+/* Dedicated Game Controls Section (Matches Live Scores Look) */
+.online-controls-panel {
+  margin-top: 6px;
 }
 
-.online-actions-wrap {
+.online-controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#btnFillBots { grid-column: 1; grid-row: 1; }
+#btnChangeDealer { grid-column: 1; grid-row: 2; }
+#btnMatchHistory { grid-column: 1; grid-row: 3; }
+
+#btnLeaveActiveGame { grid-column: 2; grid-row: 1; }
+#btnSwitchIdentity { grid-column: 2; grid-row: 2; }
+#btnSwitchName { grid-column: 2; grid-row: 3; }
+
+.online-control-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  flex-wrap: wrap;
   width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  font-size: 0.88rem;
+  font-weight: 750;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  white-space: nowrap;
+  box-sizing: border-box;
+  transition: all var(--transition-fast);
+  text-align: center;
+  border-width: 1.5px;
+  border-style: solid;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.online-control-btn.fill-bots-btn {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(52, 211, 153, 0.45);
+  color: #6ee7b7;
+}
+
+.online-control-btn.fill-bots-btn:hover {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: #34d399;
+  color: #ffffff;
+}
+
+.online-control-btn.leave-table-btn {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #fca5a5;
+}
+
+.online-control-btn.leave-table-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+.online-control-btn.dealer-select-btn {
+  background: rgba(234, 179, 8, 0.16);
+  border-color: rgba(250, 204, 21, 0.45);
+  color: #fde047;
+}
+
+.online-control-btn.dealer-select-btn:hover {
+  background: rgba(234, 179, 8, 0.3);
+  border-color: #facc15;
+  color: #ffffff;
+}
+
+.online-control-btn.history-btn {
+  background: rgba(59, 130, 246, 0.16);
+  border-color: rgba(96, 165, 250, 0.45);
+  color: #93c5fd;
+}
+
+.online-control-btn.history-btn:hover {
+  background: rgba(59, 130, 246, 0.3);
+  border-color: #60a5fa;
+  color: #ffffff;
+}
+
+.online-control-btn.switch-id-btn {
+  background: rgba(168, 85, 247, 0.16);
+  border-color: rgba(192, 132, 252, 0.45);
+  color: #d8b4fe;
+}
+
+.online-control-btn.switch-id-btn:hover {
+  background: rgba(168, 85, 247, 0.3);
+  border-color: #c084fc;
+  color: #ffffff;
+}
+
+.online-control-btn.switch-name-btn {
+  background: rgba(148, 163, 184, 0.16);
+  border-color: rgba(203, 213, 225, 0.4);
+  color: #f1f5f9;
+}
+
+.online-control-btn.switch-name-btn:hover {
+  background: rgba(148, 163, 184, 0.3);
+  border-color: #e2e8f0;
+  color: #ffffff;
+}
+
+.online-control-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.12);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.online-control-btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 420px) {
+  .online-controls-grid {
+    gap: 8px;
+  }
+  .online-control-btn {
+    min-height: 44px;
+    padding: 10px 6px;
+    font-size: 0.78rem;
+    gap: 5px;
+  }
 }
 
 .online-pill-badge {
@@ -2351,12 +2467,18 @@ body::before {
   justify-content: center;
   align-items: flex-end;
   width: 100%;
-  overflow-x: hidden;
+  overflow-x: auto;
   overflow-y: visible;
-  padding: 18px 4px 8px 4px;
+  padding: 20px 8px 8px 8px;
   box-sizing: border-box;
   position: relative;
   min-height: 94px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.my-hand-scroll-wrap::-webkit-scrollbar {
+  display: none;
 }
 
 /* Card Dealing Staggered Animation & Transitions */
@@ -2375,7 +2497,7 @@ body::before {
   flex-shrink: 0;
   cursor: pointer;
   position: relative;
-  margin-left: -18px;
+  margin-left: -10px;
   transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.18s ease-out, opacity 0.25s ease;
   touch-action: manipulation;
   will-change: transform, opacity;
@@ -2443,9 +2565,6 @@ body::before {
   border: 1.5px solid #34d399;
   box-shadow: 0 0 10px rgba(52, 211, 153, 0.6);
 }
-  opacity: 0.4;
-  cursor: not-allowed;
-}
 
 .hand-card.dragging {
   opacity: 0.3;
@@ -2456,12 +2575,12 @@ body::before {
     padding: 6px 4px;
   }
   .card {
-    width: 40px;
-    height: 62px;
+    width: 42px;
+    height: 64px;
     padding: 2px 3px;
   }
   .hand-card {
-    margin-left: -20px;
+    margin-left: -11px;
   }
   .card-top-rank, .card-bot-rank {
     font-size: 0.7rem;
@@ -3076,7 +3195,7 @@ body::before {
   .hand-card {
     width: 60px;
     height: 88px;
-    margin-left: -20px;
+    margin-left: -14px;
   }
 
   .card-back {
