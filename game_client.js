@@ -313,11 +313,11 @@ class TarneebOnlineGame {
       }
     }
 
-    // Leave Game Button in header ("🚪 Leave Game") - visible only to active seated players
+    // Leave Game Button ("🚪 Leave Game") - visible only to active seated players
     const leaveGameBtn = document.getElementById('btnLeaveActiveGame');
     if (leaveGameBtn) {
       const isSeatedPlayer = !isSpectator && me && me.seat !== null && me.seat !== undefined;
-      leaveGameBtn.style.display = isSeatedPlayer ? 'inline-flex' : 'none';
+      leaveGameBtn.style.display = isSeatedPlayer ? 'flex' : 'none';
     }
 
     // Render live scores sidebar
@@ -937,14 +937,8 @@ class TarneebOnlineGame {
   }
 
   showTrickResult(data) {
-    const winner = data.winner_name || 'Player';
-    const kh = data.special_kh;
-    const ah = data.special_ah;
-    let text = `🃏 ${winner} wins the trick!`;
-    if (kh && ah) {
-      text += ` ⚡ King of Hearts Snip! (K♥ -5, A♥ +5)`;
-    }
-    this.showToast(text, 'info');
+    // Disabled: trick winner popup completely removed so trick resolves & clears silently
+    return;
   }
 
   showRoundSummary(data) {
