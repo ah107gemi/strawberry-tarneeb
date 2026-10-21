@@ -276,16 +276,16 @@
         <!-- Injected via game_client.js -->
       </div>
 
-      <!-- Action Buttons Docked at Bottom of UI -->
-      <div class="online-bottom-actions-bar">
-        <div class="online-actions-wrap">
-          <button id="btnFillBots" class="btn-subtle fill-bots-btn" type="button" title="Fill remaining seats with AI bots">🤖 Fill Table with Bots</button>
-          <button id="btnLeaveActiveGame" class="btn-subtle leave-table-btn" type="button" title="Leave active table seat" style="display: none;">🚪 Leave Game</button>
-          <button id="btnChangeDealer" class="btn-subtle dealer-select-btn" type="button" title="Select or change dealer">🂠 Change Dealer</button>
-          <button id="btnMatchHistory" class="btn-subtle history-btn" type="button" title="View Match History">📜 Match History</button>
-          <button id="smirkBtn" class="btn-subtle smirk-btn" type="button" title="Send Smirk">😏 Smirk</button>
-          <button id="btnSwitchIdentity" class="btn-subtle switch-id-btn" type="button" title="Change Player / Role">🔄 Change Role</button>
-          <button id="btnSwitchName" class="btn-subtle switch-name-btn" type="button" title="Switch Name / Logout">👤 Switch Name</button>
+      <!-- Dedicated Game Controls Container (Matches Live Scores section) -->
+      <div id="onlineGameControls" class="online-scores-panel online-controls-panel">
+        <div class="score-sidebar-title">🎮 Game Controls</div>
+        <div class="online-controls-grid">
+          <button id="btnFillBots" class="online-control-btn fill-bots-btn" type="button" title="Fill remaining seats with AI bots">🤖 Fill Table with Bots</button>
+          <button id="btnLeaveActiveGame" class="online-control-btn leave-table-btn" type="button" title="Leave active table seat" style="display: none;">🚪 Leave Game</button>
+          <button id="btnChangeDealer" class="online-control-btn dealer-select-btn" type="button" title="Select or change dealer">🂠 Change Dealer</button>
+          <button id="btnSwitchIdentity" class="online-control-btn switch-id-btn" type="button" title="Change Player / Role">🔄 Change Role</button>
+          <button id="btnMatchHistory" class="online-control-btn history-btn" type="button" title="View Match History">📜 Match History</button>
+          <button id="btnSwitchName" class="online-control-btn switch-name-btn" type="button" title="Switch Name / Logout">👤 Switch Name</button>
         </div>
       </div>
 
