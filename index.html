@@ -78,8 +78,8 @@
             <path d="M8 16H3v5"></path>
           </svg>
         </button>
-        <button id="btnHamburgerScoreboard" class="btn-icon drawer-toggle-btn" type="button" title="Menu & Navigation" aria-label="Open Menu">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <button id="btnHamburgerScoreboard" class="btn-icon drawer-toggle-btn menu-toggle" type="button" title="Menu & Navigation" aria-label="Open Menu" data-menu-trigger="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;">
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -199,8 +199,8 @@
           <span id="onlinePhaseInfo" class="online-pill-badge phase-pill">⏳ Waiting for table…</span>
           <span id="onlineUserRoleBadge" class="online-pill-badge role-pill" style="display: none;">👀 Spectating</span>
         </div>
-        <button id="btnHamburgerOnline" class="drawer-trigger-btn" type="button" title="Menu & Navigation" aria-label="Open Menu">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <button id="btnHamburgerOnline" class="drawer-trigger-btn menu-toggle" type="button" title="Menu & Navigation" aria-label="Open Menu" data-menu-trigger="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;">
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -697,7 +697,7 @@
           <span class="brand-strawberry">🍓</span>
           <span class="side-drawer-title">Tarneeb Menu</span>
         </div>
-        <button id="btnCloseDrawer" class="btn-drawer-close" type="button" aria-label="Close menu">&times;</button>
+        <button id="btnCloseDrawer" class="btn-drawer-close drawer-close" type="button" aria-label="Close menu" data-drawer-close="true">&times;</button>
       </div>
 
       <div class="side-drawer-body">
@@ -705,14 +705,15 @@
         <div class="drawer-section">
           <div class="drawer-section-title">🧭 Navigation</div>
           <div class="drawer-nav-list">
-            <button id="navModeScoreboard" class="drawer-nav-item active" type="button">
+            <a href="scoreboard.html" id="navLinkScoreboard" class="drawer-nav-item">
               <span class="drawer-nav-icon">📋</span>
               <div class="drawer-nav-meta">
                 <span class="drawer-nav-name">Scoreboard</span>
-                <span class="drawer-nav-sub">In-Person Table Scoring</span>
+                <span class="drawer-nav-sub">Standalone Scorekeeper (24/7)</span>
               </div>
-            </button>
-            <button id="navModeOnline" class="drawer-nav-item" type="button">
+              <span class="drawer-external-icon">↗</span>
+            </a>
+            <button id="navModeOnline" class="drawer-nav-item active" type="button">
               <span class="drawer-nav-icon">🂠</span>
               <div class="drawer-nav-meta">
                 <span class="drawer-nav-name">Online Table</span>
