@@ -369,6 +369,8 @@ class ConnectionManager:
             "change_role": self._handle_switch_role,
             "leave": self._handle_leave,
             "logout": self._handle_leave,
+            "leave_seat": self._handle_leave_seat,
+            "leave_game": self._handle_leave_seat,
             "ping": self._handle_ping,
             "set_dealer": self._handle_set_dealer,
             "change_dealer": self._handle_set_dealer,
@@ -575,8 +577,96 @@ class ConnectionManager:
 
 
     # ------------------------------------------------------------------
-    # Handler: leave / logout
     # ------------------------------------------------------------------
+    # Handler: leave / logout / leave_seat
+    # ------------------------------------------------------------------
+
+    async def _handle_leave_seat(self, token: str, data: Dict):
+        game = self.game
+        player = game.players.get(token)
+        if not player:
+            return
+
+        old_seat = player.seat
+        old_name = player.name or "Player"
+        old_hand = list(player.hand)
+
+        if old_seat is not None and 0 <= old_seat < MAX_PLAYERS:
+            is_active_game = (game.phase in ("bidding", "playing", "round_end", "dealer_select") or game.round > 0)
+            if is_active_game:
+                bot_token = f"bot_{uuid.uuid4().hex[:8]}"
+                bot_name = f"Bot {old_name}" if not old_name.startswith("Bot") else old_name
+                bot_player = Player(token=bot_token, name=bot_name, seat=old_seat, role="player")
+                bot_player.is_bot = True
+                bot_player.hand = old_hand
+
+                game.seats[old_seat] = bot_token
+                game.players[bot_token] = bot_player
+
+                if token in game.bids:
+                    game.bids[bot_token] = game.bids.pop(token)
+                if token in game.tricks_taken:
+                    game.tricks_taken[bot_token] = game.tricks_taken.pop(token)
+                if token in game.scores:
+                    game.scores[bot_token] = game.scores.pop(token)
+                if token in game.round_scores:
+                    game.round_scores[bot_token] = game.round_scores.pop(token)
+
+                if game.bid_order:
+                    game.bid_order = [bot_token if t == token else t for t in game.bid_order]
+
+                for tc in game.trick_cards:
+                    if tc.get("player_id") == token:
+                        tc["player_id"] = bot_token
+                        tc["player_name"] = bot_name
+
+                player.seat = None
+                player.role = "spectator"
+                player.is_spectator = True
+                player.hand = []
+
+                log.info("Player %s left seat %d; replaced by %s (%s)", old_name, old_seat, bot_name, bot_token)
+
+                await self.send_to(token, {
+                    "type": "role_changed",
+                    "data": {"role": "spectator", "seat": None, "message": "You left the table and moved to spectator."}
+                })
+
+                await self.broadcast({
+                    "type": "player_left_replaced_by_bot",
+                    "data": {
+                        "leaving_player_id": token,
+                        "leaving_player_name": old_name,
+                        "seat": old_seat,
+                        "bot_id": bot_token,
+                        "bot_name": bot_name,
+                        "message": f"{old_name} left the game. Replaced by {bot_name}!"
+                    }
+                })
+
+                await self.broadcast_game_state()
+                self._trigger_bot_turn_if_needed()
+            else:
+                game.seats[old_seat] = None
+                player.seat = None
+                player.role = "spectator"
+                player.is_spectator = True
+                player.hand = []
+
+                await self.send_to(token, {
+                    "type": "role_changed",
+                    "data": {"role": "spectator", "seat": None, "message": "You moved to spectator."}
+                })
+                await self.broadcast({
+                    "type": "player_left",
+                    "data": {"id": token, "name": old_name}
+                })
+                await self.broadcast_game_state()
+        else:
+            await self.send_to(token, {
+                "type": "role_changed",
+                "data": {"role": "spectator", "seat": None, "message": "You are currently a spectator."}
+            })
 
     async def _handle_leave(self, token: str, data: Dict):
         game = self.game
@@ -586,14 +676,11 @@ class ConnectionManager:
 
         old_name = player.name
         if player.seat is not None:
-            game.seats[player.seat] = None
-            player.seat = None
-        player.role = "spectator"
-        player.is_spectator = True
-        player.hand = []
+            # If leaving during an active game, replace seat with bot
+            await self._handle_leave_seat(token, data)
         player.name = ""
 
-        log.info("Player '%s' (%s) left / switched name", old_name, token)
+        log.info("Player '%s' (%s) logged out", old_name, token)
         await self.broadcast({
             "type": "player_left",
             "data": {"id": token, "name": old_name},
@@ -611,19 +698,9 @@ class ConnectionManager:
             return
 
         if player.role == "player":
-            # Active player clicks switch role -> move to spectators and free up their seat
-            if player.seat is not None:
-                old_seat = player.seat
-                game.seats[old_seat] = None
-                player.seat = None
-                log.info("%s vacated seat %d and moved to spectators", player.name, old_seat)
-            player.role = "spectator"
-            player.is_spectator = True
-            player.hand = []
-            await self.send_to(token, {
-                "type": "role_changed",
-                "data": {"role": "spectator", "seat": None, "message": "You moved to Bench / Spectator."}
-            })
+            # Active player moving to spectator -> use _handle_leave_seat to replace with bot if active
+            await self._handle_leave_seat(token, data)
+            return
         else:
             # Spectator clicks switch role -> if there is an open seat (< 4 players), assign to active seat
             empty_seat = next((i for i, s in enumerate(game.seats) if s is None), None)
