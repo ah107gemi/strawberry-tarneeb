@@ -53,7 +53,7 @@
           <img src="icon.svg" alt="Strawberry Tarneeb Logo">
         </div>
         <div>
-          <h1 class="brand-title">Tarneeb 🍓</h1>
+          <h1 class="brand-title">Tarneeb <span class="brand-strawberry">🍓</span></h1>
           <p class="brand-subtitle">
             <span>15 Rounds</span>
             <span>•</span>
@@ -202,19 +202,11 @@
       <!-- Online Game Header & Status Bar -->
       <div class="online-header-strip">
         <div class="online-meta-wrap">
+          <span class="online-pill-badge brand-pill"><span class="brand-strawberry">🍓</span> Tarneeb</span>
           <span id="onlineRoundBadge" class="online-pill-badge round-pill">Round 1 of 15</span>
           <button id="onlineDealerBadge" class="online-pill-badge dealer-pill" type="button" title="Click to Change Dealer">🂠 Dealer: -</button>
           <span id="onlinePhaseInfo" class="online-pill-badge phase-pill">⏳ Waiting for table…</span>
           <span id="onlineUserRoleBadge" class="online-pill-badge role-pill" style="display: none;">👀 Spectating</span>
-        </div>
-        <div class="online-actions-wrap">
-          <button id="btnFillBots" class="btn-subtle fill-bots-btn" type="button" title="Fill remaining seats with AI bots">🤖 Fill Table with Bots</button>
-          <button id="btnLeaveActiveGame" class="btn-subtle leave-table-btn" type="button" title="Leave active table seat" style="display: none;">🚪 Leave Game</button>
-          <button id="btnChangeDealer" class="btn-subtle dealer-select-btn" type="button" title="Select or change dealer">🂠 Change Dealer</button>
-          <button id="btnMatchHistory" class="btn-subtle history-btn" type="button" title="View Match History">📜 Match History</button>
-          <button id="smirkBtn" class="btn-subtle smirk-btn" type="button" title="Send Smirk">😏 Smirk</button>
-          <button id="btnSwitchIdentity" class="btn-subtle switch-id-btn" type="button" title="Change Player / Role">🔄 Change Role</button>
-          <button id="btnSwitchName" class="btn-subtle switch-name-btn" type="button" title="Switch Name / Logout">👤 Switch Name</button>
         </div>
       </div>
 
@@ -282,6 +274,19 @@
       <!-- Live Standing & Spectators Sidebar/Strip -->
       <div id="onlineScoreboard" class="online-scores-panel">
         <!-- Injected via game_client.js -->
+      </div>
+
+      <!-- Action Buttons Docked at Bottom of UI -->
+      <div class="online-bottom-actions-bar">
+        <div class="online-actions-wrap">
+          <button id="btnFillBots" class="btn-subtle fill-bots-btn" type="button" title="Fill remaining seats with AI bots">🤖 Fill Table with Bots</button>
+          <button id="btnLeaveActiveGame" class="btn-subtle leave-table-btn" type="button" title="Leave active table seat" style="display: none;">🚪 Leave Game</button>
+          <button id="btnChangeDealer" class="btn-subtle dealer-select-btn" type="button" title="Select or change dealer">🂠 Change Dealer</button>
+          <button id="btnMatchHistory" class="btn-subtle history-btn" type="button" title="View Match History">📜 Match History</button>
+          <button id="smirkBtn" class="btn-subtle smirk-btn" type="button" title="Send Smirk">😏 Smirk</button>
+          <button id="btnSwitchIdentity" class="btn-subtle switch-id-btn" type="button" title="Change Player / Role">🔄 Change Role</button>
+          <button id="btnSwitchName" class="btn-subtle switch-name-btn" type="button" title="Switch Name / Logout">👤 Switch Name</button>
+        </div>
       </div>
 
       <div id="onlineStatus" class="online-connection-status">Connecting to server…</div>
