@@ -363,7 +363,6 @@ class ConnectionManager:
             "join": self._handle_join,
             "bid": self._handle_bid,
             "play_card": self._handle_play_card,
-            "smirk": self._handle_smirk,
             "request_state": self._handle_request_state,
             "switch_role": self._handle_switch_role,
             "change_role": self._handle_switch_role,
@@ -578,6 +577,60 @@ class ConnectionManager:
 
     # ------------------------------------------------------------------
     # ------------------------------------------------------------------
+    # Match Termination & Reset
+    # ------------------------------------------------------------------
+
+    async def terminate_match(self, leaving_player_name: str, reason: str = ""):
+        game = self.game
+        if not reason:
+            reason = f"{leaving_player_name} left the game. The active match has ended."
+        log.info("Match terminated! Reason: %s", reason)
+
+        # Snapshot final scores and history before destruction
+        final_scores = {p.name: game.scores.get(tok, 0) for tok, p in game.players.items() if p.name}
+        final_history = list(game.round_history)
+        round_reached = game.round
+
+        # Broadcast match_terminated event to all connected clients
+        await self.broadcast({
+            "type": "match_terminated",
+            "data": {
+                "reason": reason,
+                "leaving_player": leaving_player_name,
+                "scores": final_scores,
+                "history": final_history,
+                "round": round_reached
+            }
+        })
+
+        # Destroy active game state on server
+        game.phase = "lobby"
+        game.round = 0
+        game.dealer_seat = 0
+        game.current_turn_seat = 0
+        game.bids.clear()
+        game.tricks_taken.clear()
+        game.trick_cards.clear()
+        game.led_suit = None
+        game.scores.clear()
+        game.round_scores.clear()
+        game.round_history.clear()
+        game.bid_order.clear()
+        game.bidding_idx = 0
+
+        # Reset players and clear bots
+        for tok, p in list(game.players.items()):
+            if getattr(p, "is_bot", False):
+                game.players.pop(tok, None)
+            else:
+                p.seat = None
+                p.role = "spectator"
+                p.is_spectator = True
+                p.hand = []
+        game.seats = [None, None, None, None]
+        await self.broadcast_game_state()
+
+    # ------------------------------------------------------------------
     # Handler: leave / logout / leave_seat
     # ------------------------------------------------------------------
 
@@ -589,63 +642,12 @@ class ConnectionManager:
 
         old_seat = player.seat
         old_name = player.name or "Player"
-        old_hand = list(player.hand)
 
         if old_seat is not None and 0 <= old_seat < MAX_PLAYERS:
             is_active_game = (game.phase in ("bidding", "playing", "round_end", "dealer_select") or game.round > 0)
             if is_active_game:
-                bot_token = f"bot_{uuid.uuid4().hex[:8]}"
-                bot_name = f"Bot {old_name}" if not old_name.startswith("Bot") else old_name
-                bot_player = Player(token=bot_token, name=bot_name, seat=old_seat, role="player")
-                bot_player.is_bot = True
-                bot_player.hand = old_hand
-
-                game.seats[old_seat] = bot_token
-                game.players[bot_token] = bot_player
-
-                if token in game.bids:
-                    game.bids[bot_token] = game.bids.pop(token)
-                if token in game.tricks_taken:
-                    game.tricks_taken[bot_token] = game.tricks_taken.pop(token)
-                if token in game.scores:
-                    game.scores[bot_token] = game.scores.pop(token)
-                if token in game.round_scores:
-                    game.round_scores[bot_token] = game.round_scores.pop(token)
-
-                if game.bid_order:
-                    game.bid_order = [bot_token if t == token else t for t in game.bid_order]
-
-                for tc in game.trick_cards:
-                    if tc.get("player_id") == token:
-                        tc["player_id"] = bot_token
-                        tc["player_name"] = bot_name
-
-                player.seat = None
-                player.role = "spectator"
-                player.is_spectator = True
-                player.hand = []
-
-                log.info("Player %s left seat %d; replaced by %s (%s)", old_name, old_seat, bot_name, bot_token)
-
-                await self.send_to(token, {
-                    "type": "role_changed",
-                    "data": {"role": "spectator", "seat": None, "message": "You left the table and moved to spectator."}
-                })
-
-                await self.broadcast({
-                    "type": "player_left_replaced_by_bot",
-                    "data": {
-                        "leaving_player_id": token,
-                        "leaving_player_name": old_name,
-                        "seat": old_seat,
-                        "bot_id": bot_token,
-                        "bot_name": bot_name,
-                        "message": f"{old_name} left the game. Replaced by {bot_name}!"
-                    }
-                })
-
-                await self.broadcast_game_state()
-                self._trigger_bot_turn_if_needed()
+                await self.terminate_match(leaving_player_name=old_name, reason=f"{old_name} left the game. The active match has ended.")
+                return
             else:
                 game.seats[old_seat] = None
                 player.seat = None
@@ -841,15 +843,6 @@ class ConnectionManager:
         if len(game.trick_cards) == 1:
             game.led_suit = card_suit(card)
 
-        # Smirk: non-Heart led, this card is a Heart (cut)
-        if game.led_suit and game.led_suit != TRUMP_SUIT and card_suit(card) == TRUMP_SUIT:
-            prior_cuts = any(card_suit(p["card"]) == TRUMP_SUIT for p in game.trick_cards[:-1])
-            if not prior_cuts:
-                await self.send_to(token, {
-                    "type": "prompt_smirk",
-                    "data": {"message": "Send Smirk 😏?"}
-                })
-
         log.info("%s played %s (trick cards: %d)", player.name, card, len(game.trick_cards))
 
         # Move to next seat (to the right in Tarneeb)
@@ -881,20 +874,6 @@ class ConnectionManager:
             return False, f"Must follow led suit ({led})."
 
         return True, ""
-
-    # ------------------------------------------------------------------
-    # Handler: smirk
-    # ------------------------------------------------------------------
-
-    async def _handle_smirk(self, token: str, data: Dict):
-        player = self.game.players.get(token)
-        if not player:
-            return
-        # Player-triggered smirk (emoji / animation reaction)
-        await self.broadcast({
-            "type": "smirk_trigger",
-            "data": {"player_id": token, "player_name": player.name},
-        })
 
     # ------------------------------------------------------------------
     # Handler: request_state
@@ -1402,11 +1381,16 @@ async def websocket_endpoint(ws: WebSocket, player_token: str):
                     pass
 
     except WebSocketDisconnect:
+        is_seated_active = (player and player.seat is not None and not getattr(player, "is_bot", False))
+        is_active_game = (manager.game.phase in ("bidding", "playing", "round_end", "dealer_select") or manager.game.round > 0)
         manager.disconnect(player_token)
-        await manager.broadcast({
-            "type": "player_disconnected",
-            "data": {"id": player_token, "name": player.name},
-        })
+        if is_seated_active and is_active_game:
+            await manager.terminate_match(leaving_player_name=player.name, reason=f"{player.name} disconnected. The active match has ended.")
+        else:
+            await manager.broadcast({
+                "type": "player_disconnected",
+                "data": {"id": player_token, "name": player.name},
+            })
     except Exception as exc:
         import traceback
         print(f"[ERROR] WebSocket fatal error for token {player_token}: {exc}")
