@@ -102,22 +102,30 @@ async def run_simulation():
         assert len(my_hand) == 13, f"Expected 13 cards, got {len(my_hand)}"
         assert len(bots_detected) == 3, f"Expected 3 bots, got {len(bots_detected)}"
 
-        # Step 5: Test manual "Change Dealer" (rotate_dealer) with bots
-        print("\n[Step 5] Testing 'rotate_dealer' (manual Change Dealer with bots)...")
+        # Step 5: Test manual "Change Dealer" (rotate_dealer) with bots (Counter-Clockwise order)
+        print("\n[Step 5] Testing 'rotate_dealer' (manual Change Dealer with bots, counter-clockwise)...")
         initial_dealer = current_state.get("dealer")
+        # Find Ahmed's seat
+        ahmed_seat = 0
+        expected_next_seat = (ahmed_seat - 1 + 4) % 4  # 3 (East / physical right)
         await ws.send(json.dumps({"type": "rotate_dealer"}))
         await asyncio.sleep(0.3)
         # Receive dealer_updated or game_state
         dealer_rotated = False
+        rotated_seat = None
         while not dealer_rotated:
             msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=3.0))
             if msg.get("type") in ("dealer_updated", "game_state"):
                 if msg.get("type") == "dealer_updated":
-                    print(f"  ✓ Dealer rotated successfully to: {msg.get('data', {}).get('dealer_name')}")
+                    rotated_seat = msg.get("data", {}).get("dealer_seat")
+                    print(f"  ✓ Dealer rotated successfully to: {msg.get('data', {}).get('dealer_name')} (Seat {rotated_seat + 1})")
                     dealer_rotated = True
                 elif msg.get("type") == "game_state" and msg.get("data", {}).get("dealer") != initial_dealer:
                     print(f"  ✓ Dealer updated in game state to: {msg.get('data', {}).get('dealer')}")
                     dealer_rotated = True
+        if rotated_seat is not None:
+            assert rotated_seat == expected_next_seat, f"Expected counter-clockwise seat {expected_next_seat}, got {rotated_seat}"
+            print(f"  ✓ Verified counter-clockwise rotation: Seat {ahmed_seat + 1} ➔ Seat {rotated_seat + 1} (to player's physical right)")
 
         # Step 6: Play through 2 full tricks with faster bot speed
         tricks_completed = 0
