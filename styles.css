@@ -166,6 +166,9 @@ body::before {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
+  position: relative;
+  z-index: 100;
+  pointer-events: auto;
 }
 
 .brand-wrapper {
@@ -220,6 +223,10 @@ body::before {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 101;
+  pointer-events: auto;
 }
 
 .btn-icon {
@@ -1635,13 +1642,16 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: 8px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 6px 10px;
   width: 100%;
   box-sizing: border-box;
+  position: relative;
+  z-index: 100;
+  pointer-events: auto;
 }
 
 .online-meta-wrap {
@@ -1649,7 +1659,8 @@ body::before {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* Dedicated Game Controls Section (Matches Live Scores Look) */
@@ -3185,6 +3196,30 @@ body::before {
 /* ==========================================================================
    Slide Navigation Drawer & Menu Triggers
    ========================================================================== */
+.drawer-trigger-btn,
+.drawer-toggle-btn,
+.menu-toggle,
+#btnHamburgerScoreboard,
+#btnHamburgerOnline,
+#btnMenu {
+  position: relative !important;
+  z-index: 1000 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  -webkit-tap-highlight-color: transparent !important;
+  touch-action: manipulation !important;
+}
+
+.drawer-trigger-btn svg,
+.drawer-toggle-btn svg,
+.menu-toggle svg,
+#btnHamburgerScoreboard svg,
+#btnHamburgerOnline svg,
+#btnMenu svg {
+  pointer-events: none !important;
+}
+
 .drawer-trigger-btn {
   display: inline-flex;
   align-items: center;
@@ -3196,7 +3231,6 @@ body::before {
   font-size: 0.8rem;
   font-weight: 600;
   padding: 6px 14px;
-  cursor: pointer;
   transition: all 0.15s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
   margin-left: auto;
@@ -3217,40 +3251,50 @@ body::before {
 }
 
 .side-drawer-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  z-index: 9999;
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+  z-index: 99999 !important;
   display: none;
   opacity: 0;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.25s ease !important;
+  pointer-events: none;
 }
 
-.side-drawer-overlay.open {
-  display: flex;
-  opacity: 1;
+.side-drawer-overlay.open,
+.side-drawer-overlay.active {
+  display: flex !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 .side-drawer-panel {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 310px;
-  max-width: 86vw;
-  background: #0f172a;
-  border-right: 1px solid #1e293b;
-  box-shadow: 6px 0 30px rgba(0, 0, 0, 0.55);
-  display: flex;
-  flex-direction: column;
-  transform: translateX(-100%);
-  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 320px !important;
+  max-width: 86vw !important;
+  background: #0f172a !important;
+  border-right: 1px solid #1e293b !important;
+  box-shadow: 6px 0 35px rgba(0, 0, 0, 0.65) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  transform: translateX(-100%) !important;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  z-index: 100000 !important;
+  pointer-events: auto !important;
 }
 
-.side-drawer-overlay.open .side-drawer-panel {
-  transform: translateX(0);
+.side-drawer-overlay.open .side-drawer-panel,
+.side-drawer-overlay.active .side-drawer-panel,
+.side-drawer-panel.open,
+.side-drawer-panel.active {
+  transform: translateX(0) !important;
 }
 
 .side-drawer-header {
@@ -3272,20 +3316,22 @@ body::before {
 }
 
 .btn-drawer-close {
-  background: transparent;
-  border: none;
-  font-size: 1.6rem;
-  line-height: 1;
-  color: #94a3b8;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
-  transition: color 0.15s ease, background 0.15s ease;
+  background: transparent !important;
+  border: none !important;
+  font-size: 1.8rem !important;
+  line-height: 1 !important;
+  color: #94a3b8 !important;
+  cursor: pointer !important;
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+  transition: all 0.15s ease !important;
+  pointer-events: auto !important;
+  z-index: 100001 !important;
 }
 
 .btn-drawer-close:hover {
-  color: #f8fafc;
-  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .side-drawer-body {
