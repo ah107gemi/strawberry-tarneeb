@@ -176,35 +176,31 @@ async def run_simulation():
         elapsed = time.time() - start_time
         print(f"\n  ⏱️  2 Tricks completed in {elapsed:.2f}s (significantly faster with reduced delays!)")
 
-        # Step 7: Test 'leave_seat' (Leave Game replaced seamlessly by Bot)
-        print("\n[Step 7] Testing 'leave_seat' (Human leaves table; replaced by Bot Ahmed)...")
+        # Step 7: Test 'leave_seat' (Leave Game terminates active match for table)
+        print("\n[Step 7] Testing 'leave_seat' (Active player leaves table; match terminates)...")
         await ws.send(json.dumps({"type": "leave_seat"}))
 
-        bot_replacement_verified = False
-        role_changed_verified = False
+        match_terminated_verified = False
+        lobby_reset_verified = False
 
-        while not (bot_replacement_verified and role_changed_verified):
+        while not (match_terminated_verified and lobby_reset_verified):
             msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=5.0))
             mtype = msg.get("type")
             data = msg.get("data", {})
 
-            if mtype == "role_changed" and data.get("role") == "spectator":
-                role_changed_verified = True
-                print("  ✓ Human moved to spectator role:", data.get("message"))
-            elif mtype == "player_left_replaced_by_bot":
-                bot_replacement_verified = True
-                print(f"  ✓ Bot replacement event verified: {data.get('leaving_player_name')} replaced by {data.get('bot_name')} at Seat {data.get('seat') + 1}")
+            if mtype == "match_terminated":
+                match_terminated_verified = True
+                print(f"  ✓ Match termination event verified: {data.get('reason')}")
+                assert data.get("leaving_player") == my_name, f"Expected {my_name}, got {data.get('leaving_player')}"
             elif mtype == "game_state":
                 current_state = data
+                if data.get("phase") == "lobby":
+                    lobby_reset_verified = True
+                    print(f"  ✓ Game state successfully reset to lobby! Phase: '{data.get('phase')}'")
 
-        assert bot_replacement_verified, "Expected player_left_replaced_by_bot event"
-        assert role_changed_verified, "Expected role_changed event to spectator"
-
-        # Verify all 4 seats are still filled and game phase is maintained
-        seated_players = [p for p in current_state.get("players", []) if p.get("role") == "player"]
-        assert len(seated_players) == 4, f"Expected 4 active seated players, got {len(seated_players)}"
-        print(f"  ✓ All 4 table seats still active: {[p.get('name') for p in seated_players]}")
-        print(f"  ✓ Game phase remains active: '{current_state.get('phase')}'")
+        assert match_terminated_verified, "Expected match_terminated event"
+        assert lobby_reset_verified, "Expected game_state reset to lobby"
+        print(f"  ✓ Verified active game destruction: phase='{current_state.get('phase')}', round={current_state.get('round')}")
 
         print("\n" + "=" * 65)
         print("✅ SIMULATION VERIFICATION SUCCESSFUL!")
@@ -213,7 +209,7 @@ async def run_simulation():
         print(f"  • 'Change Dealer' (rotate_dealer) verified working with bots")
         print(f"  • Bots took automated legal turns with snappy, fast delays")
         print(f"  • Successfully resolved {tricks_completed} tricks with Tarneeb rules")
-        print(f"  • Successfully tested 'leave_seat' with instant Bot replacement & hand preservation")
+        print(f"  • Successfully tested active game termination upon 'leave_seat'")
         print("=" * 65 + "\n")
 
 
