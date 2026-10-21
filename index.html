@@ -218,13 +218,6 @@
         </div>
       </div>
 
-      <!-- Turn Indicator Banner -->
-      <div id="myTurnBanner" class="my-turn-banner" style="display: none;">
-        <span class="pulse-fire">🔥</span>
-        <span>YOUR TURN TO PLAY A CARD</span>
-        <span class="pulse-fire">🔥</span>
-      </div>
-
       <!-- Smirk Prompt Floating Banner (When cutting with a Heart on non-Heart trick) -->
       <div id="smirkPromptBanner" class="smirk-prompt-banner" style="display: none;">
         <span>Cut with Hearts! 😏 Send Smirk?</span>
@@ -272,6 +265,11 @@
 
       <!-- My Hand Dock (Bottom) -->
       <div class="my-hand-dock">
+        <!-- Integrated Permanent Turn Status Indicator Bar -->
+        <div id="turnStatusBar" class="hand-turn-status-bar not-my-turn">
+          <div class="turn-status-dot"></div>
+          <span id="turnStatusText" class="turn-status-text">Waiting for table…</span>
+        </div>
         <div class="hand-dock-header">
           <span class="hand-title">🂠 Your Hand (13 Cards)</span>
           <span class="hand-hint">Tap card once to select, tap again to play</span>
