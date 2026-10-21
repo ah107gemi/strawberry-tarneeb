@@ -452,12 +452,7 @@ class TarneebOnlineGame {
     this._forceTrickRerender = false;
 
     if (cards.length === 0) {
-      const leader = gs.players.find(p => p.id === gs.current_turn);
-      const isMe = gs.current_turn === this.myId;
-      const leaderText = isMe
-        ? '🔥 Your turn to lead — play any card to start trick'
-        : (leader ? `Waiting for ${this.esc(leader.name)} to lead…` : 'Waiting for first card…');
-      area.innerHTML = `<div class="trick-empty-hint">${leaderText}</div>`;
+      area.innerHTML = '';
       return;
     }
 
@@ -563,7 +558,7 @@ class TarneebOnlineGame {
     const myTricks = gs.tricks_taken?.[this.myId] || 0;
     const isComplete = (myBid !== undefined && myBid !== null && Number(myBid) > 0 && myTricks >= Number(myBid));
     if (handTitle) handTitle.innerHTML = `🂠 Your Hand (${this.myHand ? this.myHand.length : 0} Cards)${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''}`;
-    if (handHint) handHint.textContent = 'Tap card to play instantly';
+    if (handHint) handHint.textContent = 'Tap once to select, tap again to play';
 
     if (!this.myHand || this.myHand.length === 0) {
       if (this._lastHandHash !== 'empty') {
@@ -575,6 +570,9 @@ class TarneebOnlineGame {
 
     const displayHand = this.sortMode === 'auto' ? this.getSortedHand() : this.myHand;
     const myTurn = gs.current_turn === this.myId && gs.phase === 'playing';
+    if (!myTurn) {
+      this.selectedCard = null;
+    }
 
     const handHash = displayHand.join(',') + '|' + (this.selectedCard || '') + '|' + (myTurn ? 'turn' : 'wait') + '|' + (gs.trick_cards?.[0]?.card || '') + '|' + this.sortMode;
     if (this._lastHandHash === handHash) {
@@ -620,7 +618,6 @@ class TarneebOnlineGame {
           data-card="${cardStr}"
           data-idx="${idx}"
           ${this.sortMode === 'manual' ? 'draggable="true"' : ''}
-          onpointerdown="window.tarneebGame.handleCardPointerDown(event, '${cardStr}')"
           onclick="window.tarneebGame.handleCardClick('${cardStr}')">
           ${this.renderCard(cardStr, true, isSelected)}
         </div>
@@ -751,10 +748,7 @@ class TarneebOnlineGame {
   // USER ACTIONS
   // =========================================================================
   handleCardPointerDown(e, cardStr) {
-    if (e && (e.pointerType === 'touch' || e.pointerType === 'pen')) {
-      e.preventDefault();
-      this.handleCardClick(cardStr);
-    }
+    // Handled purely via onclick to support clean two-tap selection & confirmation
   }
 
   handleCardClick(cardStr) {
@@ -769,7 +763,23 @@ class TarneebOnlineGame {
       return;
     }
 
-    // Instant card play on first tap
+    // Two-Tap Play System:
+    // Tap 1 (Select): Tapping a card selects it and pushes it upwards.
+    // If player taps a different card, the new card pops up and the previous drops back down.
+    if (this.selectedCard !== cardStr) {
+      this.selectedCard = cardStr;
+      const allHandCards = document.querySelectorAll('.my-hand-scroll-wrap .hand-card');
+      allHandCards.forEach(el => {
+        if (el.getAttribute('data-card') === cardStr) {
+          el.classList.add('selected');
+        } else {
+          el.classList.remove('selected');
+        }
+      });
+      return;
+    }
+
+    // Tap 2 (Confirm & Play): Tapping the currently elevated/selected card a second time executes the play logic.
     this.isSubmittingPlay = true;
 
     // 1. Immediately animate card leaving hand
@@ -781,8 +791,6 @@ class TarneebOnlineGame {
     // 2. Optimistically render card onto table in player's bottom slot
     const trickArea = document.getElementById('trickCardsArea');
     if (trickArea) {
-      const emptyHint = trickArea.querySelector('.trick-empty-hint');
-      if (emptyHint) emptyHint.style.display = 'none';
       const existingBottom = trickArea.querySelector('.trick-card-slot.pos-bottom');
       if (!existingBottom) {
         const slot = document.createElement('div');
