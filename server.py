@@ -16,14 +16,19 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import random
 import time
 import uuid
 from collections import defaultdict
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+
+BASE_DIR = Path(__file__).parent.resolve()
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -1396,6 +1401,25 @@ async def websocket_endpoint(ws: WebSocket, player_token: str):
         print(f"[ERROR] WebSocket fatal error for token {player_token}: {exc}")
         traceback.print_exc()
         manager.disconnect(player_token)
+
+
+# ---------------------------------------------------------------------------
+# Standalone Scoreboard Route (Pure Client-Side Scorekeeper)
+# ---------------------------------------------------------------------------
+@app.get("/scoreboard")
+@app.get("/scoreboard.html")
+async def serve_standalone_scoreboard():
+    """
+    Serve clean, static, isolated scoreboard without websockets, bots, or cards.
+    Operates 100% client-side with localStorage.
+    """
+    scoreboard_file = BASE_DIR / "scoreboard.html"
+    if scoreboard_file.exists():
+        return FileResponse(str(scoreboard_file), media_type="text/html")
+    fallback = Path("scoreboard.html").resolve()
+    if fallback.exists():
+        return FileResponse(str(fallback), media_type="text/html")
+    raise HTTPException(status_code=404, detail="scoreboard.html not found")
 
 
 # ---------------------------------------------------------------------------
