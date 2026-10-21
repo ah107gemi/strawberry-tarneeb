@@ -593,14 +593,29 @@ class TarneebOnlineGame {
       this._lastDealtRoundHand = gs.round;
     }
 
+    const isTrickStarted = gs.trick_cards && gs.trick_cards.length > 0;
+    const ledCard = isTrickStarted ? gs.trick_cards[0].card : null;
+    const ledSuit = ledCard ? ledCard.slice(-1) : null;
+    const hasLedSuit = ledSuit ? displayHand.some(c => c.slice(-1) === ledSuit) : false;
+
     let html = '';
     displayHand.forEach((cardStr, idx) => {
       const { rank, suit } = this.parseCard(cardStr);
       const isSelected = this.selectedCard === cardStr;
       const isPlayable = myTurn && this.isCardPlayable(cardStr, gs);
 
+      let popClass = '';
+      if (myTurn) {
+        if (isTrickStarted && hasLedSuit) {
+          popClass = suit === ledSuit ? 'card-suit-pop playable' : 'not-playable';
+        } else {
+          // Leading trick or void in led suit: all legal playable cards pop up
+          popClass = 'card-legal-pop playable';
+        }
+      }
+
       html += `
-        <div class="hand-card ${isNewRoundDeal ? 'card-dealing' : ''} ${isSelected ? 'selected' : ''} ${!myTurn ? '' : isPlayable ? 'playable' : 'not-playable'}"
+        <div class="hand-card ${isNewRoundDeal ? 'card-dealing' : ''} ${isSelected ? 'selected' : ''} ${popClass}"
           style="--card-i: ${idx}; z-index: ${idx + 1};"
           data-card="${cardStr}"
           data-idx="${idx}"
@@ -704,9 +719,29 @@ class TarneebOnlineGame {
   }
 
   highlightPlayableCards(gs) {
+    const isTrickStarted = gs.trick_cards && gs.trick_cards.length > 0;
+    const ledCard = isTrickStarted ? gs.trick_cards[0].card : null;
+    const ledSuit = ledCard ? ledCard.slice(-1) : null;
+    const hasLedSuit = ledSuit ? this.myHand.some(c => c.slice(-1) === ledSuit) : false;
+
     document.querySelectorAll('.hand-card').forEach(el => {
       const card = el.dataset.card;
+      const suit = card ? card.slice(-1) : '';
       const playable = this.isCardPlayable(card, gs);
+
+      let isSuitPop = false;
+      let isLegalPop = false;
+
+      if (playable) {
+        if (isTrickStarted && hasLedSuit && suit === ledSuit) {
+          isSuitPop = true;
+        } else {
+          isLegalPop = true;
+        }
+      }
+
+      el.classList.toggle('card-suit-pop', isSuitPop);
+      el.classList.toggle('card-legal-pop', isLegalPop);
       el.classList.toggle('playable', playable);
       el.classList.toggle('not-playable', !playable);
     });
