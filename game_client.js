@@ -210,12 +210,8 @@ class TarneebOnlineGame {
         this.showGameVictory(data);
         break;
 
-      case 'smirk_trigger':
-        this.showSmirkAnimation(data.player_id, data.player_name);
-        break;
-
-      case 'prompt_smirk':
-        this.showSmirkPrompt();
+      case 'match_terminated':
+        this.handleMatchTerminated(data);
         break;
 
       case 'error':
@@ -861,12 +857,70 @@ class TarneebOnlineGame {
   }
 
   placeBid(amount) {
+    const confirmed = window.confirm(`Confirm bid of ${amount}?`);
+    if (!confirmed) {
+      return;
+    }
     this.send('bid', { amount });
-    document.getElementById('biddingPanel').style.display = 'none';
+    const panel = document.getElementById('biddingPanel');
+    if (panel) panel.style.display = 'none';
   }
 
-  sendSmirk() {
-    this.send('smirk');
+  handleMatchTerminated(data) {
+    this.lastMatchHistory = (data && data.history && data.history.length > 0)
+      ? data.history
+      : (this.matchHistory || []);
+    const modal = document.getElementById('modalMatchEnded');
+    const msgEl = document.getElementById('matchEndedMessageText');
+    if (msgEl) {
+      msgEl.textContent = data.reason || 'A player left the table. The active match has ended.';
+    }
+    if (modal) {
+      modal.style.display = 'flex';
+      modal.classList.add('open');
+    }
+    const bidding = document.getElementById('biddingPanel');
+    if (bidding) bidding.style.display = 'none';
+    this.hideDealerSelectModal();
+    this.clearCenterTrick();
+    this.myHand = [];
+    const handContainer = document.getElementById('myHandContainer');
+    if (handContainer) handContainer.innerHTML = '';
+    this.showToast('🛑 Match terminated.', 'warning');
+  }
+
+  closeMatchEndedModal() {
+    const modal = document.getElementById('modalMatchEnded');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.style.display = 'none';
+    }
+    if (typeof window.switchAppMode === 'function') {
+      window.switchAppMode('scoreboard');
+    }
+  }
+
+  toggleDrawer(open) {
+    const overlay = document.getElementById('sideNavOverlay');
+    if (!overlay) return;
+    const isOpen = overlay.classList.contains('open');
+    const shouldOpen = open !== undefined ? open : !isOpen;
+    if (shouldOpen) {
+      overlay.style.display = 'flex';
+      overlay.offsetHeight; // force reflow
+      overlay.classList.add('open');
+    } else {
+      overlay.classList.remove('open');
+      setTimeout(() => {
+        if (!overlay.classList.contains('open')) {
+          overlay.style.display = 'none';
+        }
+      }, 280);
+    }
+  }
+
+  closeDrawer() {
+    this.toggleDrawer(false);
   }
 
   toggleSortMode() {
@@ -907,42 +961,6 @@ class TarneebOnlineGame {
   // =========================================================================
   // ANIMATIONS & REACTIONS
   // =========================================================================
-  showSmirkAnimation(playerId, playerName) {
-    const overlay = document.createElement('div');
-    overlay.className = 'smirk-overlay';
-    overlay.innerHTML = `
-      <div class="smirk-bubble">
-        <div class="smirk-emoji">😏</div>
-        <div class="smirk-name">${this.esc(playerName)} smirks!</div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-
-    // Show smirk prompt if it was me cutting
-    if (playerId === this.myId) {
-      // Already triggered by me - no extra prompt needed
-    }
-
-    setTimeout(() => overlay.remove(), 3000);
-  }
-
-  showSmirkPrompt() {
-    const banner = document.getElementById('smirkPromptBanner');
-    if (banner) {
-      banner.style.display = 'flex';
-      setTimeout(() => {
-        banner.style.display = 'none';
-      }, 7000);
-    }
-    const btn = document.getElementById('smirkBtn');
-    if (btn) {
-      btn.style.display = 'inline-flex';
-      btn.classList.add('smirk-pulse');
-      setTimeout(() => {
-        btn.classList.remove('smirk-pulse');
-      }, 5000);
-    }
-  }
 
   showTrickResult(data) {
     // Disabled: trick winner popup completely removed so trick resolves & clears silently
@@ -1016,7 +1034,9 @@ class TarneebOnlineGame {
     const content = document.getElementById('matchHistoryContent');
     if (!modal || !content) return;
 
-    const history = (this.gameState && this.gameState.history) || this.matchHistory || [];
+    const history = (this.lastMatchHistory && this.lastMatchHistory.length > 0)
+      ? this.lastMatchHistory
+      : ((this.gameState && this.gameState.history) || this.matchHistory || []);
     if (!history || history.length === 0) {
       content.innerHTML = `
         <div class="empty-history-notice">
@@ -1317,8 +1337,9 @@ function setupOnlineUIEvents() {
     }, 200);
   });
 
-  // Fill with Bots button in online header
+  // Fill with Bots button in drawer
   document.getElementById('btnFillBots')?.addEventListener('click', () => {
+    window.tarneebGame?.closeDrawer();
     if (window.tarneebGame.ws && window.tarneebGame.ws.readyState === WebSocket.OPEN) {
       window.tarneebGame.send('fill_bots', {});
       window.tarneebGame.showToast('🤖 Filling table with bots…', 'info');
@@ -1344,8 +1365,34 @@ function setupOnlineUIEvents() {
     });
   }
 
-  // Role Switch button in online header ("🔄 Change Role")
+  // Side Navigation Drawer
+  document.getElementById('btnHamburgerScoreboard')?.addEventListener('click', () => {
+    window.tarneebGame?.toggleDrawer(true);
+  });
+  document.getElementById('btnHamburgerOnline')?.addEventListener('click', () => {
+    window.tarneebGame?.toggleDrawer(true);
+  });
+  document.getElementById('btnCloseDrawer')?.addEventListener('click', () => {
+    window.tarneebGame?.closeDrawer();
+  });
+  const sideNavOverlay = document.getElementById('sideNavOverlay');
+  sideNavOverlay?.addEventListener('click', (e) => {
+    if (e.target === sideNavOverlay) {
+      window.tarneebGame?.closeDrawer();
+    }
+  });
+
+  // Drawer Navigation Links (close drawer on selection)
+  document.getElementById('navModeScoreboard')?.addEventListener('click', () => {
+    window.tarneebGame?.closeDrawer();
+  });
+  document.getElementById('navModeOnline')?.addEventListener('click', () => {
+    window.tarneebGame?.closeDrawer();
+  });
+
+  // Role Switch button in drawer ("🔄 Move to Bench")
   document.getElementById('btnSwitchIdentity')?.addEventListener('click', () => {
+    window.tarneebGame?.closeDrawer();
     if (window.tarneebGame.ws && window.tarneebGame.ws.readyState === WebSocket.OPEN) {
       window.tarneebGame.send('switch_role', {});
     } else {
@@ -1353,35 +1400,37 @@ function setupOnlineUIEvents() {
     }
   });
 
-  // Switch Name / Logout button in online header ("👤 Switch Name")
-  document.getElementById('btnSwitchName')?.addEventListener('click', logoutAndSwitchName);
+  // Switch Name / Logout button in drawer ("👤 Switch Name")
+  document.getElementById('btnSwitchName')?.addEventListener('click', () => {
+    window.tarneebGame?.closeDrawer();
+    logoutAndSwitchName();
+  });
 
-  // Leave Game button in online header ("🚪 Leave Game")
+  // Leave Game button in drawer ("🚪 Leave Game") - Terminates active game for table
   document.getElementById('btnLeaveActiveGame')?.addEventListener('click', () => {
-    if (confirm('Are you sure you want to leave your table seat? An automated bot will take over so your match can continue smoothly!')) {
+    window.tarneebGame?.closeDrawer();
+    if (confirm('Are you sure you want to leave the game? This will end the active match for everyone at the table.')) {
       window.tarneebGame.send('leave_seat', {});
     }
   });
 
-  // Player Left Notice Modal buttons
-  document.getElementById('btnKeepPlayingWithBot')?.addEventListener('click', () => {
-    window.tarneebGame.hidePlayerLeftNotice();
-  });
-
-  document.getElementById('btnLeaveMatchToo')?.addEventListener('click', () => {
-    window.tarneebGame.hidePlayerLeftNotice();
-    window.tarneebGame.send('leave_seat', {});
-    if (typeof window.setGameMode === 'function') {
-      window.setGameMode('scoreboard');
+  // Match Ended Modal buttons
+  document.getElementById('btnEndedViewHistory')?.addEventListener('click', () => {
+    const modal = document.getElementById('modalMatchEnded');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.style.display = 'none';
     }
+    window.tarneebGame?.showMatchHistoryModal();
   });
 
-  document.getElementById('btnClosePlayerLeftModal')?.addEventListener('click', () => {
-    window.tarneebGame.hidePlayerLeftNotice();
+  document.getElementById('btnEndedClose')?.addEventListener('click', () => {
+    window.tarneebGame?.closeMatchEndedModal();
   });
 
   // Dealer change button (rotates dealer in order) & badge (modal picker)
   document.getElementById('btnChangeDealer')?.addEventListener('click', () => {
+    window.tarneebGame?.closeDrawer();
     window.tarneebGame.rotateDealer();
   });
   document.getElementById('onlineDealerBadge')?.addEventListener('click', () => {
@@ -1394,6 +1443,7 @@ function setupOnlineUIEvents() {
   // Match History Modal
   const historyModal = document.getElementById('modalMatchHistory');
   document.getElementById('btnMatchHistory')?.addEventListener('click', () => {
+    window.tarneebGame?.closeDrawer();
     if (window.tarneebGame) {
       window.tarneebGame.showMatchHistoryModal();
     }
@@ -1446,18 +1496,6 @@ function setupOnlineUIEvents() {
   // Sort toggle (if present in DOM)
   document.getElementById('sortToggleBtn')?.addEventListener('click', () => {
     window.tarneebGame.toggleSortMode();
-  });
-
-  // Smirk button
-  document.getElementById('smirkBtn')?.addEventListener('click', () => {
-    window.tarneebGame.sendSmirk();
-  });
-
-  // Smirk prompt button
-  document.getElementById('smirkPromptBtn')?.addEventListener('click', () => {
-    window.tarneebGame.sendSmirk();
-    const banner = document.getElementById('smirkPromptBanner');
-    if (banner) banner.style.display = 'none';
   });
 
   // Round summary close
