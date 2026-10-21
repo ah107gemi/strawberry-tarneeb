@@ -553,8 +553,8 @@ class ConnectionManager:
         if seat is None and player_id:
             seat = game.seat_of_token(player_id)
         if seat is None:
-            # Rotate to next seat in order
-            seat = (game.dealer_seat + 1) % MAX_PLAYERS
+            # Rotate to next seat in order (counter-clockwise / to player's physical right)
+            seat = game.player_right_of(game.dealer_seat)
 
         try:
             chosen_seat = int(seat)
@@ -938,7 +938,8 @@ class ConnectionManager:
             if dealer_seat_override is not None:
                 game.dealer_seat = dealer_seat_override
         else:
-            game.dealer_seat = (game.dealer_seat + 1) % MAX_PLAYERS
+            # Dealer advances counter-clockwise to the next player's physical right!
+            game.dealer_seat = game.player_right_of(game.dealer_seat)
 
         # Reset per-round state
         game.bids = {}
