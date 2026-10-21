@@ -182,6 +182,13 @@ class TarneebOnlineGame {
         this.showToast('🤖 Bots removed from table', 'info');
         break;
 
+      case 'player_left_replaced_by_bot':
+        this.showToast(`🤖 ${data.message || (data.leaving_player_name + ' replaced by ' + data.bot_name)}`, 'info');
+        if (data.leaving_player_id !== this.myId) {
+          this.showPlayerLeftNotice(data);
+        }
+        break;
+
       case 'role_changed':
         this.myRole = data.role;
         sessionStorage.setItem('tarneeb_session_role', data.role);
@@ -304,6 +311,13 @@ class TarneebOnlineGame {
         switchRoleBtn.innerHTML = '👀 Move to Bench';
         switchRoleBtn.title = 'Switch from Active Player to Bench Spectator';
       }
+    }
+
+    // Leave Game Button in header ("🚪 Leave Game") - visible only to active seated players
+    const leaveGameBtn = document.getElementById('btnLeaveActiveGame');
+    if (leaveGameBtn) {
+      const isSeatedPlayer = !isSpectator && me && me.seat !== null && me.seat !== undefined;
+      leaveGameBtn.style.display = isSeatedPlayer ? 'inline-flex' : 'none';
     }
 
     // Render live scores sidebar
@@ -884,6 +898,22 @@ class TarneebOnlineGame {
     if (modal) modal.style.display = 'none';
   }
 
+  showPlayerLeftNotice(data) {
+    const modal = document.getElementById('modalPlayerLeftNotice');
+    const msgEl = document.getElementById('playerLeftMessageText');
+    if (msgEl) {
+      const leavingName = data.leaving_player_name || 'A player';
+      const botName = data.bot_name || 'Bot';
+      msgEl.innerHTML = `<strong>${this.esc(leavingName)}</strong> left the table.<br>An automated Bot (<strong>${this.esc(botName)}</strong>) has seamlessly taken over their seat and cards so the match never hangs!`;
+    }
+    if (modal) modal.style.display = 'flex';
+  }
+
+  hidePlayerLeftNotice() {
+    const modal = document.getElementById('modalPlayerLeftNotice');
+    if (modal) modal.style.display = 'none';
+  }
+
   showMatchHistoryModal() {
     const modal = document.getElementById('modalMatchHistory');
     const content = document.getElementById('matchHistoryContent');
@@ -1224,6 +1254,30 @@ function setupOnlineUIEvents() {
 
   // Switch Name / Logout button in online header ("👤 Switch Name")
   document.getElementById('btnSwitchName')?.addEventListener('click', logoutAndSwitchName);
+
+  // Leave Game button in online header ("🚪 Leave Game")
+  document.getElementById('btnLeaveActiveGame')?.addEventListener('click', () => {
+    if (confirm('Are you sure you want to leave your table seat? An automated bot will take over so your match can continue smoothly!')) {
+      window.tarneebGame.send('leave_seat', {});
+    }
+  });
+
+  // Player Left Notice Modal buttons
+  document.getElementById('btnKeepPlayingWithBot')?.addEventListener('click', () => {
+    window.tarneebGame.hidePlayerLeftNotice();
+  });
+
+  document.getElementById('btnLeaveMatchToo')?.addEventListener('click', () => {
+    window.tarneebGame.hidePlayerLeftNotice();
+    window.tarneebGame.send('leave_seat', {});
+    if (typeof window.setGameMode === 'function') {
+      window.setGameMode('scoreboard');
+    }
+  });
+
+  document.getElementById('btnClosePlayerLeftModal')?.addEventListener('click', () => {
+    window.tarneebGame.hidePlayerLeftNotice();
+  });
 
   // Dealer change button (rotates dealer in order) & badge (modal picker)
   document.getElementById('btnChangeDealer')?.addEventListener('click', () => {
