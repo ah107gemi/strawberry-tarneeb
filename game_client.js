@@ -901,18 +901,27 @@ class TarneebOnlineGame {
   }
 
   toggleDrawer(open) {
+    if (typeof window.toggleDrawer === 'function') {
+      window.toggleDrawer(open);
+      return;
+    }
     const overlay = document.getElementById('sideNavOverlay');
+    const drawer = document.getElementById('sideNavDrawer');
     if (!overlay) return;
-    const isOpen = overlay.classList.contains('open');
+    const isOpen = overlay.classList.contains('open') || overlay.classList.contains('active');
     const shouldOpen = open !== undefined ? open : !isOpen;
     if (shouldOpen) {
       overlay.style.display = 'flex';
       overlay.offsetHeight; // force reflow
-      overlay.classList.add('open');
+      overlay.classList.add('open', 'active');
+      if (drawer) drawer.classList.add('open', 'active');
+      document.body.style.overflow = 'hidden';
     } else {
-      overlay.classList.remove('open');
+      overlay.classList.remove('open', 'active');
+      if (drawer) drawer.classList.remove('open', 'active');
+      document.body.style.overflow = '';
       setTimeout(() => {
-        if (!overlay.classList.contains('open')) {
+        if (!overlay.classList.contains('open') && !overlay.classList.contains('active')) {
           overlay.style.display = 'none';
         }
       }, 280);
@@ -1365,29 +1374,13 @@ function setupOnlineUIEvents() {
     });
   }
 
-  // Side Navigation Drawer
-  document.getElementById('btnHamburgerScoreboard')?.addEventListener('click', () => {
-    window.tarneebGame?.toggleDrawer(true);
-  });
-  document.getElementById('btnHamburgerOnline')?.addEventListener('click', () => {
-    window.tarneebGame?.toggleDrawer(true);
-  });
-  document.getElementById('btnCloseDrawer')?.addEventListener('click', () => {
-    window.tarneebGame?.closeDrawer();
-  });
-  const sideNavOverlay = document.getElementById('sideNavOverlay');
-  sideNavOverlay?.addEventListener('click', (e) => {
-    if (e.target === sideNavOverlay) {
-      window.tarneebGame?.closeDrawer();
-    }
-  });
-
-  // Drawer Navigation Links (close drawer on selection)
-  document.getElementById('navModeScoreboard')?.addEventListener('click', () => {
-    window.tarneebGame?.closeDrawer();
+  // Side Navigation Drawer (Ensures drawer listeners are active)
+  initGlobalSideDrawer();
+  document.getElementById('navLinkScoreboard')?.addEventListener('click', () => {
+    window.closeDrawer?.();
   });
   document.getElementById('navModeOnline')?.addEventListener('click', () => {
-    window.tarneebGame?.closeDrawer();
+    window.closeDrawer?.();
   });
 
   // Role Switch button in drawer ("🔄 Move to Bench")
@@ -1508,3 +1501,119 @@ function setupOnlineUIEvents() {
     document.getElementById('modalVictoryOnline')?.classList.remove('open');
   });
 }
+
+// =========================================================================
+// GLOBAL NAVIGATION DRAWER CONTROLLER
+// Ensures hamburger menu works on ALL viewports (mobile/PC) & across both modes
+// =========================================================================
+
+function initGlobalSideDrawer() {
+  const overlay = document.getElementById('sideNavOverlay');
+  const drawer = document.getElementById('sideNavDrawer');
+  if (!overlay || !drawer) return;
+
+  function openDrawer(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+    overlay.style.display = 'flex';
+    overlay.offsetHeight; // Force reflow
+    overlay.classList.add('open', 'active');
+    drawer.classList.add('open', 'active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeDrawer(e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    overlay.classList.remove('open', 'active');
+    drawer.classList.remove('open', 'active');
+    document.body.style.overflow = '';
+    setTimeout(() => {
+      if (!overlay.classList.contains('open') && !overlay.classList.contains('active')) {
+        overlay.style.display = 'none';
+      }
+    }, 280);
+  }
+
+  function toggleDrawer(open) {
+    const isOpen = overlay.classList.contains('open') || overlay.classList.contains('active');
+    const shouldOpen = open !== undefined ? open : !isOpen;
+    if (shouldOpen) {
+      openDrawer();
+    } else {
+      closeDrawer();
+    }
+  }
+
+  // Expose globally & on window.tarneebGame
+  window.openDrawer = openDrawer;
+  window.closeDrawer = closeDrawer;
+  window.toggleDrawer = toggleDrawer;
+  if (window.tarneebGame) {
+    window.tarneebGame.openDrawer = openDrawer;
+    window.tarneebGame.closeDrawer = closeDrawer;
+    window.tarneebGame.toggleDrawer = toggleDrawer;
+  }
+
+  // Hamburger trigger buttons
+  const triggerSelectors = [
+    '#btnMenu',
+    '#btnHamburgerScoreboard',
+    '#btnHamburgerOnline',
+    '.menu-toggle',
+    '.drawer-toggle-btn',
+    '.drawer-trigger-btn',
+    '[data-menu-trigger]'
+  ];
+
+  triggerSelectors.forEach(sel => {
+    document.querySelectorAll(sel).forEach(btn => {
+      btn.onclick = openDrawer;
+      btn.addEventListener('touchend', (e) => {
+        openDrawer(e);
+      }, { passive: false });
+    });
+  });
+
+  // Working close ("X") button inside drawer
+  document.querySelectorAll('#btnCloseDrawer, .btn-drawer-close, .drawer-close, [data-drawer-close]').forEach(btn => {
+    btn.onclick = closeDrawer;
+    btn.addEventListener('touchend', (e) => {
+      closeDrawer(e);
+    }, { passive: false });
+  });
+
+  // Backdrop dismiss
+  overlay.onclick = (e) => {
+    if (e.target === overlay) {
+      closeDrawer(e);
+    }
+  };
+  overlay.addEventListener('touchend', (e) => {
+    if (e.target === overlay) {
+      closeDrawer(e);
+    }
+  }, { passive: false });
+
+  // Escape key dismiss
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && (overlay.classList.contains('open') || overlay.classList.contains('active'))) {
+      closeDrawer();
+    }
+  });
+
+  // Drawer nav links / action buttons dismiss
+  drawer.querySelectorAll('.drawer-nav-item, .drawer-control-btn').forEach(item => {
+    item.addEventListener('click', () => {
+      closeDrawer();
+    });
+  });
+}
+
+// Auto-initialize immediately and on DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initGlobalSideDrawer);
+} else {
+  initGlobalSideDrawer();
+}
+window.addEventListener('load', initGlobalSideDrawer);
+
