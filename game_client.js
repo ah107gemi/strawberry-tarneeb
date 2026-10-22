@@ -413,14 +413,17 @@ class TarneebOnlineGame {
       const isCurrent = p.id === gs.current_turn;
       const medals = ['🥇','🥈','🥉','4️⃣'];
 
+      const isKing = score >= 18;
       html += `
-        <div class="score-row ${isMe ? 'is-me' : ''} ${isCurrent ? 'is-turn' : ''}">
+        <div class="score-row ${isMe ? 'is-me' : ''} ${isCurrent ? 'is-turn' : ''} ${isKing ? 'is-king' : ''}">
           <span class="score-medal">${medals[idx] || '🎖️'}</span>
-          <span class="score-name">${this.esc(p.name)}${isMe ? ' (You)' : ''}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''}</span>
+          <span class="score-name">
+            ${this.esc(p.name)}${isKing ? ' <span class="king-title-badge" title="The King (18+ pts)">👑 (The King)</span>' : ''}${isMe ? ' (You)' : ''}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''}
+          </span>
           <div class="score-details">
             ${bid !== undefined && bid !== null ? `<span class="bid-chip">Bid ${bid}</span>` : ''}
             ${gs.phase === 'playing' ? `<span class="tricks-chip">${tricks}(eat)</span>` : ''}
-            <span class="score-num">${score >= 0 ? '+' : ''}${score}</span>
+            <span class="score-num ${isKing ? 'king-total' : ''}">${score >= 0 ? '+' : ''}${score}</span>
           </div>
         </div>
       `;
