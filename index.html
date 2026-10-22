@@ -246,6 +246,15 @@
         <!-- Injected dynamically via game_client.js -->
       </div>
 
+      <!-- Claim Remaining Tricks Bar (Visible when holding unbeatable remaining trumps) -->
+      <div id="claimTricksBar" class="claim-tricks-bar" style="display: none;">
+        <button id="btnClaimTricks" class="btn-claim-tricks" type="button">
+          <span class="claim-trophy">🏆</span>
+          <span>Claim Remaining Tricks</span>
+          <span class="claim-count-badge" id="claimCountBadge">3 Tricks</span>
+        </button>
+      </div>
+
       <!-- My Hand Dock (Bottom) -->
       <div class="my-hand-dock">
         <!-- Integrated Permanent Turn Status Indicator Bar -->
@@ -656,6 +665,27 @@
       </div>
       <div class="modal-body" id="matchHistoryContent" style="max-height: 70vh; overflow-y: auto; padding: 12px; gap: 10px;">
         <!-- Injected dynamically via game_client.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL: Tricks Claimed Announcement
+       ========================================================================== -->
+  <div id="modalTricksClaimed" class="modal-overlay" role="dialog" aria-modal="true" style="display: none;">
+    <div class="modal-content modal-claim-content" style="max-width: 420px; text-align: center;">
+      <div class="modal-header" style="justify-content: center;">
+        <h3 class="modal-title" style="color: #fde047; display: flex; align-items: center; gap: 8px;">
+          <span>🏆</span>
+          <span>Tricks Claimed!</span>
+        </h3>
+      </div>
+      <div class="modal-body" style="padding: 20px 16px; gap: 14px;">
+        <div style="font-size: 3.2rem; line-height: 1;">👑</div>
+        <p id="claimModalText" style="font-size: 1.05rem; font-weight: 800; color: #f8fafc; margin: 0; line-height: 1.4;">
+          Player claimed the remaining tricks with unbeatable cards!
+        </p>
+        <div id="claimCardsDisplay" style="display: flex; justify-content: center; gap: 6px; margin-top: 6px; flex-wrap: wrap;"></div>
       </div>
     </div>
   </div>
