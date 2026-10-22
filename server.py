@@ -60,6 +60,14 @@ SCORE_BID_7_FAILED = -14
 SPECIAL_KH_PENALTY = -5
 SPECIAL_AH_BONUS   = +5
 
+# Strict Claim Allowed Sets:
+# Only exactly [A♥, K♥] (2 cards), [A♥, K♥, Q♥] (3 cards), or [A♥, K♥, Q♥, J♥] (4 cards)
+STRICT_CLAIM_SETS = {
+    2: {"AH", "KH"},
+    3: {"AH", "KH", "QH"},
+    4: {"AH", "KH", "QH", "JH"}
+}
+
 # ---------------------------------------------------------------------------
 # Card helpers
 # ---------------------------------------------------------------------------
@@ -229,8 +237,14 @@ class GameState:
 
     def can_claim_tricks(self, token: str) -> bool:
         """
-        Check if the player at 'token' holds an unbeatable top sequence of trump cards (Hearts)
-        representing all of their remaining cards.
+        Strict claim condition:
+        A player can ONLY claim the rest if their entire remaining hand
+        consists exclusively of one of these three exact combinations:
+          - Exactly 2 cards remaining: [AH, KH]
+          - Exactly 3 cards remaining: [AH, KH, QH]
+          - Exactly 4 cards remaining: [AH, KH, QH, JH]
+        If the player holds any other cards, lower Hearts, or side-suit cards,
+        NO claim option is given.
         """
         if self.phase != "playing":
             return False
@@ -240,28 +254,12 @@ class GameState:
         # Must be player's turn to play
         if self.token_at_seat(self.current_turn_seat) != token:
             return False
-        # Hand must consist ENTIRELY of trump cards (Hearts)
-        if not all(card_suit(c) == TRUMP_SUIT for c in player.hand):
+
+        hand_len = len(player.hand)
+        if hand_len not in STRICT_CLAIM_SETS:
             return False
 
-        my_min_rank = min(card_rank_value(c) for c in player.hand)
-
-        # Other unplayed trumps across other seated active players
-        other_trumps = [
-            c for tok, p in self.players.items()
-            if tok != token and p.seat is not None
-            for c in p.hand
-            if card_suit(c) == TRUMP_SUIT
-        ]
-        # Any trumps currently on felt table in active trick
-        trick_trumps = [
-            tc["card"] for tc in self.trick_cards
-            if card_suit(tc["card"]) == TRUMP_SUIT
-        ]
-        all_other = other_trumps + trick_trumps
-        other_max_rank = max([card_rank_value(c) for c in all_other], default=-1)
-
-        return my_min_rank > other_max_rank
+        return set(player.hand) == STRICT_CLAIM_SETS[hand_len]
 
     # ------------------------------------------------------------------
     # Public state slice (hands are private)
@@ -937,7 +935,7 @@ class ConnectionManager:
             return
 
         if not game.can_claim_tricks(token):
-            await self.send_to(token, {"type": "error", "data": {"message": "Cannot claim: your remaining cards are not an unbeatable trump sequence."}})
+            await self.send_to(token, {"type": "error", "data": {"message": "Cannot claim: hand must strictly be [A♥, K♥], [A♥, K♥, Q♥], or [A♥, K♥, Q♥, J♥]."}})
             return
 
         tricks_claimed = len(player.hand)
@@ -946,7 +944,7 @@ class ConnectionManager:
         claimed_cards.sort(key=lambda c: card_rank_value(c), reverse=True)
         player_name = player.name or "Player"
 
-        log.info("🏆 %s claimed the remaining %d tricks with cards: %s", player_name, tricks_claimed, claimed_cards)
+        log.info("🏆 %s claimed the rest (%d tricks) with cards: %s", player_name, tricks_claimed, claimed_cards)
 
         # Award remaining tricks directly to player's trick score for the round
         game.tricks_taken[token] = game.tricks_taken.get(token, 0) + tricks_claimed
@@ -957,8 +955,8 @@ class ConnectionManager:
         game.trick_cards = []
         game.led_suit = None
 
-        header_title = f"{player_name} Claimed the Remaining {tricks_claimed} Tricks!"
-        msg_text = f"{player_name} holds unbeatable Hearts (trump) and claims the remaining {tricks_claimed} tricks!"
+        header_title = f"{player_name} Claimed the Rest!"
+        msg_text = f"{player_name} holds winning cards ({', '.join(claimed_cards)}) and claimed the remaining {tricks_claimed} tricks!"
 
         # Broadcast clear announcement modal to the entire table with revealed cards
         await self.broadcast({
