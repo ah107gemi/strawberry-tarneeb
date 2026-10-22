@@ -942,6 +942,8 @@ class ConnectionManager:
 
         tricks_claimed = len(player.hand)
         claimed_cards = list(player.hand)
+        # Sort claimed cards by rank descending (e.g., AH, KH, QH)
+        claimed_cards.sort(key=lambda c: card_rank_value(c), reverse=True)
         player_name = player.name or "Player"
 
         log.info("🏆 %s claimed the remaining %d tricks with cards: %s", player_name, tricks_claimed, claimed_cards)
@@ -955,8 +957,10 @@ class ConnectionManager:
         game.trick_cards = []
         game.led_suit = None
 
-        # Broadcast clear announcement modal/toast to the entire table
-        msg_text = f"{player_name} claimed the remaining {tricks_claimed} tricks with unbeatable cards!"
+        header_title = f"{player_name} Claimed the Remaining {tricks_claimed} Tricks!"
+        msg_text = f"{player_name} holds unbeatable Hearts (trump) and claims the remaining {tricks_claimed} tricks!"
+
+        # Broadcast clear announcement modal to the entire table with revealed cards
         await self.broadcast({
             "type": "tricks_claimed",
             "data": {
@@ -964,6 +968,7 @@ class ConnectionManager:
                 "player_name": player_name,
                 "tricks_claimed": tricks_claimed,
                 "cards": claimed_cards,
+                "header": header_title,
                 "message": msg_text
             }
         })
@@ -1327,7 +1332,7 @@ class ConnectionManager:
                 if len(game.trick_cards) < MAX_PLAYERS and game.token_at_seat(game.current_turn_seat) == token:
                     # Check if bot holds unbeatable remaining trumps to auto-claim!
                     if game.can_claim_tricks(token):
-                        await asyncio.sleep(random.uniform(1.2, 1.5))
+                        await asyncio.sleep(1.5)
                         if game.phase == "playing" and game.token_at_seat(game.current_turn_seat) == token and game.can_claim_tricks(token):
                             log.info("🤖 Bot %s claims remaining %d tricks!", player.name, len(player.hand))
                             await self._handle_claim_tricks(token)
