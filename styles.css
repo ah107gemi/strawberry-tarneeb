@@ -1650,8 +1650,8 @@ body::before {
   width: 100%;
   box-sizing: border-box;
   position: relative;
-  z-index: 100;
-  pointer-events: auto;
+  z-index: 1000;
+  pointer-events: auto !important;
 }
 
 .online-meta-wrap {
@@ -3196,14 +3196,16 @@ body::before {
 /* ==========================================================================
    Slide Navigation Drawer & Menu Triggers
    ========================================================================== */
+#btnMenu,
+.btn-menu,
+#btnHamburgerScoreboard,
+#btnHamburgerOnline,
 .drawer-trigger-btn,
 .drawer-toggle-btn,
 .menu-toggle,
-#btnHamburgerScoreboard,
-#btnHamburgerOnline,
-#btnMenu {
+[data-menu-trigger] {
   position: relative !important;
-  z-index: 1000 !important;
+  z-index: 9999 !important;
   pointer-events: auto !important;
   cursor: pointer !important;
   flex-shrink: 0 !important;
@@ -3211,12 +3213,14 @@ body::before {
   touch-action: manipulation !important;
 }
 
-.drawer-trigger-btn svg,
-.drawer-toggle-btn svg,
-.menu-toggle svg,
-#btnHamburgerScoreboard svg,
-#btnHamburgerOnline svg,
-#btnMenu svg {
+#btnMenu *,
+.btn-menu *,
+#btnHamburgerScoreboard *,
+#btnHamburgerOnline *,
+.drawer-trigger-btn *,
+.drawer-toggle-btn *,
+.menu-toggle *,
+[data-menu-trigger] * {
   pointer-events: none !important;
 }
 
