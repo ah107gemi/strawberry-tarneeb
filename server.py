@@ -227,6 +227,42 @@ class GameState:
         player = self.players.get(token)
         return player.seat if player else None
 
+    def can_claim_tricks(self, token: str) -> bool:
+        """
+        Check if the player at 'token' holds an unbeatable top sequence of trump cards (Hearts)
+        representing all of their remaining cards.
+        """
+        if self.phase != "playing":
+            return False
+        player = self.players.get(token)
+        if not player or not player.hand:
+            return False
+        # Must be player's turn to play
+        if self.token_at_seat(self.current_turn_seat) != token:
+            return False
+        # Hand must consist ENTIRELY of trump cards (Hearts)
+        if not all(card_suit(c) == TRUMP_SUIT for c in player.hand):
+            return False
+
+        my_min_rank = min(card_rank_value(c) for c in player.hand)
+
+        # Other unplayed trumps across other seated active players
+        other_trumps = [
+            c for tok, p in self.players.items()
+            if tok != token and p.seat is not None
+            for c in p.hand
+            if card_suit(c) == TRUMP_SUIT
+        ]
+        # Any trumps currently on felt table in active trick
+        trick_trumps = [
+            tc["card"] for tc in self.trick_cards
+            if card_suit(tc["card"]) == TRUMP_SUIT
+        ]
+        all_other = other_trumps + trick_trumps
+        other_max_rank = max([card_rank_value(c) for c in all_other], default=-1)
+
+        return my_min_rank > other_max_rank
+
     # ------------------------------------------------------------------
     # Public state slice (hands are private)
     # ------------------------------------------------------------------
@@ -260,8 +296,10 @@ class GameState:
         # Attach private hand only for the requesting player
         if for_token and for_token in self.players:
             state["my_hand"] = self.players[for_token].hand
+            state["can_claim_tricks"] = self.can_claim_tricks(for_token)
         else:
             state["my_hand"] = []
+            state["can_claim_tricks"] = False
         return state
 
 
@@ -382,6 +420,8 @@ class ConnectionManager:
             "fill_bots": self._handle_fill_bots,
             "fill_table_with_bots": self._handle_fill_bots,
             "remove_bots": self._handle_remove_bots,
+            "claim_tricks": self._handle_claim_tricks,
+            "claim_remaining_tricks": self._handle_claim_tricks,
         }
 
         handler = handlers.get(mtype)
@@ -881,6 +921,57 @@ class ConnectionManager:
         return True, ""
 
     # ------------------------------------------------------------------
+    # Handler: claim_tricks
+    # ------------------------------------------------------------------
+
+    async def _handle_claim_tricks(self, token: str, data: Optional[Dict] = None):
+        game = self.game
+
+        if game.phase != "playing":
+            await self.send_to(token, {"type": "error", "data": {"message": "Can only claim tricks during active playing phase."}})
+            return
+
+        player = game.players.get(token)
+        if not player or not player.hand:
+            await self.send_to(token, {"type": "error", "data": {"message": "You have no cards to claim."}})
+            return
+
+        if not game.can_claim_tricks(token):
+            await self.send_to(token, {"type": "error", "data": {"message": "Cannot claim: your remaining cards are not an unbeatable trump sequence."}})
+            return
+
+        tricks_claimed = len(player.hand)
+        claimed_cards = list(player.hand)
+        player_name = player.name or "Player"
+
+        log.info("🏆 %s claimed the remaining %d tricks with cards: %s", player_name, tricks_claimed, claimed_cards)
+
+        # Award remaining tricks directly to player's trick score for the round
+        game.tricks_taken[token] = game.tricks_taken.get(token, 0) + tricks_claimed
+
+        # Mark those remaining cards as played (empty all hands and clear felt trick)
+        for p in game.players.values():
+            p.hand = []
+        game.trick_cards = []
+        game.led_suit = None
+
+        # Broadcast clear announcement modal/toast to the entire table
+        msg_text = f"{player_name} claimed the remaining {tricks_claimed} tricks with unbeatable cards!"
+        await self.broadcast({
+            "type": "tricks_claimed",
+            "data": {
+                "player_id": token,
+                "player_name": player_name,
+                "tricks_claimed": tricks_claimed,
+                "cards": claimed_cards,
+                "message": msg_text
+            }
+        })
+
+        # Proceed directly to round scoring calculation and summary screen
+        await self._resolve_round()
+
+    # ------------------------------------------------------------------
     # Handler: request_state
     # ------------------------------------------------------------------
 
@@ -1234,6 +1325,14 @@ class ConnectionManager:
                     await self._handle_bid(token, {"amount": bid_amount})
             elif action == "play" and game.phase == "playing":
                 if len(game.trick_cards) < MAX_PLAYERS and game.token_at_seat(game.current_turn_seat) == token:
+                    # Check if bot holds unbeatable remaining trumps to auto-claim!
+                    if game.can_claim_tricks(token):
+                        await asyncio.sleep(random.uniform(1.2, 1.5))
+                        if game.phase == "playing" and game.token_at_seat(game.current_turn_seat) == token and game.can_claim_tricks(token):
+                            log.info("🤖 Bot %s claims remaining %d tricks!", player.name, len(player.hand))
+                            await self._handle_claim_tricks(token)
+                            return
+
                     card_to_play = self._choose_bot_card(player)
                     if card_to_play:
                         log.info("🤖 Bot %s plays %s", player.name, card_to_play)
