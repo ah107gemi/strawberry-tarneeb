@@ -1659,8 +1659,13 @@ function initGlobalSideDrawer() {
   if (!overlay || !drawer) return;
 
   function openDrawer(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    if (e && e.stopPropagation) e.stopPropagation();
+    if (e) {
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+      if (e.type === 'touchend' && typeof e.preventDefault === 'function') {
+        e.preventDefault();
+      }
+    }
     overlay.style.display = 'flex';
     overlay.offsetHeight; // Force reflow
     overlay.classList.add('open', 'active');
@@ -1669,7 +1674,10 @@ function initGlobalSideDrawer() {
   }
 
   function closeDrawer(e) {
-    if (e && e.stopPropagation) e.stopPropagation();
+    if (e) {
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+    }
     overlay.classList.remove('open', 'active');
     drawer.classList.remove('open', 'active');
     document.body.style.overflow = '';
@@ -1705,6 +1713,7 @@ function initGlobalSideDrawer() {
     '#btnMenu',
     '#btnHamburgerScoreboard',
     '#btnHamburgerOnline',
+    '.btn-menu',
     '.menu-toggle',
     '.drawer-toggle-btn',
     '.drawer-trigger-btn',
@@ -1713,39 +1722,80 @@ function initGlobalSideDrawer() {
 
   triggerSelectors.forEach(sel => {
     document.querySelectorAll(sel).forEach(btn => {
-      btn.onclick = openDrawer;
+      if (btn.dataset.menuAttached === 'true') return;
+      btn.dataset.menuAttached = 'true';
+
+      btn.addEventListener('click', (e) => {
+        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        openDrawer(e);
+      });
+
       btn.addEventListener('touchend', (e) => {
+        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
         openDrawer(e);
       }, { passive: false });
     });
   });
 
+  // Delegated fallback for menu triggers to catch dynamic elements or touch events
+  if (!window._menuDelegatedAttached) {
+    window._menuDelegatedAttached = true;
+    document.addEventListener('click', (e) => {
+      const trigger = e.target.closest('#btnMenu, #btnHamburgerOnline, #btnHamburgerScoreboard, .btn-menu, .menu-toggle, [data-menu-trigger]');
+      if (trigger) {
+        if (typeof e.stopPropagation === 'function') e.stopPropagation();
+        openDrawer(e);
+      }
+    });
+
+    document.addEventListener('touchend', (e) => {
+      const trigger = e.target.closest('#btnMenu, #btnHamburgerOnline, #btnHamburgerScoreboard, .btn-menu, .menu-toggle, [data-menu-trigger]');
+      if (trigger) {
+        if (typeof e.stopPropagation === 'function') e.stopPropagation();
+        openDrawer(e);
+      }
+    }, { passive: false });
+  }
+
   // Working close ("X") button inside drawer
   document.querySelectorAll('#btnCloseDrawer, .btn-drawer-close, .drawer-close, [data-drawer-close]').forEach(btn => {
-    btn.onclick = closeDrawer;
+    if (btn.dataset.closeAttached === 'true') return;
+    btn.dataset.closeAttached = 'true';
+
+    btn.addEventListener('click', (e) => {
+      if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+      closeDrawer(e);
+    });
     btn.addEventListener('touchend', (e) => {
+      if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
       closeDrawer(e);
     }, { passive: false });
   });
 
   // Backdrop dismiss
-  overlay.onclick = (e) => {
-    if (e.target === overlay) {
-      closeDrawer(e);
-    }
-  };
-  overlay.addEventListener('touchend', (e) => {
-    if (e.target === overlay) {
-      closeDrawer(e);
-    }
-  }, { passive: false });
+  if (!overlay.dataset.backdropAttached) {
+    overlay.dataset.backdropAttached = 'true';
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        closeDrawer(e);
+      }
+    });
+    overlay.addEventListener('touchend', (e) => {
+      if (e.target === overlay) {
+        closeDrawer(e);
+      }
+    }, { passive: false });
+  }
 
   // Escape key dismiss
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && (overlay.classList.contains('open') || overlay.classList.contains('active'))) {
-      closeDrawer();
-    }
-  });
+  if (!window._escDrawerAttached) {
+    window._escDrawerAttached = true;
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && (overlay.classList.contains('open') || overlay.classList.contains('active'))) {
+        closeDrawer();
+      }
+    });
+  }
 
   // Drawer nav links / action buttons dismiss
   drawer.querySelectorAll('.drawer-nav-item, .drawer-control-btn').forEach(item => {
@@ -1755,11 +1805,17 @@ function initGlobalSideDrawer() {
   });
 }
 
-// Auto-initialize immediately and on DOM ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initGlobalSideDrawer);
-} else {
+// Guard script execution: Wrap initial UI event listeners in DOMContentLoaded
+function initOnlineUIOnDOMReady() {
+  setupOnlineUIEvents();
   initGlobalSideDrawer();
 }
-window.addEventListener('load', initGlobalSideDrawer);
+
+// Auto-initialize immediately and on DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initOnlineUIOnDOMReady);
+} else {
+  initOnlineUIOnDOMReady();
+}
+window.addEventListener('load', initOnlineUIOnDOMReady);
 
