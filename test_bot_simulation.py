@@ -18,7 +18,7 @@ import time
 import uvicorn
 import websockets
 
-from server import app, card_suit, card_rank_value, TRUMP_SUIT
+from server import app, manager, GameState, Player, card_suit, card_rank_value, TRUMP_SUIT
 
 TEST_PORT = 8765
 WS_URL = f"ws://127.0.0.1:{TEST_PORT}/ws/test_token_ahmed"
@@ -33,6 +33,62 @@ def start_test_server():
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
     return server
+
+
+def test_claim_tricks_unit_logic():
+    print("\n" + "=" * 65)
+    print("🧪 UNIT TEST: GameState.can_claim_tricks()")
+    print("=" * 65)
+    gs = GameState()
+    gs.phase = "playing"
+    p0 = Player(token="p0", name="Ahmed", seat=0, role="player")
+    p0.hand = ["AH", "KH"]
+    p1 = Player(token="p1", name="Bot 1", seat=1, role="player")
+    p1.hand = ["2C", "3C"]
+    p2 = Player(token="p2", name="Bot 2", seat=2, role="player")
+    p2.hand = ["4D", "5D"]
+    p3 = Player(token="p3", name="Bot 3", seat=3, role="player")
+    p3.hand = ["6S", "7S"]
+    gs.players = {"p0": p0, "p1": p1, "p2": p2, "p3": p3}
+    gs.seats = ["p0", "p1", "p2", "p3"]
+    gs.current_turn_seat = 0
+
+    # 1. Unbeatable trump sequence on player's turn -> True
+    assert gs.can_claim_tricks("p0") is True, "Expected True when holding AH, KH"
+    print("  ✓ Player holding [AH, KH] can claim tricks")
+
+    # 2. Player holds lower sequence [KH, QH] but AH is held by Bot 1 -> False
+    p0.hand = ["KH", "QH"]
+    p1.hand = ["AH", "3C"]
+    assert gs.can_claim_tricks("p0") is False, "Expected False when AH is still unplayed"
+    print("  ✓ Player holding [KH, QH] cannot claim while AH is unplayed")
+
+    # 3. Player holds [AH, KH, 5S] (off-suit remaining) -> False
+    p0.hand = ["AH", "KH", "5S"]
+    p1.hand = ["2C", "3C"]
+    assert gs.can_claim_tricks("p0") is False, "Expected False when holding non-trump"
+    print("  ✓ Player holding non-trump card cannot claim")
+
+    # 4. Not player's turn -> False
+    p0.hand = ["AH", "KH"]
+    gs.current_turn_seat = 1
+    assert gs.can_claim_tricks("p0") is False, "Expected False when not player's turn"
+    print("  ✓ Player cannot claim when it is not their turn")
+
+    # 5. During trick where 2H is already on the felt, player holds [AH, KH] -> True
+    gs.current_turn_seat = 0
+    p0.hand = ["AH", "KH"]
+    p1.hand = ["3C"]
+    gs.trick_cards = [{"player_id": "p1", "card": "2H"}]
+    assert gs.can_claim_tricks("p0") is True, "Expected True when table has lower trump"
+    print("  ✓ Player can claim when table holds lower trump than player's cards")
+
+    # 6. During trick where AH is already on the felt, player holds [KH, QH] -> False
+    p0.hand = ["KH", "QH"]
+    gs.trick_cards = [{"player_id": "p1", "card": "AH"}]
+    assert gs.can_claim_tricks("p0") is False, "Expected False when table has higher trump"
+    print("  ✓ Player cannot claim when table holds higher trump than player's cards")
+    print("=" * 65 + "\n")
 
 
 async def run_simulation():
@@ -176,8 +232,76 @@ async def run_simulation():
         elapsed = time.time() - start_time
         print(f"\n  ⏱️  2 Tricks completed in {elapsed:.2f}s (significantly faster with reduced delays!)")
 
-        # Step 7: Test 'leave_seat' (Leave Game terminates active match for table)
-        print("\n[Step 7] Testing 'leave_seat' (Active player leaves table; match terminates)...")
+        # Step 7: Test 'claim_tricks' (Claim Remaining Tricks feature)
+        print("\n[Step 7] Testing 'claim_tricks' (Claim Remaining Tricks feature)...")
+        # Allow trick 2 broadcast and any pending bot actions to settle
+        await asyncio.sleep(1.5)
+
+        # Drain pending queue
+        while True:
+            try:
+                await asyncio.wait_for(ws.recv(), timeout=0.2)
+            except asyncio.TimeoutError:
+                break
+
+        ahmed_prev_tricks = manager.game.tricks_taken.get(my_token, 0)
+        manager.game.players[my_token].hand = ["AH", "KH"]
+        for seat_idx in [1, 2, 3]:
+            bot_tok = manager.game.seats[seat_idx]
+            if bot_tok and bot_tok in manager.game.players:
+                manager.game.players[bot_tok].hand = ["2C", "3C"]
+        manager.game.current_turn_seat = 0
+        manager.game.trick_cards = []
+        manager.game.led_suit = None
+
+        # Verify server logic allows claim
+        assert manager.game.can_claim_tricks(my_token) is True, "Server should allow claim"
+
+        # Broadcast state so client receives can_claim_tricks: True
+        await manager.broadcast_game_state()
+
+        # Check received game_state
+        state_received = False
+        while not state_received:
+            msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=3.0))
+            if msg.get("type") == "game_state" and msg.get("data", {}).get("current_turn") == my_token:
+                assert msg.get("data", {}).get("can_claim_tricks") is True, "can_claim_tricks should be true in public state"
+                print("  ✓ Client received game_state with can_claim_tricks=True")
+                state_received = True
+
+        # Send claim_tricks WebSocket action
+        print("  👉 Sending 'claim_tricks' action...")
+        await ws.send(json.dumps({"type": "claim_tricks"}))
+
+        # Expect tricks_claimed event and round_complete
+        tricks_claimed_verified = False
+        round_complete_verified = False
+
+        while not (tricks_claimed_verified and round_complete_verified):
+            msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=5.0))
+            mtype = msg.get("type")
+            data = msg.get("data", {})
+
+            if mtype == "tricks_claimed":
+                tricks_claimed_verified = True
+                print(f"  ✓ tricks_claimed event verified: {data.get('player_name')} claimed {data.get('tricks_claimed')} tricks!")
+                assert data.get("player_id") == my_token
+                assert data.get("tricks_claimed") == 2
+                assert data.get("cards") == ["AH", "KH"]
+            elif mtype == "round_complete":
+                round_complete_verified = True
+                print(f"  ✓ Round completed after claim! Round score breakdown: {data.get('round_scores')}")
+                assert data.get("tricks_taken", {}).get(my_token) == ahmed_prev_tricks + 2, "Tricks should be awarded to Ahmed"
+            elif mtype == "game_state":
+                if data.get("phase") == "round_end":
+                    print(f"  ✓ Game phase transitioned to '{data.get('phase')}'")
+
+        assert tricks_claimed_verified, "Expected tricks_claimed event"
+        assert round_complete_verified, "Expected round_complete event"
+        print("  ✓ Verified: Remaining tricks cleanly awarded and round resolved!")
+
+        # Step 8: Test 'leave_seat' (Leave Game terminates active match for table)
+        print("\n[Step 8] Testing 'leave_seat' (Active player leaves table; match terminates)...")
         await ws.send(json.dumps({"type": "leave_seat"}))
 
         match_terminated_verified = False
@@ -209,9 +333,11 @@ async def run_simulation():
         print(f"  • 'Change Dealer' (rotate_dealer) verified working with bots")
         print(f"  • Bots took automated legal turns with snappy, fast delays")
         print(f"  • Successfully resolved {tricks_completed} tricks with Tarneeb rules")
+        print(f"  • Successfully tested 'Claim Remaining Tricks' (auto-award & round resolution)")
         print(f"  • Successfully tested active game termination upon 'leave_seat'")
         print("=" * 65 + "\n")
 
 
 if __name__ == "__main__":
+    test_claim_tricks_unit_logic()
     asyncio.run(run_simulation())
