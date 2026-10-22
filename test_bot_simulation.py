@@ -37,7 +37,7 @@ def start_test_server():
 
 def test_claim_tricks_unit_logic():
     print("\n" + "=" * 65)
-    print("🧪 UNIT TEST: GameState.can_claim_tricks()")
+    print("🧪 UNIT TEST: GameState.can_claim_tricks() [Strict Claim Rules]")
     print("=" * 65)
     gs = GameState()
     gs.phase = "playing"
@@ -53,41 +53,57 @@ def test_claim_tricks_unit_logic():
     gs.seats = ["p0", "p1", "p2", "p3"]
     gs.current_turn_seat = 0
 
-    # 1. Unbeatable trump sequence on player's turn -> True
-    assert gs.can_claim_tricks("p0") is True, "Expected True when holding AH, KH"
-    print("  ✓ Player holding [AH, KH] can claim tricks")
+    # 1. Exactly 2 cards remaining: [AH, KH] -> True
+    p0.hand = ["AH", "KH"]
+    assert gs.can_claim_tricks("p0") is True, "Expected True when holding [AH, KH]"
+    print("  ✓ Strict 2-card match: [AH, KH] allowed to claim")
 
-    # 2. Player holds lower sequence [KH, QH] but AH is held by Bot 1 -> False
+    # 2. Exactly 3 cards remaining: [AH, KH, QH] -> True
+    p0.hand = ["AH", "KH", "QH"]
+    assert gs.can_claim_tricks("p0") is True, "Expected True when holding [AH, KH, QH]"
+    print("  ✓ Strict 3-card match: [AH, KH, QH] allowed to claim")
+
+    # 3. Exactly 4 cards remaining: [AH, KH, QH, JH] -> True
+    p0.hand = ["AH", "KH", "QH", "JH"]
+    assert gs.can_claim_tricks("p0") is True, "Expected True when holding [AH, KH, QH, JH]"
+    print("  ✓ Strict 4-card match: [AH, KH, QH, JH] allowed to claim")
+
+    # 4. 2 cards lower: [KH, QH] -> False
     p0.hand = ["KH", "QH"]
-    p1.hand = ["AH", "3C"]
-    assert gs.can_claim_tricks("p0") is False, "Expected False when AH is still unplayed"
-    print("  ✓ Player holding [KH, QH] cannot claim while AH is unplayed")
+    assert gs.can_claim_tricks("p0") is False, "Expected False for [KH, QH]"
+    print("  ✓ Strict rejection: [KH, QH] cannot claim")
 
-    # 3. Player holds [AH, KH, 5S] (off-suit remaining) -> False
+    # 5. 3 cards missing Q: [AH, KH, 10H] -> False
+    p0.hand = ["AH", "KH", "10H"]
+    assert gs.can_claim_tricks("p0") is False, "Expected False for [AH, KH, 10H]"
+    print("  ✓ Strict rejection: [AH, KH, 10H] cannot claim")
+
+    # 6. 5 cards: [AH, KH, QH, JH, 10H] -> False
+    p0.hand = ["AH", "KH", "QH", "JH", "10H"]
+    assert gs.can_claim_tricks("p0") is False, "Expected False for 5 cards"
+    print("  ✓ Strict rejection: 5 cards cannot claim (must be exactly 2, 3, or 4)")
+
+    # 7. 1 card: [AH] -> False
+    p0.hand = ["AH"]
+    assert gs.can_claim_tricks("p0") is False, "Expected False for 1 card"
+    print("  ✓ Strict rejection: 1 card cannot claim")
+
+    # 8. Side suit: [AH, KH, 5S] -> False
     p0.hand = ["AH", "KH", "5S"]
-    p1.hand = ["2C", "3C"]
-    assert gs.can_claim_tricks("p0") is False, "Expected False when holding non-trump"
-    print("  ✓ Player holding non-trump card cannot claim")
+    assert gs.can_claim_tricks("p0") is False, "Expected False for side suit"
+    print("  ✓ Strict rejection: Side suit cards cannot claim")
 
-    # 4. Not player's turn -> False
+    # 9. Not player's turn -> False
     p0.hand = ["AH", "KH"]
     gs.current_turn_seat = 1
     assert gs.can_claim_tricks("p0") is False, "Expected False when not player's turn"
     print("  ✓ Player cannot claim when it is not their turn")
 
-    # 5. During trick where 2H is already on the felt, player holds [AH, KH] -> True
+    # 10. Not playing phase -> False
     gs.current_turn_seat = 0
-    p0.hand = ["AH", "KH"]
-    p1.hand = ["3C"]
-    gs.trick_cards = [{"player_id": "p1", "card": "2H"}]
-    assert gs.can_claim_tricks("p0") is True, "Expected True when table has lower trump"
-    print("  ✓ Player can claim when table holds lower trump than player's cards")
-
-    # 6. During trick where AH is already on the felt, player holds [KH, QH] -> False
-    p0.hand = ["KH", "QH"]
-    gs.trick_cards = [{"player_id": "p1", "card": "AH"}]
-    assert gs.can_claim_tricks("p0") is False, "Expected False when table has higher trump"
-    print("  ✓ Player cannot claim when table holds higher trump than player's cards")
+    gs.phase = "bidding"
+    assert gs.can_claim_tricks("p0") is False, "Expected False during bidding"
+    print("  ✓ Player cannot claim outside playing phase")
     print("=" * 65 + "\n")
 
 
@@ -288,7 +304,7 @@ async def run_simulation():
                 assert data.get("player_id") == my_token
                 assert data.get("tricks_claimed") == 2
                 assert data.get("cards") == ["AH", "KH"]
-                assert data.get("header") == "Ahmed Claimed the Remaining 2 Tricks!"
+                assert data.get("header") == "Ahmed Claimed the Rest!"
             elif mtype == "round_complete":
                 round_complete_verified = True
                 print(f"  ✓ Round completed after claim! Round score breakdown: {data.get('round_scores')}")
