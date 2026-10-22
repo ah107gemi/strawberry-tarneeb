@@ -214,6 +214,10 @@ class TarneebOnlineGame {
         this.handleMatchTerminated(data);
         break;
 
+      case 'tricks_claimed':
+        this.handleTricksClaimed(data);
+        break;
+
       case 'error':
         const errMsg = data.message || msg.message || 'Error occurred';
         this.showToast(`❌ ${errMsg}`, 'error');
@@ -327,6 +331,9 @@ class TarneebOnlineGame {
 
     // Render my hand (bottom)
     this.renderMyHand(gs);
+
+    // Render Claim Remaining Tricks Bar (if unbeatable trump hand)
+    this.renderClaimTricksBar(gs);
 
     // Show/hide bidding UI
     this.renderBiddingPanel(gs);
@@ -900,6 +907,98 @@ class TarneebOnlineGame {
     }
     if (typeof window.switchAppMode === 'function') {
       window.switchAppMode('scoreboard');
+    }
+  }
+
+  renderClaimTricksBar(gs) {
+    const claimBar = document.getElementById('claimTricksBar');
+    const claimCountBadge = document.getElementById('claimCountBadge');
+    if (!claimBar) return;
+
+    const me = gs.players.find(p => p.id === this.myId);
+    const isSpectator = me ? (me.role === 'spectator' || me.is_spectator) : (this.myRole === 'spectator');
+    const isMyTurn = !isSpectator && gs.phase === 'playing' && gs.current_turn === this.myId;
+    const canClaim = isMyTurn && (gs.can_claim_tricks === true || this.canClaimTricks(gs));
+
+    if (canClaim && this.myHand && this.myHand.length > 0) {
+      claimBar.style.display = 'flex';
+      if (claimCountBadge) {
+        const remaining = this.myHand.length;
+        claimCountBadge.textContent = `${remaining} Trick${remaining > 1 ? 's' : ''}`;
+      }
+    } else {
+      claimBar.style.display = 'none';
+    }
+  }
+
+  canClaimTricks(gs) {
+    if (gs.phase !== 'playing' || gs.current_turn !== this.myId) return false;
+    if (!this.myHand || this.myHand.length === 0) return false;
+
+    // Hand must consist entirely of Hearts (TRUMP_SUIT)
+    const isAllHearts = this.myHand.every(c => this.parseCard(c).suit === 'H');
+    if (!isAllHearts) return false;
+
+    const rankVal = (rank) => {
+      const order = { '2': 0, '3': 1, '4': 2, '5': 3, '6': 4, '7': 5, '8': 6, '9': 7, '10': 8, 'J': 9, 'Q': 10, 'K': 11, 'A': 12 };
+      return order[rank] ?? -1;
+    };
+
+    const myMinRank = Math.min(...this.myHand.map(c => rankVal(this.parseCard(c).rank)));
+
+    // Gather all Hearts played in current trick on table
+    const playedHearts = new Set();
+    (gs.trick_cards || []).forEach(tc => {
+      const parsed = this.parseCard(tc.card);
+      if (parsed.suit === 'H') playedHearts.add(parsed.rank);
+    });
+
+    const allHeartRanks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+    const myRanks = new Set(this.myHand.map(c => this.parseCard(c).rank));
+
+    // Other unplayed hearts that player does not hold and aren't on felt
+    const otherUnplayedHeartRanks = allHeartRanks.filter(r => !myRanks.has(r) && !playedHearts.has(r));
+    const otherMaxRank = otherUnplayedHeartRanks.length > 0
+      ? Math.max(...otherUnplayedHeartRanks.map(r => rankVal(r)))
+      : -1;
+
+    return myMinRank > otherMaxRank;
+  }
+
+  claimRemainingTricks() {
+    const count = this.myHand ? this.myHand.length : 0;
+    if (confirm(`Claim the remaining ${count} tricks with your unbeatable cards?`)) {
+      this.send('claim_tricks', {});
+      const claimBar = document.getElementById('claimTricksBar');
+      if (claimBar) claimBar.style.display = 'none';
+    }
+  }
+
+  handleTricksClaimed(data) {
+    const claimBar = document.getElementById('claimTricksBar');
+    if (claimBar) claimBar.style.display = 'none';
+
+    this.showToast(`🏆 ${data.message || 'Remaining tricks claimed!'}`, 'success');
+
+    const modal = document.getElementById('modalTricksClaimed');
+    const modalText = document.getElementById('claimModalText');
+    const cardsWrap = document.getElementById('claimCardsDisplay');
+
+    if (modal && modalText) {
+      modalText.textContent = data.message || `${data.player_name} claimed the remaining tricks!`;
+      if (cardsWrap) {
+        cardsWrap.innerHTML = (data.cards || []).map(c => {
+          const parsed = this.parseCard(c);
+          return `<div class="card mini-card suit-H" style="border: 2px solid #facc15; box-shadow: 0 0 10px rgba(250, 204, 21, 0.5);"><span class="card-val">${parsed.rank}</span><span class="card-suit">♥</span></div>`;
+        }).join('');
+      }
+      modal.style.display = 'flex';
+      modal.classList.add('open');
+
+      setTimeout(() => {
+        modal.classList.remove('open');
+        modal.style.display = 'none';
+      }, 2500);
     }
   }
 
@@ -1502,6 +1601,11 @@ function setupOnlineUIEvents() {
   // Victory modal close
   document.getElementById('closeVictoryOnlineBtn')?.addEventListener('click', () => {
     document.getElementById('modalVictoryOnline')?.classList.remove('open');
+  });
+
+  // Claim Remaining Tricks button
+  document.getElementById('btnClaimTricks')?.addEventListener('click', () => {
+    window.tarneebGame?.claimRemainingTricks();
   });
 }
 
