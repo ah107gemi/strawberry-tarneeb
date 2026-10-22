@@ -940,39 +940,25 @@ class TarneebOnlineGame {
     if (gs.phase !== 'playing' || gs.current_turn !== this.myId) return false;
     if (!this.myHand || this.myHand.length === 0) return false;
 
-    // Hand must consist entirely of Hearts (TRUMP_SUIT)
-    const isAllHearts = this.myHand.every(c => this.parseCard(c).suit === 'H');
-    if (!isAllHearts) return false;
-
-    const rankVal = (rank) => {
-      const order = { '2': 0, '3': 1, '4': 2, '5': 3, '6': 4, '7': 5, '8': 6, '9': 7, '10': 8, 'J': 9, 'Q': 10, 'K': 11, 'A': 12 };
-      return order[rank] ?? -1;
+    const count = this.myHand.length;
+    // Strict hand condition:
+    // Only exactly [AH, KH] (2 cards), [AH, KH, QH] (3 cards), or [AH, KH, QH, JH] (4 cards)
+    const strictSets = {
+      2: ['AH', 'KH'],
+      3: ['AH', 'KH', 'QH'],
+      4: ['AH', 'KH', 'QH', 'JH']
     };
 
-    const myMinRank = Math.min(...this.myHand.map(c => rankVal(this.parseCard(c).rank)));
+    const targetSet = strictSets[count];
+    if (!targetSet) return false;
 
-    // Gather all Hearts played in current trick on table
-    const playedHearts = new Set();
-    (gs.trick_cards || []).forEach(tc => {
-      const parsed = this.parseCard(tc.card);
-      if (parsed.suit === 'H') playedHearts.add(parsed.rank);
-    });
-
-    const allHeartRanks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-    const myRanks = new Set(this.myHand.map(c => this.parseCard(c).rank));
-
-    // Other unplayed hearts that player does not hold and aren't on felt
-    const otherUnplayedHeartRanks = allHeartRanks.filter(r => !myRanks.has(r) && !playedHearts.has(r));
-    const otherMaxRank = otherUnplayedHeartRanks.length > 0
-      ? Math.max(...otherUnplayedHeartRanks.map(r => rankVal(r)))
-      : -1;
-
-    return myMinRank > otherMaxRank;
+    const handSet = new Set(this.myHand);
+    return handSet.size === targetSet.length && targetSet.every(c => handSet.has(c));
   }
 
   claimRemainingTricks() {
     const count = this.myHand ? this.myHand.length : 0;
-    if (confirm(`Claim the remaining ${count} tricks with your unbeatable cards?`)) {
+    if (confirm(`Claim the remaining ${count} tricks with your winning cards?`)) {
       this.send('claim_tricks', {});
       const claimBar = document.getElementById('claimTricksBar');
       if (claimBar) claimBar.style.display = 'none';
@@ -983,7 +969,7 @@ class TarneebOnlineGame {
     const claimBar = document.getElementById('claimTricksBar');
     if (claimBar) claimBar.style.display = 'none';
 
-    const header = data.header || `${data.player_name} Claimed the Remaining ${data.tricks_claimed || ''} Tricks!`;
+    const header = data.header || `${data.player_name} Claimed the Rest!`;
     this.showToast(`🏆 ${header}`, 'success');
 
     const modal = document.getElementById('modalTricksClaimed');
@@ -998,7 +984,7 @@ class TarneebOnlineGame {
         modalHeader.textContent = header;
       }
       if (modalText) {
-        modalText.textContent = data.message || `${data.player_name} holds unbeatable Hearts (trump) and claims the remaining tricks!`;
+        modalText.textContent = data.message || `${data.player_name} held winning cards and claimed the rest!`;
       }
 
       if (cardsWrap) {
