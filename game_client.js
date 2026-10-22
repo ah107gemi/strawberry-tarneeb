@@ -203,7 +203,11 @@ class TarneebOnlineGame {
         if (data && !this.matchHistory.some(h => h.round === data.round)) {
           this.matchHistory.push(data);
         }
-        this.showRoundSummary(data);
+        if (this.isClaimModalActive) {
+          this.pendingRoundSummary = data;
+        } else {
+          this.showRoundSummary(data);
+        }
         break;
 
       case 'game_complete':
@@ -877,6 +881,7 @@ class TarneebOnlineGame {
   }
 
   handleMatchTerminated(data) {
+    this.dismissClaimModal();
     this.lastMatchHistory = (data && data.history && data.history.length > 0)
       ? data.history
       : (this.matchHistory || []);
@@ -978,27 +983,70 @@ class TarneebOnlineGame {
     const claimBar = document.getElementById('claimTricksBar');
     if (claimBar) claimBar.style.display = 'none';
 
-    this.showToast(`🏆 ${data.message || 'Remaining tricks claimed!'}`, 'success');
+    const header = data.header || `${data.player_name} Claimed the Remaining ${data.tricks_claimed || ''} Tricks!`;
+    this.showToast(`🏆 ${header}`, 'success');
 
     const modal = document.getElementById('modalTricksClaimed');
+    const modalHeader = document.getElementById('claimModalHeaderText');
     const modalText = document.getElementById('claimModalText');
     const cardsWrap = document.getElementById('claimCardsDisplay');
+    const countdownBadge = document.getElementById('claimCountdownBadge');
 
-    if (modal && modalText) {
-      modalText.textContent = data.message || `${data.player_name} claimed the remaining tricks!`;
+    if (modal) {
+      this.isClaimModalActive = true;
+      if (modalHeader) {
+        modalHeader.textContent = header;
+      }
+      if (modalText) {
+        modalText.textContent = data.message || `${data.player_name} holds unbeatable Hearts (trump) and claims the remaining tricks!`;
+      }
+
       if (cardsWrap) {
-        cardsWrap.innerHTML = (data.cards || []).map(c => {
-          const parsed = this.parseCard(c);
-          return `<div class="card mini-card suit-H" style="border: 2px solid #facc15; box-shadow: 0 0 10px rgba(250, 204, 21, 0.5);"><span class="card-val">${parsed.rank}</span><span class="card-suit">♥</span></div>`;
+        // Render prominent visual card faces for each claimed card
+        cardsWrap.innerHTML = (data.cards || []).map((c, i) => {
+          const cardHtml = this.renderCard(c, true, false);
+          return `<div class="claim-revealed-card" style="animation-delay: ${i * 0.08}s;">${cardHtml}</div>`;
         }).join('');
       }
+
       modal.style.display = 'flex';
       modal.classList.add('open');
 
-      setTimeout(() => {
-        modal.classList.remove('open');
-        modal.style.display = 'none';
-      }, 2500);
+      // Countdown timer (4s) before automatically proceeding to round scoring
+      let secondsLeft = 4;
+      if (countdownBadge) countdownBadge.textContent = `(${secondsLeft}s)`;
+
+      if (this._claimCountdownTimer) {
+        clearInterval(this._claimCountdownTimer);
+      }
+
+      this._claimCountdownTimer = setInterval(() => {
+        secondsLeft -= 1;
+        if (secondsLeft <= 0) {
+          this.dismissClaimModal();
+        } else if (countdownBadge) {
+          countdownBadge.textContent = `(${secondsLeft}s)`;
+        }
+      }, 1000);
+    }
+  }
+
+  dismissClaimModal() {
+    if (this._claimCountdownTimer) {
+      clearInterval(this._claimCountdownTimer);
+      this._claimCountdownTimer = null;
+    }
+    this.isClaimModalActive = false;
+    const modal = document.getElementById('modalTricksClaimed');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.style.display = 'none';
+    }
+    // Proceed to round summary if waiting
+    if (this.pendingRoundSummary) {
+      const summary = this.pendingRoundSummary;
+      this.pendingRoundSummary = null;
+      this.showRoundSummary(summary);
     }
   }
 
@@ -1606,6 +1654,11 @@ function setupOnlineUIEvents() {
   // Claim Remaining Tricks button
   document.getElementById('btnClaimTricks')?.addEventListener('click', () => {
     window.tarneebGame?.claimRemainingTricks();
+  });
+
+  // Claim modal Continue button
+  document.getElementById('btnClaimContinue')?.addEventListener('click', () => {
+    window.tarneebGame?.dismissClaimModal();
   });
 }
 
