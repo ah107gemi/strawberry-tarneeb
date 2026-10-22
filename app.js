@@ -358,6 +358,7 @@
 
   /**
    * Render Top Leaderboard Podium (4 Seated Players) + Bench Strip
+   * Includes "(The King)" Badge & Title Rule for all players with 18+ points
    */
   function renderLeaderboard() {
     const rankings = calculateRankings();
@@ -371,6 +372,7 @@
     const rankLabels = ['1st Place', '2nd Place', '3rd Place', '4th Place'];
 
     rankings.forEach((item, idx) => {
+      const isKing = item.total >= 18;
       const diff = item.total - first.total;
       let gapText = '';
       if (idx === 0) {
@@ -381,11 +383,14 @@
       }
 
       podiumHtml += `
-        <div class="podium-item ${rankClasses[idx]}">
+        <div class="podium-item ${rankClasses[idx]} ${isKing ? 'is-king' : ''}">
           <div class="podium-badge">${rankBadges[idx]}</div>
           <span class="podium-rank-tag">${rankLabels[idx]}</span>
-          <div class="podium-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
-          <div class="podium-score num">${item.total}</div>
+          <div class="podium-name" title="${escapeHtml(item.name)}${isKing ? ' (The King)' : ''}">
+            ${escapeHtml(item.name)}${isKing ? '<span class="king-title-badge"> (The King)</span>' : ''}
+          </div>
+          ${isKing ? '<div class="king-card-badge" title="Scored 18+ Points!">👑 (The King)</div>' : ''}
+          <div class="podium-score num ${isKing ? 'king-total' : ''}">${item.total}</div>
           <div class="podium-gap num">${gapText}</div>
         </div>
       `;
@@ -394,11 +399,16 @@
 
     // Render Bench / Sitting Out Strip
     const bench = getBenchPlayers();
+    const totals = calculateTotals();
     if (bench.length > 0) {
       benchContainer.style.display = 'flex';
       benchContainer.innerHTML = `
         <span class="bench-title">🪑 Bench / Sitting Out:</span>
-        ${bench.map(p => `<span class="bench-pill">${escapeHtml(p.name)}</span>`).join('')}
+        ${bench.map(p => {
+          const pTotal = totals.find(t => t.id === p.id)?.total ?? 0;
+          const isKing = pTotal >= 18;
+          return `<span class="bench-pill ${isKing ? 'is-king' : ''}">${escapeHtml(p.name)}${isKing ? ' 👑 (The King)' : ''}</span>`;
+        }).join('')}
       `;
     } else {
       benchContainer.style.display = 'none';
@@ -417,11 +427,15 @@
     actives.forEach((player) => {
       const playerTotalObj = totals.find(t => t.id === player.id);
       const totalScore = playerTotalObj?.total ?? 0;
+      const isKing = totalScore >= 18;
       headerHtml += `
-        <th>
+        <th class="${isKing ? 'col-king' : ''}">
           <div class="player-header-wrap">
-            <span class="player-header-name">${escapeHtml(player.name)}</span>
-            <span class="player-header-total num">${totalScore} pts</span>
+            <span class="player-header-name">
+              ${escapeHtml(player.name)}${isKing ? '<span class="king-header-tag" title="The King (18+ pts)"> (The King)</span>' : ''}
+            </span>
+            ${isKing ? '<div class="king-sub-badge">👑 (The King)</div>' : ''}
+            <span class="player-header-total num ${isKing ? 'king-header-total' : ''}">${totalScore} pts</span>
           </div>
         </th>
       `;
@@ -490,9 +504,10 @@
     actives.forEach((player) => {
       const playerTotalObj = totals.find(t => t.id === player.id);
       const totalScore = playerTotalObj?.total ?? 0;
+      const isKing = totalScore >= 18;
       footerHtml += `
-        <td>
-          <span class="footer-total-score num">${totalScore}</span>
+        <td class="${isKing ? 'col-king' : ''}">
+          <span class="footer-total-score num ${isKing ? 'king-total' : ''}">${totalScore}${isKing ? ' 👑' : ''}</span>
         </td>
       `;
     });
@@ -1162,15 +1177,17 @@
     if (rankings.length === 0) return;
 
     const winner = rankings[0];
-    document.getElementById('victoryWinnerName').textContent = winner.name;
+    const winnerIsKing = winner.total >= 18;
+    document.getElementById('victoryWinnerName').textContent = `${winner.name}${winnerIsKing ? ' (The King)' : ''}`;
     document.getElementById('victoryScore').textContent = `Total Score: ${winner.total} pts`;
 
     let podiumListHtml = '';
     rankings.forEach((r, idx) => {
       const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '4️⃣';
+      const isKing = r.total >= 18;
       podiumListHtml += `
-        <div style="display: flex; justify-content: space-between; padding: 6px 12px; background: #0f172a; border-radius: 8px; font-weight: 700; font-size: 0.9rem;">
-          <span>${medal} ${escapeHtml(r.name)}</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: #0f172a; border-radius: 8px; font-weight: 700; font-size: 0.9rem; ${isKing ? 'border: 1px solid #facc15;' : ''}">
+          <span>${medal} ${escapeHtml(r.name)}${isKing ? ' <span style="color: #facc15; font-size: 0.78rem; font-weight: 800;">👑 (The King)</span>' : ''}</span>
           <span style="color: #fde047;">${r.total} pts</span>
         </div>
       `;
