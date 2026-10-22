@@ -670,22 +670,34 @@
   </div>
 
   <!-- ==========================================================================
-       MODAL: Tricks Claimed Announcement
+       MODAL: Tricks Claimed Announcement & Revealed Cards
        ========================================================================== -->
   <div id="modalTricksClaimed" class="modal-overlay" role="dialog" aria-modal="true" style="display: none;">
-    <div class="modal-content modal-claim-content" style="max-width: 420px; text-align: center;">
-      <div class="modal-header" style="justify-content: center;">
-        <h3 class="modal-title" style="color: #fde047; display: flex; align-items: center; gap: 8px;">
+    <div class="modal-content modal-claim-content" style="max-width: 440px; text-align: center;">
+      <div class="modal-header" style="justify-content: center; position: relative;">
+        <h3 id="claimModalHeader" class="modal-title" style="color: #fde047; font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center; line-height: 1.3;">
           <span>🏆</span>
-          <span>Tricks Claimed!</span>
+          <span id="claimModalHeaderText">Tricks Claimed!</span>
         </h3>
       </div>
-      <div class="modal-body" style="padding: 20px 16px; gap: 14px;">
-        <div style="font-size: 3.2rem; line-height: 1;">👑</div>
-        <p id="claimModalText" style="font-size: 1.05rem; font-weight: 800; color: #f8fafc; margin: 0; line-height: 1.4;">
-          Player claimed the remaining tricks with unbeatable cards!
+      <div class="modal-body" style="padding: 18px 16px; gap: 12px;">
+        <p id="claimModalText" style="font-size: 0.95rem; font-weight: 600; color: #cbd5e1; margin: 0; line-height: 1.4;">
+          Player holds an unbeatable trump sequence!
         </p>
-        <div id="claimCardsDisplay" style="display: flex; justify-content: center; gap: 6px; margin-top: 6px; flex-wrap: wrap;"></div>
+
+        <!-- Revealed Claiming Cards Display -->
+        <div class="claim-cards-section">
+          <div class="claim-cards-label">Unbeatable Winning Cards:</div>
+          <div id="claimCardsDisplay" class="claim-cards-display"></div>
+        </div>
+
+        <!-- Short Countdown / Continue Button -->
+        <div class="claim-actions-wrap" style="margin-top: 6px; width: 100%;">
+          <button id="btnClaimContinue" class="btn-claim-continue" type="button">
+            <span>Continue to Scores</span>
+            <span id="claimCountdownBadge" class="claim-countdown-badge">(4s)</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
