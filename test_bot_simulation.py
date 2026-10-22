@@ -284,10 +284,11 @@ async def run_simulation():
 
             if mtype == "tricks_claimed":
                 tricks_claimed_verified = True
-                print(f"  ✓ tricks_claimed event verified: {data.get('player_name')} claimed {data.get('tricks_claimed')} tricks!")
+                print(f"  ✓ tricks_claimed event verified: {data.get('header')}")
                 assert data.get("player_id") == my_token
                 assert data.get("tricks_claimed") == 2
                 assert data.get("cards") == ["AH", "KH"]
+                assert data.get("header") == "Ahmed Claimed the Remaining 2 Tricks!"
             elif mtype == "round_complete":
                 round_complete_verified = True
                 print(f"  ✓ Round completed after claim! Round score breakdown: {data.get('round_scores')}")
