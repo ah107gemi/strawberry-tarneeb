@@ -3534,3 +3534,97 @@ body::before {
 .modal-match-ended-content {
   border-top: 4px solid #f43f5e;
 }
+
+/* ==========================================================================
+   "The King" Title & Badge Styles (18+ Points Rule)
+   ========================================================================== */
+.king-title-badge {
+  display: inline-block;
+  color: #facc15;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  text-shadow: 0 0 8px rgba(250, 204, 21, 0.45);
+  margin-left: 2px;
+}
+
+.king-card-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(245, 158, 11, 0.38));
+  border: 1px solid #facc15;
+  color: #fef08a;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  margin: 3px auto 1px auto;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.35);
+  animation: kingGlowPulse 2s infinite alternate;
+  white-space: nowrap;
+}
+
+.king-header-tag {
+  display: inline-block;
+  color: #facc15;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  text-shadow: 0 0 6px rgba(250, 204, 21, 0.3);
+  margin-left: 2px;
+}
+
+.king-sub-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(234, 179, 8, 0.18);
+  border: 1px solid rgba(250, 204, 21, 0.5);
+  color: #fde047;
+  font-size: 0.64rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin: 1px 0;
+  white-space: nowrap;
+}
+
+.king-header-total {
+  color: #facc15 !important;
+  background: rgba(234, 179, 8, 0.2) !important;
+  border: 1px solid rgba(250, 204, 21, 0.4) !important;
+}
+
+@keyframes kingGlowPulse {
+  0% {
+    box-shadow: 0 0 6px rgba(250, 204, 21, 0.25);
+    border-color: rgba(250, 204, 21, 0.7);
+  }
+  100% {
+    box-shadow: 0 0 14px rgba(250, 204, 21, 0.7);
+    border-color: #facc15;
+  }
+}
+
+.podium-item.is-king {
+  border-color: rgba(250, 204, 21, 0.65) !important;
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.25) !important;
+}
+
+.bench-pill.is-king {
+  border-color: #facc15 !important;
+  color: #fef08a !important;
+  background: rgba(234, 179, 8, 0.2) !important;
+}
+
+.col-king {
+  background: rgba(250, 204, 21, 0.06) !important;
+}
+
+.king-total {
+  color: #fde047 !important;
+  font-weight: 900 !important;
+}
