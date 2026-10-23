@@ -329,9 +329,9 @@ async def run_simulation():
             mtype = msg.get("type")
             data = msg.get("data", {})
 
-            if mtype == "match_terminated":
+            if mtype in ("match_terminated", "game_terminated"):
                 match_terminated_verified = True
-                print(f"  ✓ Match termination event verified: {data.get('reason')}")
+                print(f"  ✓ Match termination event verified ({mtype}): {data.get('reason')}")
                 assert data.get("leaving_player") == my_name, f"Expected {my_name}, got {data.get('leaving_player')}"
             elif mtype == "game_state":
                 current_state = data
@@ -339,7 +339,7 @@ async def run_simulation():
                     lobby_reset_verified = True
                     print(f"  ✓ Game state successfully reset to lobby! Phase: '{data.get('phase')}'")
 
-        assert match_terminated_verified, "Expected match_terminated event"
+        assert match_terminated_verified, "Expected match_terminated / game_terminated event"
         assert lobby_reset_verified, "Expected game_state reset to lobby"
         print(f"  ✓ Verified active game destruction: phase='{current_state.get('phase')}', round={current_state.get('round')}")
 
@@ -355,6 +355,97 @@ async def run_simulation():
         print("=" * 65 + "\n")
 
 
+async def run_full_13_tricks_test():
+    """
+    Test full 13-trick gameplay without early claims to verify
+    zero game freezes and smooth progression through all 13 tricks.
+    """
+    print("\n" + "=" * 65)
+    print("🃏 FULL 13-TRICK GAMEPLAY LOOP VERIFICATION (ZERO FREEZE CHECK)")
+    print("=" * 65)
+
+    ws_url = f"ws://127.0.0.1:{TEST_PORT}/ws/test_token_full_loop"
+    my_token = "test_token_full_loop"
+    my_name = "Hosam"
+
+    async with websockets.connect(ws_url) as ws:
+        # Join as player
+        await ws.send(json.dumps({
+            "type": "join",
+            "name": my_name,
+            "role": "player",
+            "is_spectator": False
+        }))
+
+        # Wait until seated
+        while True:
+            msg = json.loads(await ws.recv())
+            if msg.get("type") == "player_joined" and msg.get("data", {}).get("name") == my_name:
+                print(f"  ✓ Seated player {my_name}")
+                break
+
+        # Fill table with bots
+        await ws.send(json.dumps({"type": "fill_bots"}))
+
+        # Wait for round 1 to start
+        current_hand = []
+        while True:
+            msg = json.loads(await ws.recv())
+            if msg.get("type") == "game_state":
+                state = msg.get("data", {})
+                if state.get("phase") == "playing" and state.get("round") >= 1:
+                    current_hand = list(state.get("my_hand", []))
+                    print(f"  ✓ Round 1 started with {len(current_hand)} cards in hand")
+                    break
+
+        tricks_won = 0
+        round_finished = False
+        start_time = time.time()
+
+        while not round_finished:
+            msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=10.0))
+            mtype = msg.get("type")
+            data = msg.get("data", {})
+
+            if mtype == "game_state":
+                state = data
+                phase = state.get("phase")
+                turn_id = state.get("current_turn")
+                trick_cards = state.get("trick_cards", [])
+                current_hand = list(state.get("my_hand", []))
+
+                if phase == "playing" and turn_id == my_token and len(trick_cards) < 4 and current_hand:
+                    led_suit = state.get("led_suit") or (card_suit(trick_cards[0]["card"]) if trick_cards else None)
+                    following = [c for c in current_hand if card_suit(c) == led_suit] if led_suit else []
+                    card_to_play = following[0] if following else current_hand[0]
+                    await ws.send(json.dumps({
+                        "type": "play_card",
+                        "card": card_to_play
+                    }))
+
+            elif mtype == "trick_complete":
+                tricks_won += 1
+                winner = data.get("winner_name")
+                card = data.get("winning_card")
+                print(f"  ✓ Trick {tricks_won}/13 resolved: {winner} won with {card}")
+
+            elif mtype == "round_complete":
+                round_finished = True
+                print(f"  🎉 All 13 tricks complete! Round finished in {time.time() - start_time:.2f}s")
+                print(f"     Round scores: {data.get('round_scores')}")
+
+        assert tricks_won == 13, f"Expected 13 tricks, got {tricks_won}"
+        assert round_finished, "Expected round_complete event"
+        print("=" * 65)
+        print("✅ FULL 13-TRICK TEST PASSED WITHOUT FREEZES!")
+        print("=" * 65 + "\n")
+
+
+async def main_tests():
+    await run_simulation()
+    await run_full_13_tricks_test()
+
+
 if __name__ == "__main__":
     test_claim_tricks_unit_logic()
-    asyncio.run(run_simulation())
+    asyncio.run(main_tests())
