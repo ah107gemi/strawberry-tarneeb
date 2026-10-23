@@ -18,7 +18,7 @@ class TarneebOnlineGame {
     this.dragSrc = null;
     this.selectedCard = null;
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
+    this.maxReconnectAttempts = Infinity;
 
     // Suit order for sorting: Hearts (trump) first
     this.suitOrder = { H: 0, S: 1, D: 2, C: 3 };
@@ -28,6 +28,8 @@ class TarneebOnlineGame {
     this.suitNames = { H: 'Hearts', S: 'Spades', D: 'Diamonds', C: 'Clubs' };
     this.isSubmittingPlay = false;
     this.heartbeatTimer = null;
+    this.lastPong = null;
+    this._reconnectTimer = null;
     this._lastHandHash = null;
     this._lastTrickHash = null;
     this._lastScoreHash = null;
@@ -35,18 +37,29 @@ class TarneebOnlineGame {
     this._forceTrickRerender = false;
     this._lastSortPromptedRound = 0;
     this.matchHistory = [];
+
+    // Auto-reconnect when tab becomes visible or network is restored
+    this.setupVisibilityReconnect();
   }
 
   // =========================================================================
-  // HEARTBEAT
+  // HEARTBEAT & KEEP-ALIVE
   // =========================================================================
   startHeartbeat() {
     this.stopHeartbeat();
+    this.lastPong = Date.now();
+    // Send ping every 12 seconds to keep Render free tier alive and prevent idle drops
     this.heartbeatTimer = setInterval(() => {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        // If no pong for > 35s, connection may be silently dead: force reconnect
+        if (this.lastPong && (Date.now() - this.lastPong > 35000)) {
+          console.warn('[Tarneeb] Heartbeat timeout (>35s without pong), restarting connection…');
+          try { this.ws.close(); } catch (_) {}
+          return;
+        }
         this.send('ping');
       }
-    }, 15000);
+    }, 12000);
   }
 
   stopHeartbeat() {
@@ -56,49 +69,133 @@ class TarneebOnlineGame {
     }
   }
 
+  setupVisibilityReconnect() {
+    if (this._visibilityHandlerAttached) return;
+    this._visibilityHandlerAttached = true;
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && this.myId) {
+        if (!this.ws || this.ws.readyState === WebSocket.CLOSED || this.ws.readyState === WebSocket.CLOSING) {
+          console.log('[Tarneeb] Tab visible again and socket disconnected, reconnecting…');
+          this.connect(this.myId);
+        }
+      }
+    });
+
+    window.addEventListener('online', () => {
+      if (this.myId && (!this.ws || this.ws.readyState !== WebSocket.OPEN)) {
+        console.log('[Tarneeb] Network online, reconnecting…');
+        this.connect(this.myId);
+      }
+    });
+  }
+
   // =========================================================================
   // CONNECTION
   // =========================================================================
+  getWsUrl(playerToken) {
+    const hostname = window.location.hostname;
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+    const baseUrl = isLocal
+      ? 'ws://localhost:8000/ws'
+      : 'wss://strawberry-tarneeb.onrender.com/ws';
+
+    const token = playerToken || this.myId || 'guest_' + Math.random().toString(36).substring(2, 9);
+    return `${baseUrl}/${token}`;
+  }
+
   connect(playerToken) {
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) && this.myId === playerToken) {
+    const tokenToUse = playerToken || this.myId;
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) && this.myId === tokenToUse) {
       if (this.ws.readyState === WebSocket.OPEN) {
         this.sendJoinMessage();
       }
       return;
     }
 
-    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = location.host;
-    const wsUrl = `${protocol}//${host}/ws/${playerToken}`;
+    if (tokenToUse) {
+      this.myId = tokenToUse;
+    }
 
-    this.ws = new WebSocket(wsUrl);
+    // Clean up any existing connection
+    if (this.ws) {
+      try {
+        this.ws.onopen = null;
+        this.ws.onmessage = null;
+        this.ws.onclose = null;
+        this.ws.onerror = null;
+        this.ws.close();
+      } catch (_) {}
+      this.ws = null;
+    }
+
+    const wsUrl = this.getWsUrl(tokenToUse);
+    console.log(`[Tarneeb] Connecting to WebSocket: ${wsUrl}`);
+    this.showStatus('⏳ Connecting to game server…');
+
+    try {
+      this.ws = new WebSocket(wsUrl);
+    } catch (err) {
+      console.error('Failed to create WebSocket:', err);
+      this.showStatus('❌ Connection error. Retrying…');
+      this.scheduleReconnect(tokenToUse);
+      return;
+    }
+
     this.ws.onopen = () => {
+      console.log('[Tarneeb] WebSocket connected successfully');
       this.reconnectAttempts = 0;
+      this.lastPong = Date.now();
       this.showStatus('🟢 Connected to game server');
       this.startHeartbeat();
       this.sendJoinMessage();
       this.flushPendingMessages();
     };
-    this.ws.onmessage = (evt) => this.handleServerMessage(JSON.parse(evt.data));
-    this.ws.onclose = () => {
-      this.stopHeartbeat();
-      this.showStatus('🔴 Disconnected. Reconnecting…');
-      this.scheduleReconnect(playerToken);
+
+    this.ws.onmessage = (evt) => {
+      try {
+        const msg = JSON.parse(evt.data);
+        if (msg.type === 'pong') {
+          this.lastPong = Date.now();
+          return;
+        }
+        this.handleServerMessage(msg);
+      } catch (e) {
+        console.error('Error parsing message from server:', e);
+      }
     };
+
+    this.ws.onclose = (evt) => {
+      this.stopHeartbeat();
+      console.warn(`[Tarneeb] WebSocket closed (code: ${evt.code}, reason: ${evt.reason || 'none'})`);
+      this.showStatus('🔴 Disconnected. Reconnecting…');
+      this.scheduleReconnect(tokenToUse);
+    };
+
     this.ws.onerror = (e) => {
-      this.showStatus('❌ Connection error');
+      this.showStatus('❌ Connection error. Retrying…');
       console.error('WebSocket error:', e);
     };
   }
 
   scheduleReconnect(token) {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      this.showStatus('❌ Cannot reconnect. Please refresh the page.');
-      return;
+    if (this._reconnectTimer) {
+      clearTimeout(this._reconnectTimer);
+      this._reconnectTimer = null;
     }
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 15000);
-    this.reconnectAttempts++;
-    setTimeout(() => this.connect(token), delay);
+
+    // Render free tier can take up to 45-50s to wake up from cold sleep.
+    // Exponential backoff: 1.5s, 2.5s, 4s, 6s, 8s, capped at 10s. Keep trying persistently!
+    this.reconnectAttempts = (this.reconnectAttempts || 0) + 1;
+    const delay = Math.min(1500 * Math.pow(1.35, Math.min(this.reconnectAttempts, 7)), 10000);
+
+    const tokenToUse = token || this.myId;
+    this.showStatus(`🔄 Reconnecting to server (attempt ${this.reconnectAttempts})…`);
+
+    this._reconnectTimer = setTimeout(() => {
+      this._reconnectTimer = null;
+      this.connect(tokenToUse);
+    }, delay);
   }
 
   send(type, payload = {}) {
