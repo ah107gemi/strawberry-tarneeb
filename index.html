@@ -190,17 +190,19 @@
          ====================================================================== -->
     <div id="viewOnlineGame" class="mode-view online-game-view" style="display: none;">
       
-      <!-- Dedicated Top Header Bar Container (Fixed 56px height) -->
+      <!-- Dedicated Top Header Bar Container (Unified Box Toolbar) -->
       <header id="onlineTopHeader" class="online-header-strip">
-        <div class="online-meta-wrap">
-          <span class="online-pill-badge brand-pill"><span class="brand-strawberry">🍓</span> Tarneeb</span>
-          <span id="onlineRoundBadge" class="online-pill-badge round-pill">Round 1 of 15</span>
-          <button id="onlineDealerBadge" class="online-pill-badge dealer-pill" type="button" title="Click to Change Dealer">🂠 Dealer: -</button>
-          <span id="onlinePhaseInfo" class="online-pill-badge phase-pill" style="display: none;">⏳ Waiting for table…</span>
-          <span id="onlineUserRoleBadge" class="online-pill-badge role-pill" style="display: none;">👀 Spectating</span>
+        <div class="unified-header-box">
+          <span class="header-brand-tag"><span class="brand-strawberry">🍓</span> Tarneeb</span>
+          <span class="header-sep">|</span>
+          <span id="onlineRoundBadge" class="header-round-tag">R1/15</span>
+          <span class="header-sep">|</span>
+          <button id="onlineDealerBadge" class="header-dealer-btn" type="button" title="Click to Change Dealer">🎴 Dealer: -</button>
+          <span id="onlinePhaseInfo" class="header-phase-tag" style="display: none;">⏳ Waiting…</span>
+          <span id="onlineUserRoleBadge" class="header-role-tag" style="display: none;">👀 Spec</span>
         </div>
-        <button id="btnMenu" class="drawer-trigger-btn menu-toggle btn-menu" type="button" title="Menu & Navigation" aria-label="Open Menu" data-menu-trigger="true" style="pointer-events: auto !important; z-index: 9999 !important;">
-          <span style="font-size: 1.15rem; line-height: 1; pointer-events: none; margin-right: 2px;">☰</span>
+        <button id="btnMenu" class="drawer-trigger-btn menu-toggle btn-menu header-menu-btn" type="button" title="Menu & Navigation" aria-label="Open Menu" data-menu-trigger="true" style="pointer-events: auto !important; z-index: 9999 !important;">
+          <span style="font-size: 1.05rem; line-height: 1; pointer-events: none; margin-right: 3px;">☰</span>
           <span style="pointer-events: none;">Menu</span>
         </button>
       </header>
