@@ -571,15 +571,41 @@ class TarneebOnlineGame {
     const container = document.getElementById('onlineScoreboard');
     if (!container) return;
     const players = [...gs.players].filter(p => p.role === 'player');
-    const scoreHash = players.map(p => `${p.id}:${gs.scores[p.id]}:${gs.bids[p.id]}:${gs.tricks_taken[p.id]}:${p.id===gs.current_turn}`).join(';') + '|' + gs.phase;
+    const teamKey = gs.team_scores ? `${gs.team_scores[1] ?? gs.team_scores['1'] ?? 0}:${gs.team_scores[2] ?? gs.team_scores['2'] ?? 0}` : '';
+    const scoreHash = players.map(p => `${p.id}:${gs.scores[p.id]}:${gs.bids[p.id]}:${gs.tricks_taken[p.id]}:${p.id===gs.current_turn}`).join(';') + '|' + gs.phase + '|' + teamKey;
     if (this._lastScoreHash === scoreHash) return;
     this._lastScoreHash = scoreHash;
 
     players.sort((a, b) => (gs.scores[b.id] || 0) - (gs.scores[a.id] || 0));
 
     let html = '<div class="score-sidebar-title">📊 Live Scores</div>';
+
+    // Team Scores Summary Banner
+    if (gs.team_scores) {
+      const t1 = Number(gs.team_scores[1] ?? gs.team_scores['1'] ?? 0);
+      const t2 = Number(gs.team_scores[2] ?? gs.team_scores['2'] ?? 0);
+      const t1Str = t1 > 0 ? `+${t1}` : `${t1}`;
+      const t2Str = t2 > 0 ? `+${t2}` : `${t2}`;
+      html += `
+        <div class="team-scores-bar">
+          <div class="team-score-chip ${t1 < 0 ? 'neg' : ''}">
+            <span class="team-score-lbl">Team 1 (Seats 1 & 3)</span>
+            <span class="team-score-val ${t1 < 0 ? 'negative-score' : (t1 > 0 ? 'positive-score' : 'zero-score')}">${t1Str} pts</span>
+          </div>
+          <div class="team-score-vs">VS</div>
+          <div class="team-score-chip ${t2 < 0 ? 'neg' : ''}">
+            <span class="team-score-lbl">Team 2 (Seats 2 & 4)</span>
+            <span class="team-score-val ${t2 < 0 ? 'negative-score' : (t2 > 0 ? 'positive-score' : 'zero-score')}">${t2Str} pts</span>
+          </div>
+        </div>
+      `;
+    }
+
     players.forEach((p, idx) => {
-      const score = gs.scores[p.id] || 0;
+      const score = Number(gs.scores[p.id] ?? 0);
+      const scoreFormatted = score > 0 ? `+${score}` : `${score}`;
+      const isNegative = score < 0;
+      const scoreClass = isNegative ? 'negative-score' : (score > 0 ? 'positive-score' : 'zero-score');
       const bid = gs.bids[p.id];
       const tricks = gs.tricks_taken[p.id] || 0;
       const isComplete = (bid !== undefined && bid !== null && Number(bid) > 0 && tricks >= Number(bid));
@@ -597,7 +623,7 @@ class TarneebOnlineGame {
           <div class="score-details">
             ${bid !== undefined && bid !== null ? `<span class="bid-chip">Bid ${bid}</span>` : ''}
             ${gs.phase === 'playing' ? `<span class="tricks-chip">${tricks}(eat)</span>` : ''}
-            <span class="score-num ${isKing ? 'king-total' : ''}">${score >= 0 ? '+' : ''}${score}</span>
+            <span class="score-num ${isKing ? 'king-total' : ''} ${scoreClass}">${scoreFormatted}</span>
           </div>
         </div>
       `;
@@ -1443,19 +1469,34 @@ class TarneebOnlineGame {
     players.forEach(p => {
       const bid = data.bids?.[p.id] !== undefined ? data.bids[p.id] : '-';
       const tricks = data.tricks_taken?.[p.id] ?? 0;
-      const rScore = data.round_scores?.[p.id] ?? 0;
-      const total = data.cumulative_scores?.[p.id] ?? (this.gameState?.scores?.[p.id] ?? 0);
-      const pts = rScore >= 0 ? `+${rScore}` : `${rScore}`;
+      const rScore = Number(data.round_scores?.[p.id] ?? 0);
+      const total = Number(data.cumulative_scores?.[p.id] ?? (this.gameState?.scores?.[p.id] ?? 0));
+      const pts = rScore > 0 ? `+${rScore}` : `${rScore}`;
+      const totalFormatted = total > 0 ? `+${total}` : `${total}`;
       const isComplete = (bid !== '-' && Number(bid) > 0 && tricks >= Number(bid));
       html += `
         <div style="display:flex;justify-content:space-between;align-items:center;background:#0f172a;padding:8px 12px;border-radius:8px;${isComplete ? 'border: 1.5px solid #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.45);' : ''}">
           <span style="font-weight:700;">${this.esc(p.name)}</span>
-          <span style="color:#94a3b8;font-size:0.85rem;">Bid ${bid} • ${tricks}(eat) → <strong style="color:${rScore >= 0 ? '#4ade80' : '#f87171'}">${pts}</strong></span>
-          <span style="color:#fde047;font-weight:800;">${total} pts</span>
+          <span style="color:#94a3b8;font-size:0.85rem;">Bid ${bid} • ${tricks}(eat) → <strong style="color:${rScore < 0 ? '#f87171' : (rScore > 0 ? '#4ade80' : '#cbd5e1')}">${pts}</strong></span>
+          <span style="color:${total < 0 ? '#f87171' : '#fde047'};font-weight:800;">${totalFormatted} pts</span>
         </div>
       `;
     });
     html += '</div>';
+
+    if (data.team_scores) {
+      const t1 = Number(data.team_scores[1] ?? data.team_scores['1'] ?? 0);
+      const t2 = Number(data.team_scores[2] ?? data.team_scores['2'] ?? 0);
+      const t1Str = t1 > 0 ? `+${t1}` : `${t1}`;
+      const t2Str = t2 > 0 ? `+${t2}` : `${t2}`;
+      html += `
+        <div style="display:flex;justify-content:space-around;background:rgba(15,23,42,0.8);border:1px solid rgba(255,255,255,0.1);padding:6px 10px;border-radius:8px;margin-top:8px;font-size:0.82rem;">
+          <div><span style="color:#94a3b8;">Team 1:</span> <strong style="color:${t1 < 0 ? '#f87171' : '#38bdf8'}">${t1Str} pts</strong></div>
+          <div style="color:#64748b;">|</div>
+          <div><span style="color:#94a3b8;">Team 2:</span> <strong style="color:${t2 < 0 ? '#f87171' : '#38bdf8'}">${t2Str} pts</strong></div>
+        </div>
+      `;
+    }
     if (data.special_kh && data.special_ah) {
       const khName = this.gameState?.players?.find(p => p.id === data.special_kh)?.name || 'K♥';
       const ahName = this.gameState?.players?.find(p => p.id === data.special_ah)?.name || 'A♥';
@@ -1583,18 +1624,23 @@ class TarneebOnlineGame {
     if (!modal) return;
     modal.classList.add('open');
     const winner = data.standings?.[0]?.name || 'Champion';
-    const score = data.standings?.[0]?.score || 0;
+    const score = Number(data.standings?.[0]?.score || 0);
     const winnerEl = document.getElementById('victoryWinnerOnline');
     const scoreEl = document.getElementById('victoryScoreOnline');
     if (winnerEl) winnerEl.textContent = winner;
-    if (scoreEl) scoreEl.textContent = `${score} pts`;
+    if (scoreEl) {
+      scoreEl.textContent = `${score > 0 ? '+' : ''}${score} pts`;
+      scoreEl.style.color = score < 0 ? '#f87171' : '#fde047';
+    }
 
     let podium = '';
     (data.standings || []).forEach((s, i) => {
       const medals = ['🥇','🥈','🥉','4️⃣'];
+      const sc = Number(s.score || 0);
+      const scFormatted = sc > 0 ? `+${sc}` : `${sc}`;
       podium += `<div style="display:flex;justify-content:space-between;background:#0f172a;padding:8px 12px;border-radius:8px;margin-bottom:4px;">
         <span>${medals[i] || '🎖️'} ${this.esc(s.name)}</span>
-        <span style="color:#fde047;font-weight:700;">${s.score} pts</span>
+        <span style="color:${sc < 0 ? '#f87171' : '#fde047'};font-weight:700;">${scFormatted} pts</span>
       </div>`;
     });
     const standingsEl = document.getElementById('victoryStandingsOnline');
