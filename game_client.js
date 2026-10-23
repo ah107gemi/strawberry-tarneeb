@@ -1321,7 +1321,7 @@ class TarneebOnlineGame {
     const isOpen = overlay.classList.contains('open') || overlay.classList.contains('active');
     const shouldOpen = open !== undefined ? open : !isOpen;
     if (shouldOpen) {
-      overlay.style.display = 'flex';
+      overlay.style.display = 'block';
       overlay.offsetHeight; // force reflow
       overlay.classList.add('open', 'active');
       if (drawer) drawer.classList.add('open', 'active');
@@ -1955,7 +1955,7 @@ function initGlobalSideDrawer() {
       if (typeof e.stopPropagation === 'function') e.stopPropagation();
       if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
     }
-    overlay.style.display = 'flex';
+    overlay.style.display = 'block';
     overlay.offsetHeight; // Force reflow
     overlay.classList.add('open', 'active');
     drawer.classList.add('open', 'active');
