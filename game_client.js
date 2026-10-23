@@ -644,8 +644,10 @@ class TarneebOnlineGame {
       } else {
         el.innerHTML = `
           <div class="opponent-cards-row">${cardBacks}</div>
-          <div class="opponent-name ${isCurrent ? 'is-current-turn' : ''}">${this.esc(player.name)}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''} ${isCurrent ? '🔥' : ''}</div>
-          ${bid !== undefined && bid !== null ? `<div class="opponent-bid-badge">Bid ${bid} • ${tricks}(eat)</div>` : ''}
+          <div class="opponent-meta-group">
+            <div class="opponent-name ${isCurrent ? 'is-current-turn' : ''}">${this.esc(player.name)}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''} ${isCurrent ? '🔥' : ''}</div>
+            ${bid !== undefined && bid !== null ? `<div class="opponent-bid-badge">Bid ${bid} • ${tricks}(eat)</div>` : ''}
+          </div>
         `;
       }
     });
@@ -786,12 +788,13 @@ class TarneebOnlineGame {
   }
 
   // =========================================================================
-  // BIDDING PANEL
+  // CENTERED BIDDING MODAL
   // =========================================================================
   renderBiddingPanel(gs) {
     const panel = document.getElementById('biddingPanel');
+    if (!panel) return;
     const me = gs.players.find(p => p.id === this.myId);
-    const isSpectator = me ? me.role === 'spectator' : (this.myRole === 'spectator');
+    const isSpectator = me ? (me.role === 'spectator' || me.is_spectator) : (this.myRole === 'spectator');
 
     if (isSpectator) {
       panel.style.display = 'none';
@@ -800,27 +803,128 @@ class TarneebOnlineGame {
 
     const myTurnToBid = gs.phase === 'bidding' && gs.current_turn === this.myId;
 
-    panel.style.display = myTurnToBid ? 'flex' : 'none';
+    if (!myTurnToBid) {
+      panel.style.display = 'none';
+      this.selectedBidAmount = null;
+      return;
+    }
 
-    if (!myTurnToBid) return;
+    panel.style.display = 'flex';
 
     const isRound1 = gs.round === 1;
     if (isRound1) {
-      panel.innerHTML = '<div class="bid-info">Round 1: No bidding — play to earn tricks!</div>';
+      panel.innerHTML = `
+        <div class="bidding-modal-dialog">
+          <div class="bidding-modal-header">
+            <div class="bidding-modal-title-wrap">
+              <span class="bidding-modal-icon">🎯</span>
+              <h3 class="bidding-modal-title">Round 1</h3>
+            </div>
+          </div>
+          <div class="bidding-modal-body">
+            <div class="bidding-instruction-text">Round 1 has no bidding. Play to earn tricks!</div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // Check if already rendered for this specific round & turn
+    const gridEl = document.getElementById('biddingGridContainer');
+    if (gridEl && gridEl.dataset.renderedRound === String(gs.round)) {
+      this.updateBidConfirmButton();
       return;
     }
 
     const bids = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
     let html = `
-      <div class="bid-panel-title">🎯 Your Bid (Bid 1 is prohibited!)</div>
-      <div class="bid-buttons-row">
-        ${bids.map(b => `
-          <button class="bid-btn-online ${b === 0 ? 'bid-0' : b === 7 ? 'bid-7' : ''}"
-            onclick="window.tarneebGame.placeBid(${b})">${b}</button>
-        `).join('')}
+      <div class="bidding-modal-dialog">
+        <div class="bidding-modal-header">
+          <div class="bidding-modal-title-wrap">
+            <span class="bidding-modal-icon">🎯</span>
+            <h3 id="onlineBiddingTitle" class="bidding-modal-title">Round ${gs.round} Bidding</h3>
+          </div>
+          <div class="bidding-modal-badge">
+            <span class="bidding-prohibit-pill">⚠️ Bid 1 Prohibited</span>
+          </div>
+        </div>
+        
+        <div class="bidding-modal-body">
+          <div class="bidding-instruction-text">Select your contract bid for this round (0 or 2–13):</div>
+          <div id="biddingGridContainer" class="bidding-grid-container" data-rendered-round="${gs.round}">
+            ${bids.map(b => {
+              const isSelected = this.selectedBidAmount === b;
+              const isZero = b === 0;
+              const isSeven = b === 7;
+              const subLabel = isZero ? 'Nil (±5)' : isSeven ? 'Tarneeb (±14)' : '';
+              return `
+                <button type="button" 
+                  class="bid-grid-btn ${isSelected ? 'selected' : ''} ${isZero ? 'bid-special-0' : ''} ${isSeven ? 'bid-special-7' : ''}"
+                  data-bid="${b}"
+                  onclick="window.tarneebGame.selectBid(${b})">
+                  <span class="bid-num">${b}</span>
+                  ${subLabel ? `<span class="bid-sub">${subLabel}</span>` : ''}
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        <div class="bidding-modal-footer">
+          <button id="btnConfirmOnlineBid" class="btn-confirm-online-bid" type="button" 
+            ${this.selectedBidAmount === null || this.selectedBidAmount === undefined ? 'disabled' : 'class="ready"'}
+            onclick="window.tarneebGame.submitSelectedBid()">
+            <span id="btnConfirmOnlineBidText">
+              ${this.selectedBidAmount !== null && this.selectedBidAmount !== undefined 
+                ? `🎯 Place Bid (${this.selectedBidAmount})` 
+                : 'Select a Bid'}
+            </span>
+          </button>
+        </div>
       </div>
     `;
     panel.innerHTML = html;
+  }
+
+  selectBid(amount) {
+    this.selectedBidAmount = amount;
+    const buttons = document.querySelectorAll('.bid-grid-btn');
+    buttons.forEach(btn => {
+      const b = Number(btn.dataset.bid);
+      if (b === amount) {
+        btn.classList.add('selected');
+      } else {
+        btn.classList.remove('selected');
+      }
+    });
+    this.updateBidConfirmButton();
+  }
+
+  updateBidConfirmButton() {
+    const btn = document.getElementById('btnConfirmOnlineBid');
+    const textEl = document.getElementById('btnConfirmOnlineBidText');
+    if (!btn || !textEl) return;
+    if (this.selectedBidAmount !== null && this.selectedBidAmount !== undefined) {
+      btn.disabled = false;
+      btn.classList.add('ready');
+      textEl.textContent = `🎯 Place Bid (${this.selectedBidAmount})`;
+    } else {
+      btn.disabled = true;
+      btn.classList.remove('ready');
+      textEl.textContent = 'Select a Bid';
+    }
+  }
+
+  submitSelectedBid() {
+    if (this.selectedBidAmount === null || this.selectedBidAmount === undefined) {
+      this.showToast('Please select a bid first.', 'warning');
+      return;
+    }
+    const amount = this.selectedBidAmount;
+    this.send('bid', { amount });
+    const panel = document.getElementById('biddingPanel');
+    if (panel) panel.style.display = 'none';
+    this.selectedBidAmount = null;
   }
 
   // =========================================================================
@@ -998,13 +1102,8 @@ class TarneebOnlineGame {
   }
 
   placeBid(amount) {
-    const confirmed = window.confirm(`Confirm bid of ${amount}?`);
-    if (!confirmed) {
-      return;
-    }
-    this.send('bid', { amount });
-    const panel = document.getElementById('biddingPanel');
-    if (panel) panel.style.display = 'none';
+    this.selectedBidAmount = amount;
+    this.submitSelectedBid();
   }
 
   handleMatchTerminated(data) {
