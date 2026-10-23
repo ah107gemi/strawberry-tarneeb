@@ -27,6 +27,7 @@ class TarneebOnlineGame {
     this.suitColors = { H: '#FF3B5C', S: '#FFFFFF', D: '#FF3B5C', C: '#FFFFFF' };
     this.suitNames = { H: 'Hearts', S: 'Spades', D: 'Diamonds', C: 'Clubs' };
     this.isSubmittingPlay = false;
+    this.isSubmittingCard = false;
     this.heartbeatTimer = null;
     this.lastPong = null;
     this._reconnectTimer = null;
@@ -243,6 +244,7 @@ class TarneebOnlineGame {
           this.matchHistory = data.history;
         }
         this.isSubmittingPlay = false;
+        this.isSubmittingCard = false;
 
         // Auto-Sort Prompt: Prompt human player immediately after cards are distributed in a new round
         if (data.my_hand && data.my_hand.length === 13 && data.round > 0 && this._lastSortPromptedRound !== data.round) {
@@ -255,6 +257,7 @@ class TarneebOnlineGame {
 
         this.cleanupStuckPlayVisuals();
         this.isSubmittingPlay = false;
+        this.isSubmittingCard = false;
         this.renderGame();
         break;
 
@@ -297,12 +300,14 @@ class TarneebOnlineGame {
       case 'trick_complete':
         this.cleanupStuckPlayVisuals();
         this.isSubmittingPlay = false;
+        this.isSubmittingCard = false;
         this.showTrickResult(data);
         break;
 
       case 'round_complete':
         this.cleanupStuckPlayVisuals();
         this.isSubmittingPlay = false;
+        this.isSubmittingCard = false;
         if (data && !this.matchHistory.some(h => h.round === data.round)) {
           this.matchHistory.push(data);
         }
@@ -316,6 +321,7 @@ class TarneebOnlineGame {
       case 'game_complete':
         this.cleanupStuckPlayVisuals();
         this.isSubmittingPlay = false;
+        this.isSubmittingCard = false;
         this.showGameVictory(data);
         break;
 
@@ -323,18 +329,21 @@ class TarneebOnlineGame {
       case 'match_terminated':
         this.cleanupStuckPlayVisuals();
         this.isSubmittingPlay = false;
+        this.isSubmittingCard = false;
         this.handleMatchTerminated(data);
         break;
 
       case 'tricks_claimed':
         this.cleanupStuckPlayVisuals();
         this.isSubmittingPlay = false;
+        this.isSubmittingCard = false;
         this.handleTricksClaimed(data);
         break;
 
       case 'error':
         this.cleanupStuckPlayVisuals();
         this.isSubmittingPlay = false;
+        this.isSubmittingCard = false;
         const errMsg = data.message || msg.message || 'Error occurred';
         this.showToast(`❌ ${errMsg}`, 'error');
         if (data.code === 'TABLE_FULL') {
@@ -823,16 +832,14 @@ class TarneebOnlineGame {
     const isRound1 = gs.round === 1;
     if (isRound1) {
       panel.innerHTML = `
-        <div class="bidding-modal-dialog bidding-modal-card">
-          <div class="bidding-modal-header">
-            <div class="bidding-modal-title-wrap">
-              <span class="bidding-modal-icon">🎯</span>
-              <h3 class="bidding-modal-title">Round 1</h3>
-            </div>
+        <div class="bidding-modal-header">
+          <div class="bidding-modal-title-wrap">
+            <span class="bidding-modal-icon">🎯</span>
+            <h3 class="bidding-modal-title">Round 1</h3>
           </div>
-          <div class="bidding-modal-body">
-            <div class="bidding-instruction-text">Round 1 has no bidding. Play to earn tricks!</div>
-          </div>
+        </div>
+        <div class="bidding-modal-body">
+          <div class="bidding-instruction-text">Round 1 has no bidding. Play to earn tricks!</div>
         </div>
       `;
       return;
@@ -847,49 +854,47 @@ class TarneebOnlineGame {
 
     const bids = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
     let html = `
-      <div class="bidding-modal-dialog bidding-modal-card">
-        <div class="bidding-modal-header">
-          <div class="bidding-modal-title-wrap">
-            <span class="bidding-modal-icon">🎯</span>
-            <h3 id="onlineBiddingTitle" class="bidding-modal-title">Select your Bid</h3>
-          </div>
-          <div class="bidding-modal-badge">
-            <span class="bidding-prohibit-pill">⚠️ Bid 1 Prohibited</span>
-          </div>
+      <div class="bidding-modal-header">
+        <div class="bidding-modal-title-wrap">
+          <span class="bidding-modal-icon">🎯</span>
+          <h3 id="onlineBiddingTitle" class="bidding-modal-title">Select your Bid</h3>
         </div>
-        
-        <div class="bidding-modal-body">
-          <div class="bidding-instruction-text">Choose your contract bid (0 or 2–13):</div>
-          <div id="biddingGridContainer" class="bidding-grid-container" data-rendered-round="${gs.round}">
-            ${bids.map(b => {
-              const isSelected = this.selectedBidAmount === b;
-              const isZero = b === 0;
-              const isSeven = b === 7;
-              const subLabel = isZero ? 'Nil (±5)' : isSeven ? 'Tarneeb (±14)' : '';
-              return `
-                <button type="button" 
-                  class="bid-grid-btn ${isSelected ? 'selected' : ''} ${isZero ? 'bid-special-0' : ''} ${isSeven ? 'bid-special-7' : ''}"
-                  data-bid="${b}"
-                  onclick="window.tarneebGame.selectBid(${b})">
-                  <span class="bid-num">${b}</span>
-                  ${subLabel ? `<span class="bid-sub">${subLabel}</span>` : ''}
-                </button>
-              `;
-            }).join('')}
-          </div>
+        <div class="bidding-modal-badge">
+          <span class="bidding-prohibit-pill">⚠️ Bid 1 Prohibited</span>
         </div>
+      </div>
+      
+      <div class="bidding-modal-body">
+        <div class="bidding-instruction-text">Choose your contract bid (0 or 2–13):</div>
+        <div id="biddingGridContainer" class="bidding-grid-container" data-rendered-round="${gs.round}">
+          ${bids.map(b => {
+            const isSelected = this.selectedBidAmount === b;
+            const isZero = b === 0;
+            const isSeven = b === 7;
+            const subLabel = isZero ? 'Nil (±5)' : isSeven ? 'Tarneeb (±14)' : '';
+            return `
+              <button type="button" 
+                class="bid-grid-btn ${isSelected ? 'selected' : ''} ${isZero ? 'bid-special-0' : ''} ${isSeven ? 'bid-special-7' : ''}"
+                data-bid="${b}"
+                onclick="window.tarneebGame.selectBid(${b})">
+                <span class="bid-num">${b}</span>
+                ${subLabel ? `<span class="bid-sub">${subLabel}</span>` : ''}
+              </button>
+            `;
+          }).join('')}
+        </div>
+      </div>
 
-        <div class="bidding-modal-footer">
-          <button id="btnConfirmOnlineBid" class="btn-confirm-online-bid" type="button" 
-            ${this.selectedBidAmount === null || this.selectedBidAmount === undefined ? 'disabled' : 'class="ready"'}
-            onclick="window.tarneebGame.submitSelectedBid()">
-            <span id="btnConfirmOnlineBidText">
-              ${this.selectedBidAmount !== null && this.selectedBidAmount !== undefined 
-                ? `Place Bid (${this.selectedBidAmount})` 
-                : 'Place Bid'}
-            </span>
-          </button>
-        </div>
+      <div class="bidding-modal-footer">
+        <button id="btnConfirmOnlineBid" class="btn-confirm-online-bid" type="button" 
+          ${this.selectedBidAmount === null || this.selectedBidAmount === undefined ? 'disabled' : 'class="ready"'}
+          onclick="window.tarneebGame.submitSelectedBid()">
+          <span id="btnConfirmOnlineBidText">
+            ${this.selectedBidAmount !== null && this.selectedBidAmount !== undefined 
+              ? `Place Bid (${this.selectedBidAmount})` 
+              : 'Place Bid'}
+          </span>
+        </button>
       </div>
     `;
     panel.innerHTML = html;
@@ -984,6 +989,8 @@ class TarneebOnlineGame {
   // USER ACTIONS
   // =========================================================================
   cleanupStuckPlayVisuals() {
+    this.isSubmittingPlay = false;
+    this.isSubmittingCard = false;
     document.querySelectorAll('.hand-card.playing-flying').forEach(el => el.classList.remove('playing-flying'));
     document.querySelectorAll('.trick-card-slot.optimistic-play').forEach(el => el.remove());
   }
@@ -994,13 +1001,17 @@ class TarneebOnlineGame {
 
   handleCardClick(cardStr) {
     if (!this.gameState || this.gameState.phase !== 'playing') return;
-    if (this.isSubmittingPlay) {
-      if (Date.now() - (this._playSubmittedTime || 0) > 1500) {
+
+    // Reset lock if expired (> 250ms debounce)
+    if (this.isSubmittingPlay || this.isSubmittingCard) {
+      if (Date.now() - (this._playSubmittedTime || 0) > 250) {
         this.isSubmittingPlay = false;
+        this.isSubmittingCard = false;
       } else {
         return;
       }
     }
+
     if (this.gameState.current_turn !== this.myId) {
       this.showToast("It's not your turn!", 'warning');
       return;
@@ -1015,6 +1026,8 @@ class TarneebOnlineGame {
     // If player taps a different card, the new card pops up and the previous drops back down.
     if (this.selectedCard !== cardStr) {
       this.selectedCard = cardStr;
+      this.isSubmittingPlay = false;
+      this.isSubmittingCard = false;
       const allHandCards = document.querySelectorAll('.my-hand-scroll-wrap .hand-card');
       allHandCards.forEach(el => {
         if (el.getAttribute('data-card') === cardStr) {
@@ -1034,10 +1047,12 @@ class TarneebOnlineGame {
 
     // Tap 2 (Confirm & Play): Tapping the currently elevated/selected card a second time executes the play logic.
     this.isSubmittingPlay = true;
+    this.isSubmittingCard = true;
     this._playSubmittedTime = Date.now();
     clearTimeout(this._playSafetyTimeout);
     this._playSafetyTimeout = setTimeout(() => {
       this.isSubmittingPlay = false;
+      this.isSubmittingCard = false;
       this.cleanupStuckPlayVisuals();
     }, 1500);
 
@@ -1073,7 +1088,10 @@ class TarneebOnlineGame {
     this._forceTrickRerender = true;
     this.send('play_card', { card: cardStr });
     this.selectedCard = null;
-    setTimeout(() => { this.isSubmittingPlay = false; }, 350);
+    setTimeout(() => {
+      this.isSubmittingPlay = false;
+      this.isSubmittingCard = false;
+    }, 150);
   }
 
   showDealerSelectModal(data) {
@@ -1933,11 +1951,9 @@ function initGlobalSideDrawer() {
 
   function openDrawer(e) {
     if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
       if (typeof e.stopPropagation === 'function') e.stopPropagation();
       if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
-      if (e.type === 'touchend' && typeof e.preventDefault === 'function') {
-        e.preventDefault();
-      }
     }
     overlay.style.display = 'flex';
     overlay.offsetHeight; // Force reflow
@@ -1948,6 +1964,7 @@ function initGlobalSideDrawer() {
 
   function closeDrawer(e) {
     if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
       if (typeof e.stopPropagation === 'function') e.stopPropagation();
       if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
     }
@@ -1961,13 +1978,17 @@ function initGlobalSideDrawer() {
     }, 280);
   }
 
-  function toggleDrawer(open) {
+  function toggleDrawer(open, e) {
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
     const isOpen = overlay.classList.contains('open') || overlay.classList.contains('active');
     const shouldOpen = open !== undefined ? open : !isOpen;
     if (shouldOpen) {
-      openDrawer();
+      openDrawer(e);
     } else {
-      closeDrawer();
+      closeDrawer(e);
     }
   }
 
@@ -1999,12 +2020,20 @@ function initGlobalSideDrawer() {
       btn.dataset.menuAttached = 'true';
 
       btn.addEventListener('click', (e) => {
-        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        if (e) {
+          if (typeof e.preventDefault === 'function') e.preventDefault();
+          if (typeof e.stopPropagation === 'function') e.stopPropagation();
+          if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        }
         openDrawer(e);
       });
 
       btn.addEventListener('touchend', (e) => {
-        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        if (e) {
+          if (typeof e.preventDefault === 'function') e.preventDefault();
+          if (typeof e.stopPropagation === 'function') e.stopPropagation();
+          if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        }
         openDrawer(e);
       }, { passive: false });
     });
@@ -2016,7 +2045,9 @@ function initGlobalSideDrawer() {
     document.addEventListener('click', (e) => {
       const trigger = e.target.closest('#btnMenu, #btnHamburgerOnline, #btnHamburgerScoreboard, .btn-menu, .menu-toggle, [data-menu-trigger]');
       if (trigger) {
+        if (typeof e.preventDefault === 'function') e.preventDefault();
         if (typeof e.stopPropagation === 'function') e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
         openDrawer(e);
       }
     });
@@ -2024,7 +2055,9 @@ function initGlobalSideDrawer() {
     document.addEventListener('touchend', (e) => {
       const trigger = e.target.closest('#btnMenu, #btnHamburgerOnline, #btnHamburgerScoreboard, .btn-menu, .menu-toggle, [data-menu-trigger]');
       if (trigger) {
+        if (typeof e.preventDefault === 'function') e.preventDefault();
         if (typeof e.stopPropagation === 'function') e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
         openDrawer(e);
       }
     }, { passive: false });
