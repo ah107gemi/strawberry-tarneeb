@@ -1461,13 +1461,16 @@ async def health_detail():
     }
 
 
+@app.websocket("/ws")
 @app.websocket("/ws/{player_token}")
-async def websocket_endpoint(ws: WebSocket, player_token: str):
+async def websocket_endpoint(ws: WebSocket, player_token: Optional[str] = None):
     """
     Main WebSocket endpoint.
     player_token identifies the client. Use a stable UUID per device/session
     so reconnects are handled transparently.
     """
+    if not player_token:
+        player_token = str(uuid.uuid4())[:8]
     player = await manager.connect(ws, player_token)
 
     try:
