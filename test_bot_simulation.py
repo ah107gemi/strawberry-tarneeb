@@ -107,6 +107,105 @@ def test_claim_tricks_unit_logic():
     print("=" * 65 + "\n")
 
 
+def test_scoring_rules_and_negative_scores():
+    print("\n" + "=" * 65)
+    print("🧪 UNIT TEST: Scoring Engine & Negative Score Persistence")
+    print("=" * 65)
+    from server import ConnectionManager, SCORE_BID_0_MADE, SCORE_BID_0_FAILED, SCORE_BID_7_MADE, SCORE_BID_7_FAILED
+
+    mgr = ConnectionManager()
+    gs = mgr.game
+    gs.phase = "playing"
+    p0 = Player(token="tok_p0", name="Player 0", seat=0, role="player")
+    p1 = Player(token="tok_p1", name="Player 1", seat=1, role="player")
+    p2 = Player(token="tok_p2", name="Player 2", seat=2, role="player")
+    p3 = Player(token="tok_p3", name="Player 3", seat=3, role="player")
+    gs.players = {"tok_p0": p0, "tok_p1": p1, "tok_p2": p2, "tok_p3": p3}
+    gs.seats = ["tok_p0", "tok_p1", "tok_p2", "tok_p3"]
+
+    # --- Scenario 1: Round 1 (no bidding, score = tricks taken) ---
+    gs.round = 1
+    gs.tricks_taken = {"tok_p0": 4, "tok_p1": 3, "tok_p2": 4, "tok_p3": 2}
+    asyncio.run(mgr._resolve_round())
+
+    last_r1 = gs.round_history[-1]
+    assert last_r1["round_scores"]["tok_p0"] == 4, "Round 1 p0 should get 4"
+    assert gs.scores["tok_p0"] == 4, "Cumulative p0 should be 4"
+    assert gs.scores["tok_p1"] == 3
+    assert gs.scores["tok_p2"] == 4
+    assert gs.scores["tok_p3"] == 2
+    assert gs.team_scores[1] == 8  # Seats 0 & 2
+    assert gs.team_scores[2] == 5  # Seats 1 & 3
+    print("  ✓ Round 1: No bidding — tricks scored directly (+1 per trick)")
+
+    # --- Scenario 2: Round 2 (Bids 2-6, Bid 7 fail penalty -14, negative drops) ---
+    gs.round = 2
+    # p0 bids 4, takes 4 (made: +4)
+    # p1 bids 5, takes 3 (failed: -5 -> cumulative 3 - 5 = -2)
+    # p2 bids 7, takes 6 (failed: -14 -> cumulative 4 - 14 = -10)
+    # p3 bids 7, takes 7 (made: +14 -> cumulative 2 + 14 = 16)
+    gs.bids = {"tok_p0": 4, "tok_p1": 5, "tok_p2": 7, "tok_p3": 7}
+    gs.tricks_taken = {"tok_p0": 4, "tok_p1": 3, "tok_p2": 6, "tok_p3": 7}
+    asyncio.run(mgr._resolve_round())
+
+    last_r2 = gs.round_history[-1]
+    assert last_r2["round_scores"]["tok_p0"] == 4, "Bid 4 made = +4"
+    assert gs.scores["tok_p0"] == 8, "Cumulative p0: 4 + 4 = 8"
+
+    assert last_r2["round_scores"]["tok_p1"] == -5, "Bid 5 failed (took 3) = -5 exact penalty"
+    assert gs.scores["tok_p1"] == -2, f"Cumulative p1: 3 - 5 = -2 (negative score allowed), got {gs.scores['tok_p1']}"
+
+    assert last_r2["round_scores"]["tok_p2"] == -14, "Bid 7 failed (took 6) = -14 exact penalty"
+    assert gs.scores["tok_p2"] == -10, f"Cumulative p2: 4 - 14 = -10 (negative score allowed), got {gs.scores['tok_p2']}"
+
+    assert last_r2["round_scores"]["tok_p3"] == 14, "Bid 7 made = +14"
+    assert gs.scores["tok_p3"] == 16, "Cumulative p3: 2 + 14 = 16"
+
+    # Team 1: p0 (8) + p2 (-10) = -2 (Negative Team Score!)
+    assert gs.team_scores[1] == -2, f"Team 1 cumulative score should be -2, got {gs.team_scores[1]}"
+    # Team 2: p1 (-2) + p3 (16) = 14
+    assert gs.team_scores[2] == 14, f"Team 2 cumulative score should be 14, got {gs.team_scores[2]}"
+    print("  ✓ Bid 2-6 penalty (-bid) and Bid 7 penalty (-14) verified")
+    print("  ✓ Negative individual (-2, -10) and negative team (-2) scores successfully verified")
+
+    # --- Scenario 3: Round 3 (Bid 8+ failure, Bid 0 made & failed) ---
+    gs.round = 3
+    # p0 bids 0, takes 0 (made: +5 -> cumulative 8 + 5 = 13)
+    # p1 bids 2, takes 1 (failed: -2 -> cumulative -2 - 2 = -4)
+    # p2 bids 8, takes 7 (failed: -8 -> cumulative -10 - 8 = -18)
+    # p3 bids 0, takes 1 (failed: -5 -> cumulative 16 - 5 = 11)
+    gs.bids = {"tok_p0": 0, "tok_p1": 2, "tok_p2": 8, "tok_p3": 0}
+    gs.tricks_taken = {"tok_p0": 0, "tok_p1": 1, "tok_p2": 7, "tok_p3": 1}
+    asyncio.run(mgr._resolve_round())
+
+    last_r3 = gs.round_history[-1]
+    assert last_r3["round_scores"]["tok_p0"] == 5, "Bid 0 made = +5"
+    assert gs.scores["tok_p0"] == 13
+
+    assert last_r3["round_scores"]["tok_p1"] == -2, "Bid 2 failed = -2"
+    assert gs.scores["tok_p1"] == -4, f"Cumulative p1: -2 - 2 = -4, got {gs.scores['tok_p1']}"
+
+    assert last_r3["round_scores"]["tok_p2"] == -8, "Bid 8 failed = -8"
+    assert gs.scores["tok_p2"] == -18, f"Cumulative p2: -10 - 8 = -18, got {gs.scores['tok_p2']}"
+
+    assert last_r3["round_scores"]["tok_p3"] == -5, "Bid 0 failed = -5"
+    assert gs.scores["tok_p3"] == 11, f"Cumulative p3: 16 - 5 = 11, got {gs.scores['tok_p3']}"
+
+    # Team 1: 13 + (-18) = -5
+    assert gs.team_scores[1] == -5, f"Team 1 cumulative should be -5, got {gs.team_scores[1]}"
+    # Team 2: -4 + 11 = 7
+    assert gs.team_scores[2] == 7, f"Team 2 cumulative should be 7, got {gs.team_scores[2]}"
+    print("  ✓ Bid 8+ penalty (-bid) and Bid 0 (+5 made / -5 failed) verified")
+    print("  ✓ Deep negative score drop (-18, -4, team -5) preserved across rounds")
+
+    # Verify state serialization includes negative scores and team scores
+    state_dict = gs.public_state()
+    assert state_dict["scores"]["tok_p2"] == -18
+    assert state_dict["team_scores"][1] == -5
+    print("  ✓ Game state public_state() correctly outputs negative scores and team scores")
+    print("=" * 65 + "\n")
+
+
 async def run_simulation():
     print("\n" + "=" * 65)
     print("🍓 STRAWBERRY TARNEEB — SOLO BOT SIMULATION TEST")
@@ -481,4 +580,5 @@ async def main_tests():
 
 if __name__ == "__main__":
     test_claim_tricks_unit_logic()
+    test_scoring_rules_and_negative_scores()
     asyncio.run(main_tests())
