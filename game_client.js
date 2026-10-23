@@ -253,6 +253,8 @@ class TarneebOnlineGame {
           }
         }
 
+        this.cleanupStuckPlayVisuals();
+        this.isSubmittingPlay = false;
         this.renderGame();
         break;
 
@@ -293,10 +295,14 @@ class TarneebOnlineGame {
         break;
 
       case 'trick_complete':
+        this.cleanupStuckPlayVisuals();
+        this.isSubmittingPlay = false;
         this.showTrickResult(data);
         break;
 
       case 'round_complete':
+        this.cleanupStuckPlayVisuals();
+        this.isSubmittingPlay = false;
         if (data && !this.matchHistory.some(h => h.round === data.round)) {
           this.matchHistory.push(data);
         }
@@ -308,18 +314,27 @@ class TarneebOnlineGame {
         break;
 
       case 'game_complete':
+        this.cleanupStuckPlayVisuals();
+        this.isSubmittingPlay = false;
         this.showGameVictory(data);
         break;
 
+      case 'game_terminated':
       case 'match_terminated':
+        this.cleanupStuckPlayVisuals();
+        this.isSubmittingPlay = false;
         this.handleMatchTerminated(data);
         break;
 
       case 'tricks_claimed':
+        this.cleanupStuckPlayVisuals();
+        this.isSubmittingPlay = false;
         this.handleTricksClaimed(data);
         break;
 
       case 'error':
+        this.cleanupStuckPlayVisuals();
+        this.isSubmittingPlay = false;
         const errMsg = data.message || msg.message || 'Error occurred';
         this.showToast(`❌ ${errMsg}`, 'error');
         if (data.code === 'TABLE_FULL') {
@@ -601,8 +616,9 @@ class TarneebOnlineGame {
       if (el) el.style.display = 'none';
     });
 
-    activePlayers.slice(0, 3).forEach((player, idx) => {
-      const pos = positions[idx];
+    activePlayers.forEach((player) => {
+      const pos = this.getRelativePosition(player.id, gs);
+      if (pos === 'bottom') return;
       const el = document.getElementById(`opponent-${pos}`);
       if (!el) return;
       el.style.display = 'flex';
@@ -619,17 +635,17 @@ class TarneebOnlineGame {
 
       if (pos === 'top') {
         el.innerHTML = `
+          <div class="opponent-cards-row">${cardBacks}</div>
           <div class="opponent-meta-group">
             <span class="opponent-name ${isCurrent ? 'is-current-turn' : ''}">${this.esc(player.name)}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''} ${isCurrent ? '🔥' : ''}</span>
             ${bid !== undefined && bid !== null ? `<span class="opponent-bid-badge">Bid ${bid} • ${tricks}(eat)</span>` : ''}
           </div>
-          <div class="opponent-cards-row">${cardBacks}</div>
         `;
       } else {
         el.innerHTML = `
+          <div class="opponent-cards-row">${cardBacks}</div>
           <div class="opponent-name ${isCurrent ? 'is-current-turn' : ''}">${this.esc(player.name)}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''} ${isCurrent ? '🔥' : ''}</div>
           ${bid !== undefined && bid !== null ? `<div class="opponent-bid-badge">Bid ${bid} • ${tricks}(eat)</div>` : ''}
-          <div class="opponent-cards-row">${cardBacks}</div>
         `;
       }
     });
@@ -854,6 +870,11 @@ class TarneebOnlineGame {
   // =========================================================================
   // USER ACTIONS
   // =========================================================================
+  cleanupStuckPlayVisuals() {
+    document.querySelectorAll('.hand-card.playing-flying').forEach(el => el.classList.remove('playing-flying'));
+    document.querySelectorAll('.trick-card-slot.optimistic-play').forEach(el => el.remove());
+  }
+
   handleCardPointerDown(e, cardStr) {
     // Handled purely via onclick to support clean two-tap selection & confirmation
   }
@@ -883,11 +904,20 @@ class TarneebOnlineGame {
           el.classList.remove('selected');
         }
       });
+      const turnText = document.getElementById('turnStatusText');
+      if (turnText) {
+        turnText.innerHTML = `✨ Selected <strong>${cardStr}</strong> • Tap again to play`;
+      }
       return;
     }
 
     // Tap 2 (Confirm & Play): Tapping the currently elevated/selected card a second time executes the play logic.
     this.isSubmittingPlay = true;
+    clearTimeout(this._playSafetyTimeout);
+    this._playSafetyTimeout = setTimeout(() => {
+      this.isSubmittingPlay = false;
+      this.cleanupStuckPlayVisuals();
+    }, 1200);
 
     // 1. Immediately animate card leaving hand
     const cardEl = document.querySelector(`.hand-card[data-card="${cardStr}"]`);
@@ -918,7 +948,7 @@ class TarneebOnlineGame {
     this._forceTrickRerender = true;
     this.send('play_card', { card: cardStr });
     this.selectedCard = null;
-    setTimeout(() => { this.isSubmittingPlay = false; }, 300);
+    setTimeout(() => { this.isSubmittingPlay = false; }, 350);
   }
 
   showDealerSelectModal(data) {
@@ -1007,9 +1037,18 @@ class TarneebOnlineGame {
       modal.classList.remove('open');
       modal.style.display = 'none';
     }
-    if (typeof window.switchAppMode === 'function') {
-      window.switchAppMode('scoreboard');
-    }
+    this.myHand = [];
+    this.selectedCard = null;
+    this.isSubmittingPlay = false;
+    this.cleanupStuckPlayVisuals();
+    this.clearCenterTrick();
+    const handContainer = document.getElementById('myHandContainer');
+    if (handContainer) handContainer.innerHTML = '';
+    const turnBar = document.getElementById('turnStatusBar');
+    const turnText = document.getElementById('turnStatusText');
+    if (turnBar) turnBar.className = 'hand-turn-status-bar not-my-turn';
+    if (turnText) turnText.innerHTML = '⏳ Table ready for a new match';
+    this.send('request_state', {});
   }
 
   renderClaimTricksBar(gs) {
