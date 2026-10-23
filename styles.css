@@ -1656,10 +1656,13 @@ body::before {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  background: transparent;
-  border: none;
+  background: linear-gradient(180deg, rgba(2, 28, 22, 0.98) 0%, rgba(2, 28, 22, 0.92) 80%, rgba(2, 28, 22, 0.6) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   padding: 8px 12px;
+  padding-top: max(8px, env(safe-area-inset-top, 8px));
   width: 100%;
+  min-height: 48px;
   box-sizing: border-box;
   position: absolute;
   top: 0;
@@ -1667,16 +1670,26 @@ body::before {
   right: 0;
   z-index: 100;
   pointer-events: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .online-meta-wrap {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
   flex: 1 1 auto;
   min-width: 0;
   pointer-events: auto;
+  padding-right: 6px;
+}
+
+.online-meta-wrap::-webkit-scrollbar {
+  display: none;
 }
 
 /* Dedicated Game Controls Section (Matches Live Scores Look) */
@@ -2045,16 +2058,16 @@ body::before {
   pointer-events: auto;
 }
 
-/* Top Player Hand (North) - Horizontal fan docked along the top edge */
+/* Top Player Hand (North) - Horizontal fan pushed below the dedicated top status bar */
 .seat-top {
   position: absolute;
-  top: 8px;
+  top: calc(56px + env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   margin: 0;
   padding: 0;
   z-index: 25;
@@ -2092,30 +2105,46 @@ body::before {
   margin-left: 0;
 }
 
-/* Left Opponent (West) - Vertical card stack along left screen border */
+/* Left Opponent (West - Hosam) - Grouped cleanly along left edge */
 .seat-left {
   position: absolute;
-  left: 8px;
-  top: 48%;
+  left: 6px;
+  top: 50%;
   transform: translateY(-50%);
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   z-index: 25;
 }
 
-/* Right Opponent (East) - Vertical card stack along right screen border */
+.seat-left .opponent-meta-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  max-width: 84px;
+}
+
+/* Right Opponent (East - Shiba) - Grouped cleanly along right edge */
 .seat-right {
   position: absolute;
-  right: 8px;
-  top: 48%;
+  right: 6px;
+  top: 50%;
   transform: translateY(-50%);
   display: flex;
   flex-direction: row-reverse;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   z-index: 25;
+}
+
+.seat-right .opponent-meta-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  max-width: 84px;
 }
 
 .seat-left .opponent-cards-row,
@@ -2124,14 +2153,14 @@ body::before {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 36px;
+  width: 32px;
   margin: 0;
 }
 
 .seat-left .card-back,
 .seat-right .card-back {
-  width: 36px;
-  height: 22px;
+  width: 32px;
+  height: 20px;
   background: linear-gradient(135deg, #881337, #4c0519);
   border: 1px solid #fda4af;
   border-radius: 3px;
@@ -2151,17 +2180,17 @@ body::before {
   font-size: 0.72rem;
   font-weight: 800;
   color: #f8fafc;
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(15, 23, 42, 0.92);
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   white-space: nowrap;
-  max-width: 80px;
+  max-width: 82px;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: center;
   box-sizing: border-box;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
 }
 
 .seat-top .opponent-name {
@@ -2178,10 +2207,10 @@ body::before {
   font-size: 0.64rem;
   font-weight: 700;
   color: #cbd5e1;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.75);
   padding: 2px 6px;
   border-radius: var(--radius-full);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   white-space: nowrap;
   max-width: 80px;
   overflow: hidden;
@@ -2194,14 +2223,14 @@ body::before {
   max-width: 90px;
 }
 
-/* Center Trick Table - Centered clearly in the felt arena */
+/* Center Trick Table - Centered clearly in the felt arena without clipping */
 .table-felt-center {
   position: absolute;
-  top: 48%;
+  top: 49%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(320px, calc(100% - 130px));
-  height: 230px;
+  width: 190px;
+  height: 190px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -2210,49 +2239,63 @@ body::before {
   pointer-events: none;
 }
 
+.felt-trump-watermark {
+  position: absolute;
+  font-size: 5.5rem;
+  color: rgba(225, 29, 72, 0.08);
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+
 .trick-cards-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
   display: grid;
   grid-template-areas:
     ". top ."
     "left . right"
     ". bottom .";
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: auto auto auto;
-  gap: 6px;
+  grid-template-columns: 46px 1fr 46px;
+  grid-template-rows: 56px 1fr 56px;
+  gap: 2px;
   align-items: center;
   justify-items: center;
-  width: 100%;
+  z-index: 2;
 }
 
 .trick-card-slot {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   pointer-events: auto;
+  position: relative;
+  z-index: 5;
 }
 
 .trick-card-slot .card {
-  width: 48px;
-  height: 72px;
+  width: 44px;
+  height: 64px;
   background: #11141d;
   border: 1.5px solid #2a324b;
-  border-radius: 6px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.75);
+  border-radius: 5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
 }
 
 .trick-card-slot .card .card-top-rank,
 .trick-card-slot .card .card-bot-rank {
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   letter-spacing: -0.5px;
 }
 
 .trick-card-slot .card .card-suit-small {
-  font-size: 0.74rem;
+  font-size: 0.7rem;
 }
 
 .trick-card-slot .card .card-center-suit {
-  font-size: 1.45rem;
+  font-size: 1.35rem;
 }
 
 .trick-card-slot.pos-top { grid-area: top; }
@@ -2261,40 +2304,18 @@ body::before {
 .trick-card-slot.pos-bottom { grid-area: bottom; }
 
 .trick-player-label {
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 800;
   color: #f1f5f9;
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(15, 23, 42, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  padding: 1px 6px;
+  padding: 1px 5px;
   border-radius: 4px;
   white-space: nowrap;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-}
-
-.trick-card-slot .card .card-suit-small {
-  font-size: 0.9rem;
-}
-
-.trick-card-slot .card .card-center-suit {
-  font-size: 1.65rem;
-}
-
-.trick-card-slot.pos-top { grid-area: top; }
-.trick-card-slot.pos-left { grid-area: left; }
-.trick-card-slot.pos-right { grid-area: right; }
-.trick-card-slot.pos-bottom { grid-area: bottom; }
-
-.trick-player-label {
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: #f1f5f9;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  padding: 1px 7px;
-  border-radius: 4px;
-  white-space: nowrap;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .trick-empty-hint {
@@ -2615,18 +2636,263 @@ body::before {
   }
 }
 
-/* Online Bidding Panel */
+/* ==========================================================================
+   Centered Pop-up Bidding Modal (Online Multiplayer)
+   ========================================================================== */
+.bidding-modal-overlay,
 .online-bidding-panel {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: linear-gradient(135deg, #1e1b4b, #2b112c);
-  border: 2px solid #a855f7;
-  border-radius: var(--radius-md);
-  padding: 12px;
-  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.3);
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+  z-index: 9500;
+  pointer-events: auto;
+  animation: fadeInBiddingOverlay 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+@keyframes fadeInBiddingOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.bidding-modal-dialog {
+  background: linear-gradient(150deg, #0f172a 0%, #1e293b 55%, #090d16 100%);
+  border: 1px solid rgba(225, 29, 72, 0.4);
+  box-shadow: 0 24px 50px -12px rgba(0, 0, 0, 0.85), 0 0 35px rgba(225, 29, 72, 0.25);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  box-sizing: border-box;
+  animation: popInBiddingDialog 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes popInBiddingDialog {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.bidding-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 12px;
+}
+
+.bidding-modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bidding-modal-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.bidding-modal-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #f8fafc;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.bidding-modal-badge {
+  display: flex;
+  align-items: center;
+}
+
+.bidding-prohibit-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fca5a5;
+  background: rgba(225, 29, 72, 0.16);
+  border: 1px solid rgba(225, 29, 72, 0.35);
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.bidding-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bidding-instruction-text {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+/* Bidding Numbers Grid */
+.bidding-grid-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.bid-grid-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 6px 2px;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #f8fafc;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.bid-grid-btn:hover {
+  background: rgba(51, 65, 85, 0.95);
+  border-color: rgba(255, 255, 255, 0.28);
+  transform: translateY(-1px);
+}
+
+.bid-grid-btn:active {
+  transform: translateY(1px);
+}
+
+.bid-grid-btn .bid-num {
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #f8fafc;
+}
+
+.bid-grid-btn .bid-sub {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-top: 3px;
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+}
+
+/* 13 centered across center two columns in the 4th row */
+.bid-grid-btn[data-bid="13"] {
+  grid-column: 2 / span 2;
+}
+
+/* Special Nil / 0 and Tarneeb / 7 accents */
+.bid-grid-btn.bid-special-0 {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(14, 116, 144, 0.2);
+}
+.bid-grid-btn.bid-special-0 .bid-num {
+  color: #38bdf8;
+}
+.bid-grid-btn.bid-special-0 .bid-sub {
+  color: #7dd3fc;
+}
+
+.bid-grid-btn.bid-special-7 {
+  border-color: rgba(250, 204, 21, 0.4);
+  background: rgba(161, 98, 7, 0.2);
+}
+.bid-grid-btn.bid-special-7 .bid-num {
+  color: #facc15;
+}
+.bid-grid-btn.bid-special-7 .bid-sub {
+  color: #fde047;
+}
+
+/* Selected State */
+.bid-grid-btn.selected {
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.4), rgba(190, 18, 60, 0.7)) !important;
+  border: 2px solid #fb7185 !important;
+  box-shadow: 0 0 16px rgba(225, 29, 72, 0.55);
+  transform: translateY(-2px);
+}
+
+.bid-grid-btn.selected .bid-num {
+  color: #ffffff !important;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+}
+
+.bid-grid-btn.selected .bid-sub {
+  color: #fecdd3 !important;
+}
+
+/* Modal Footer & Prominent Place Bid Button */
+.bidding-modal-footer {
+  margin-top: 4px;
+}
+
+.btn-confirm-online-bid {
+  width: 100%;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.btn-confirm-online-bid:disabled {
+  background: rgba(51, 65, 85, 0.45);
+  color: #64748b;
+  cursor: not-allowed;
+  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  opacity: 0.7;
+}
+
+.btn-confirm-online-bid.ready {
+  background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(225, 29, 72, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-confirm-online-bid.ready:hover {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  box-shadow: 0 8px 24px rgba(225, 29, 72, 0.65);
+  transform: translateY(-2px);
+}
+
+.btn-confirm-online-bid.ready:active {
+  transform: translateY(1px);
+}
+
+/* Legacy button classes maintained for safety */
 .bid-panel-title {
   font-size: 0.85rem;
   font-weight: 800;
@@ -3109,7 +3375,7 @@ body::before {
   }
 
   .seat-top {
-    top: 12px;
+    top: 60px;
   }
 
   .seat-top .card-back {
@@ -3119,37 +3385,42 @@ body::before {
   }
 
   .seat-left {
-    left: 14px;
+    left: 12px;
   }
 
   .seat-right {
-    right: 14px;
+    right: 12px;
   }
 
   .seat-left .opponent-cards-row,
   .seat-right .opponent-cards-row {
-    width: 42px;
+    width: 40px;
     margin: 0;
   }
 
   .seat-left .card-back,
   .seat-right .card-back {
-    width: 42px;
-    height: 26px;
+    width: 40px;
+    height: 24px;
     margin-left: 0;
     margin-top: -15px;
   }
 
   .table-felt-center {
-    width: 340px;
-    height: 250px;
-    top: 48%;
+    width: 240px;
+    height: 240px;
+    top: 49%;
     transform: translate(-50%, -50%);
   }
 
+  .trick-cards-container {
+    grid-template-columns: 54px 1fr 54px;
+    grid-template-rows: 68px 1fr 68px;
+  }
+
   .trick-card-slot .card {
-    width: 56px;
-    height: 84px;
+    width: 50px;
+    height: 74px;
   }
 
   .hand-card .card {
