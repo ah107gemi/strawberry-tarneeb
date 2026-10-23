@@ -845,6 +845,7 @@ class ConnectionManager:
             await self._start_playing_phase()
         else:
             await self.broadcast_game_state()
+            self._trigger_bot_turn_if_needed()
 
     # ------------------------------------------------------------------
     # Handler: play_card
@@ -902,6 +903,8 @@ class ConnectionManager:
         if len(game.trick_cards) == MAX_PLAYERS:
             # All 4 players have played: resolve trick after 1.5s pause
             asyncio.create_task(self._resolve_trick())
+        else:
+            self._trigger_bot_turn_if_needed()
 
     def _validate_play(self, player: Player, card: str) -> tuple[bool, str]:
         """
@@ -1057,6 +1060,7 @@ class ConnectionManager:
             game.bid_order = game.seated_tokens_in_order(first_bid_seat)
 
         await self.broadcast_game_state()
+        self._trigger_bot_turn_if_needed()
 
     async def _start_playing_phase(self):
         game = self.game
@@ -1067,6 +1071,7 @@ class ConnectionManager:
         game.trick_cards = []
         log.info("Playing phase started. Bids: %s", game.bids)
         await self.broadcast_game_state()
+        self._trigger_bot_turn_if_needed()
 
     async def _resolve_trick(self):
         try:
