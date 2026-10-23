@@ -379,8 +379,8 @@ class TarneebOnlineGame {
 
     // Render dealer + round info
     const dealer = gs.players.find(p => p.id === gs.dealer);
-    const roundText = `Round ${gs.round} of 15`;
-    const dealerText = `🂠 Dealer: ${dealer ? dealer.name : '-'}`;
+    const roundText = `R${gs.round}/15`;
+    const dealerText = `🎴 ${dealer ? dealer.name : '-'}`;
     const roundEl = document.getElementById('onlineRoundBadge');
     if (roundEl && roundEl.textContent !== roundText) roundEl.textContent = roundText;
     const dealerEl = document.getElementById('onlineDealerBadge');
@@ -477,12 +477,17 @@ class TarneebOnlineGame {
         const curPlayer = gs.players.find(p => p.id === gs.current_turn);
         const curName = curPlayer ? curPlayer.name : 'Player';
         if (myTurn) {
-          turnBar.className = 'hand-turn-status-bar is-my-turn';
-          const isLead = !gs.trick_cards || gs.trick_cards.length === 0;
-          turnText.innerHTML = isLead
-            ? '🔥 <strong>YOUR TURN TO LEAD</strong> • Play any card to start trick'
-            : '🔥 <strong>YOUR TURN TO PLAY</strong> • Tap card to play';
+          turnBar.className = 'hand-turn-status-bar is-my-turn' + (this.selectedCard ? ' can-confirm-card' : '');
+          if (this.selectedCard) {
+            turnText.innerHTML = `✨ Selected <strong>${this.selectedCard}</strong> • Tap card or bar to play`;
+          } else {
+            const isLead = !gs.trick_cards || gs.trick_cards.length === 0;
+            turnText.innerHTML = isLead
+              ? '🔥 <strong>YOUR TURN TO LEAD</strong> • Play any card to start trick'
+              : '🔥 <strong>YOUR TURN TO PLAY</strong> • Tap card to play';
+          }
         } else {
+          this.selectedCard = null;
           turnBar.className = 'hand-turn-status-bar not-my-turn';
           turnText.innerHTML = `⏳ Current Turn: <strong>${this.esc(curName)}</strong> is playing…`;
         }
@@ -538,10 +543,10 @@ class TarneebOnlineGame {
 
       const isKing = score >= 18;
       html += `
-        <div class="score-row ${isMe ? 'is-me' : ''} ${isCurrent ? 'is-turn' : ''} ${isKing ? 'is-king' : ''}">
+        <div class="score-row ${isMe ? 'is-me' : ''} ${isCurrent ? 'is-turn' : ''} ${isKing ? 'is-king' : ''} ${isComplete ? 'is-bid-complete' : ''}">
           <span class="score-medal">${medals[idx] || '🎖️'}</span>
           <span class="score-name">
-            ${this.esc(p.name)}${isKing ? ' <span class="king-title-badge" title="The King (18+ pts)">👑 (The King)</span>' : ''}${isMe ? ' (You)' : ''}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''}
+            ${this.esc(p.name)}${isKing ? ' <span class="king-title-badge" title="The King (18+ pts)">👑 (The King)</span>' : ''}${isMe ? ' (You)' : ''}
           </span>
           <div class="score-details">
             ${bid !== undefined && bid !== null ? `<span class="bid-chip">Bid ${bid}</span>` : ''}
@@ -633,20 +638,22 @@ class TarneebOnlineGame {
         `<div class="card-back ${isNewRoundDeal ? 'card-dealing' : ''}" style="--card-i: ${bIdx};"></div>`
       ).join('');
 
+      el.classList.toggle('is-bid-complete', isComplete);
+
       if (pos === 'top') {
         el.innerHTML = `
           <div class="opponent-cards-row">${cardBacks}</div>
-          <div class="opponent-meta-group">
-            <span class="opponent-name ${isCurrent ? 'is-current-turn' : ''}">${this.esc(player.name)}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''} ${isCurrent ? '🔥' : ''}</span>
-            ${bid !== undefined && bid !== null ? `<span class="opponent-bid-badge">Bid ${bid} • ${tricks}(eat)</span>` : ''}
+          <div class="opponent-meta-group ${isComplete ? 'is-bid-complete' : ''}">
+            <span class="opponent-name ${isCurrent ? 'is-current-turn' : ''} ${isComplete ? 'is-bid-complete' : ''}">${this.esc(player.name)} ${isCurrent ? '🔥' : ''}</span>
+            ${bid !== undefined && bid !== null ? `<span class="opponent-bid-badge ${isComplete ? 'is-bid-complete' : ''}">Bid ${bid} • ${tricks}(eat)</span>` : ''}
           </div>
         `;
       } else {
         el.innerHTML = `
           <div class="opponent-cards-row">${cardBacks}</div>
-          <div class="opponent-meta-group">
-            <div class="opponent-name ${isCurrent ? 'is-current-turn' : ''}">${this.esc(player.name)}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''} ${isCurrent ? '🔥' : ''}</div>
-            ${bid !== undefined && bid !== null ? `<div class="opponent-bid-badge">Bid ${bid} • ${tricks}(eat)</div>` : ''}
+          <div class="opponent-meta-group ${isComplete ? 'is-bid-complete' : ''}">
+            <div class="opponent-name ${isCurrent ? 'is-current-turn' : ''} ${isComplete ? 'is-bid-complete' : ''}">${this.esc(player.name)} ${isCurrent ? '🔥' : ''}</div>
+            ${bid !== undefined && bid !== null ? `<div class="opponent-bid-badge ${isComplete ? 'is-bid-complete' : ''}">Bid ${bid} • ${tricks}(eat)</div>` : ''}
           </div>
         `;
       }
@@ -682,7 +689,10 @@ class TarneebOnlineGame {
     const myBid = gs.bids?.[this.myId];
     const myTricks = gs.tricks_taken?.[this.myId] || 0;
     const isComplete = (myBid !== undefined && myBid !== null && Number(myBid) > 0 && myTricks >= Number(myBid));
-    if (handTitle) handTitle.innerHTML = `🂠 Your Hand (${this.myHand ? this.myHand.length : 0} Cards)${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''}`;
+    if (handTitle) {
+      handTitle.innerHTML = `🂠 Your Hand (${this.myHand ? this.myHand.length : 0} Cards)`;
+      handTitle.classList.toggle('is-bid-complete', isComplete);
+    }
     if (handHint) handHint.textContent = 'Tap once to select, tap again to play';
 
     if (!this.myHand || this.myHand.length === 0) {
@@ -985,7 +995,13 @@ class TarneebOnlineGame {
 
   handleCardClick(cardStr) {
     if (!this.gameState || this.gameState.phase !== 'playing') return;
-    if (this.isSubmittingPlay) return;
+    if (this.isSubmittingPlay) {
+      if (Date.now() - (this._playSubmittedTime || 0) > 1500) {
+        this.isSubmittingPlay = false;
+      } else {
+        return;
+      }
+    }
     if (this.gameState.current_turn !== this.myId) {
       this.showToast("It's not your turn!", 'warning');
       return;
@@ -1008,20 +1024,26 @@ class TarneebOnlineGame {
           el.classList.remove('selected');
         }
       });
+      const turnBar = document.getElementById('turnStatusBar');
+      if (turnBar) turnBar.classList.add('can-confirm-card');
       const turnText = document.getElementById('turnStatusText');
       if (turnText) {
-        turnText.innerHTML = `✨ Selected <strong>${cardStr}</strong> • Tap again to play`;
+        turnText.innerHTML = `✨ Selected <strong>${cardStr}</strong> • Tap card or bar to play`;
       }
       return;
     }
 
     // Tap 2 (Confirm & Play): Tapping the currently elevated/selected card a second time executes the play logic.
     this.isSubmittingPlay = true;
+    this._playSubmittedTime = Date.now();
     clearTimeout(this._playSafetyTimeout);
     this._playSafetyTimeout = setTimeout(() => {
       this.isSubmittingPlay = false;
       this.cleanupStuckPlayVisuals();
-    }, 1200);
+    }, 1500);
+
+    const turnBar = document.getElementById('turnStatusBar');
+    if (turnBar) turnBar.classList.remove('can-confirm-card');
 
     // 1. Immediately animate card leaving hand
     const cardEl = document.querySelector(`.hand-card[data-card="${cardStr}"]`);
@@ -1362,8 +1384,8 @@ class TarneebOnlineGame {
       const pts = rScore >= 0 ? `+${rScore}` : `${rScore}`;
       const isComplete = (bid !== '-' && Number(bid) > 0 && tricks >= Number(bid));
       html += `
-        <div style="display:flex;justify-content:space-between;align-items:center;background:#0f172a;padding:8px 12px;border-radius:8px;">
-          <span style="font-weight:700;">${this.esc(p.name)}${isComplete ? ' <span class="bid-complete-check" title="Bid Completed!">✅</span>' : ''}</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;background:#0f172a;padding:8px 12px;border-radius:8px;${isComplete ? 'border: 1.5px solid #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.45);' : ''}">
+          <span style="font-weight:700;">${this.esc(p.name)}</span>
           <span style="color:#94a3b8;font-size:0.85rem;">Bid ${bid} • ${tricks}(eat) → <strong style="color:${rScore >= 0 ? '#4ade80' : '#f87171'}">${pts}</strong></span>
           <span style="color:#fde047;font-weight:800;">${total} pts</span>
         </div>
@@ -1454,8 +1476,8 @@ class TarneebOnlineGame {
           const isMade = (rNum > 1 && bidVal !== undefined && Number(bidVal) > 0 && tricks >= Number(bidVal));
 
           html += `
-            <div class="history-player-row">
-              <span class="history-player-name">${this.esc(pName)}${isMade ? ' ✅' : ''}</span>
+            <div class="history-player-row ${isMade ? 'is-bid-complete' : ''}">
+              <span class="history-player-name ${isMade ? 'is-bid-complete' : ''}">${this.esc(pName)}</span>
               <span class="history-player-stats">${bidText} • ${tricks}(eat)</span>
               <span class="history-player-score ${scoreClass}">${scoreSign} pts (${cumScore})</span>
             </div>
@@ -1881,6 +1903,23 @@ function setupOnlineUIEvents() {
   document.getElementById('btnClaimContinue')?.addEventListener('click', () => {
     window.tarneebGame?.dismissClaimModal();
   });
+
+  // Turn status bar click to play selected card directly
+  const turnBar = document.getElementById('turnStatusBar');
+  if (turnBar && !turnBar.dataset.clickAttached) {
+    turnBar.dataset.clickAttached = 'true';
+    const handleTurnBarPlay = (e) => {
+      if (e) {
+        if (typeof e.stopPropagation === 'function') e.stopPropagation();
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+      }
+      if (window.tarneebGame && window.tarneebGame.selectedCard && window.tarneebGame.gameState?.phase === 'playing' && window.tarneebGame.gameState?.current_turn === window.tarneebGame.myId) {
+        window.tarneebGame.handleCardClick(window.tarneebGame.selectedCard);
+      }
+    };
+    turnBar.addEventListener('click', handleTurnBarPlay);
+    turnBar.addEventListener('touchend', handleTurnBarPlay);
+  }
 }
 
 // =========================================================================
