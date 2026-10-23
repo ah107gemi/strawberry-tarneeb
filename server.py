@@ -195,6 +195,8 @@ class GameState:
 
         self.scores: Dict[str, int] = defaultdict(int)       # cumulative
         self.round_scores: Dict[str, int] = defaultdict(int) # this round
+        self.team_scores: Dict[int, int] = {1: 0, 2: 0}       # Team 1 (Seats 0,2), Team 2 (Seats 1,3)
+        self.team_round_scores: Dict[int, int] = {1: 0, 2: 0} # this round
 
         self.trump_suit: str = TRUMP_SUIT
         self.kings_snip: Optional[Dict[str, Any]] = None
@@ -287,6 +289,8 @@ class GameState:
             "led_suit": self.led_suit,
             "scores": {k: v for k, v in self.scores.items()},
             "round_scores": {k: v for k, v in self.round_scores.items()},
+            "team_scores": {k: v for k, v in self.team_scores.items()},
+            "team_round_scores": {k: v for k, v in self.team_round_scores.items()},
             "trump_suit": self.trump_suit,
             "players": [p.to_dict() for p in self.players.values()],
             "history": list(self.round_history),
@@ -664,6 +668,8 @@ class ConnectionManager:
         game.led_suit = None
         game.scores.clear()
         game.round_scores.clear()
+        game.team_scores = {1: 0, 2: 0}
+        game.team_round_scores = {1: 0, 2: 0}
         game.round_history.clear()
         game.bid_order.clear()
         game.bidding_idx = 0
@@ -1009,6 +1015,8 @@ class ConnectionManager:
         game.round = 0
         game.scores.clear()
         game.round_scores.clear()
+        game.team_scores = {1: 0, 2: 0}
+        game.team_round_scores = {1: 0, 2: 0}
         game.round_history.clear()
         game.tricks_taken = {t: 0 for t in game.seats if t}
         game.trick_cards = []
@@ -1089,6 +1097,7 @@ class ConnectionManager:
         game.trick_cards = []
         game.led_suit = None
         game.round_scores = defaultdict(int)
+        game.team_round_scores = {1: 0, 2: 0}
         game.bid_order = []
         game.bidding_idx = 0
         game.kings_snip = None
@@ -1209,22 +1218,29 @@ class ConnectionManager:
             tricks = game.tricks_taken.get(tok, 0)
 
             if game.round == 1:
-                # Round 1: no bids, score = tricks taken
+                # Round 1: no bids, score = tricks taken (+1 per trick)
                 round_score = tricks
             else:
                 bid = game.bids.get(tok, 0)
                 made = tricks >= bid
 
                 if bid == 0:
-                    # 0-Bid Penalty: If a player bids 0 and takes at least 1 trick, apply -5 point penalty
+                    # 0-Bid Penalty: +5 if made (0 tricks taken), -5 if failed (1+ tricks taken)
                     round_score = SCORE_BID_0_MADE if tricks == 0 else SCORE_BID_0_FAILED
                 elif bid == 7:
-                    # Bid 7: +14 if made (>= 7 tricks), -14 if failed (< 7 tricks)
+                    # Bid of exactly 7: +14 if made (>= 7 tricks), -14 if failed (< 7 tricks)
                     round_score = SCORE_BID_7_MADE if tricks >= 7 else SCORE_BID_7_FAILED
+                elif 2 <= bid <= 6:
+                    # Bids from 2 to 6: +bid if contract made (tricks >= bid), -bid if failed (tricks < bid)
+                    round_score = bid if tricks >= bid else -bid
+                elif bid >= 8:
+                    # Bids of 8 or above: +bid if contract made (tricks >= bid), -bid if failed (tricks < bid)
+                    round_score = bid if tricks >= bid else -bid
                 else:
-                    # Bids 2-6 and 8-13: +Bid if made (tricks >= bid), -Bid if failed (tricks < bid)
+                    # Fallback / general bids
                     round_score = bid if tricks >= bid else -bid
 
+            # Store round score and update cumulative score (allows negative integers)
             game.round_scores[tok] = round_score
             game.scores[tok] = game.scores.get(tok, 0) + round_score
 
@@ -1238,6 +1254,15 @@ class ConnectionManager:
             game.round_scores[special_ah_token] = game.round_scores.get(special_ah_token, 0) + SPECIAL_AH_BONUS
             game.scores[special_ah_token] = game.scores.get(special_ah_token, 0) + SPECIAL_AH_BONUS
 
+        # Compute team cumulative and round scores (Team 1 = seats 0 & 2; Team 2 = seats 1 & 3)
+        # Allows dropping below zero into negative integers (e.g., -1, -3, -14)
+        t1_tokens = [game.seats[0], game.seats[2]]
+        t2_tokens = [game.seats[1], game.seats[3]]
+        game.team_round_scores[1] = sum(game.round_scores.get(t, 0) for t in t1_tokens if t)
+        game.team_round_scores[2] = sum(game.round_scores.get(t, 0) for t in t2_tokens if t)
+        game.team_scores[1] = sum(game.scores.get(t, 0) for t in t1_tokens if t)
+        game.team_scores[2] = sum(game.scores.get(t, 0) for t in t2_tokens if t)
+
         round_summary = {
             "round": game.round,
             "dealer_seat": game.dealer_seat,
@@ -1246,6 +1271,8 @@ class ConnectionManager:
             "bids": dict(game.bids),
             "round_scores": dict(game.round_scores),
             "cumulative_scores": dict(game.scores),
+            "team_scores": dict(game.team_scores),
+            "team_round_scores": dict(game.team_round_scores),
             "special_kh": special_kh_token,
             "special_ah": special_ah_token,
         }
