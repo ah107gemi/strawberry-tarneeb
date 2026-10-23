@@ -210,16 +210,20 @@
         
         <!-- Opponent: Top -->
         <div id="opponent-top" class="opponent-seat seat-top" style="display: none;">
-          <div class="opponent-name">Player</div>
-          <div class="opponent-bid-badge">Bid -</div>
           <div class="opponent-cards-row"></div>
+          <div class="opponent-meta-group">
+            <div class="opponent-name">Player</div>
+            <div class="opponent-bid-badge">Bid -</div>
+          </div>
         </div>
 
         <!-- Opponent: Left -->
         <div id="opponent-left" class="opponent-seat seat-left" style="display: none;">
-          <div class="opponent-name">Player</div>
-          <div class="opponent-bid-badge">Bid -</div>
           <div class="opponent-cards-row"></div>
+          <div class="opponent-meta-group">
+            <div class="opponent-name">Player</div>
+            <div class="opponent-bid-badge">Bid -</div>
+          </div>
         </div>
 
         <!-- Center Trick Felt Area -->
@@ -230,16 +234,39 @@
 
         <!-- Opponent: Right -->
         <div id="opponent-right" class="opponent-seat seat-right" style="display: none;">
-          <div class="opponent-name">Player</div>
-          <div class="opponent-bid-badge">Bid -</div>
           <div class="opponent-cards-row"></div>
+          <div class="opponent-meta-group">
+            <div class="opponent-name">Player</div>
+            <div class="opponent-bid-badge">Bid -</div>
+          </div>
         </div>
 
       </div> <!-- /onlineGameTable -->
 
-      <!-- Bidding Action Panel (Visible during bidding turn) -->
-      <div id="biddingPanel" class="online-bidding-panel" style="display: none;">
-        <!-- Injected dynamically via game_client.js -->
+      <!-- Centered Pop-up Bidding Modal (Visible during bidding turn) -->
+      <div id="biddingPanel" class="bidding-modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="onlineBiddingTitle">
+        <div class="bidding-modal-dialog">
+          <div class="bidding-modal-header">
+            <div class="bidding-modal-title-wrap">
+              <span class="bidding-modal-icon">🎯</span>
+              <h3 id="onlineBiddingTitle" class="bidding-modal-title">Round Bidding</h3>
+            </div>
+            <div class="bidding-modal-badge">
+              <span class="bidding-prohibit-pill">⚠️ Bid 1 Prohibited</span>
+            </div>
+          </div>
+          <div class="bidding-modal-body">
+            <div class="bidding-instruction-text">Select your contract bid for this round (0 or 2–13):</div>
+            <div id="biddingGridContainer" class="bidding-grid-container">
+              <!-- Dynamically rendered via game_client.js -->
+            </div>
+          </div>
+          <div class="bidding-modal-footer">
+            <button id="btnConfirmOnlineBid" class="btn-confirm-online-bid" type="button" disabled>
+              <span id="btnConfirmOnlineBidText">Select a Bid</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Claim Remaining Tricks Bar (Visible when holding unbeatable remaining trumps) -->
