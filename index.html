@@ -746,8 +746,11 @@
   <!-- ==========================================================================
        SIDE NAVIGATION DRAWER (Slide-out Hamburger Menu)
        ========================================================================== -->
-  <div id="sideNavOverlay" class="side-drawer-overlay" style="display: none;">
-    <div id="sideNavDrawer" class="side-drawer-panel" role="dialog" aria-modal="true" aria-label="Main Menu">
+  <!-- Dark Backdrop Overlay (strictly behind the menu: z-index 9998, blur 8px) -->
+  <div id="sideNavOverlay" class="side-drawer-overlay menu-overlay" style="display: none;"></div>
+
+  <!-- Menu Drawer Container (strictly in front: z-index 9999, sharp - no blur) -->
+  <div id="sideNavDrawer" class="side-drawer-panel menu-drawer" role="dialog" aria-modal="true" aria-label="Main Menu">
       <div class="side-drawer-header">
         <div class="side-drawer-brand">
           <span class="brand-strawberry">🍓</span>
@@ -827,7 +830,6 @@
         </div>
       </div>
     </div>
-  </div>
 
   <!-- Online Floating Toast -->
   <div id="onlineToast" class="online-toast"></div>
