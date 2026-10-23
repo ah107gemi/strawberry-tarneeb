@@ -420,6 +420,8 @@ class ConnectionManager:
             "remove_bots": self._handle_remove_bots,
             "claim_tricks": self._handle_claim_tricks,
             "claim_remaining_tricks": self._handle_claim_tricks,
+            "restart_game": self._handle_restart_game,
+            "restart_match": self._handle_restart_game,
         }
 
         handler = handlers.get(mtype)
@@ -979,8 +981,61 @@ class ConnectionManager:
             }
         })
 
+        # Clear any in-flight bot turns
+        self._bot_turn_in_progress = False
+
         # Proceed directly to round scoring calculation and summary screen
         await self._resolve_round()
+
+    # ------------------------------------------------------------------
+    # Handler: restart_game
+    # ------------------------------------------------------------------
+
+    async def _handle_restart_game(self, token: str, data: Optional[Dict] = None):
+        """
+        Resets the current match (scores to 0, clear round history, reset tricks)
+        and immediately deals a fresh Round 1 to all seated players without returning
+        them to the lobby.
+        """
+        game = self.game
+        player = game.players.get(token)
+        restarted_by = player.name if player else "Player"
+        log.info("🔄 Match restart initiated by %s (token=%s)", restarted_by, token)
+
+        # Clear any in-progress bot flags and actions
+        self._bot_turn_in_progress = False
+
+        # Reset cumulative and per-round match statistics
+        game.round = 0
+        game.scores.clear()
+        game.round_scores.clear()
+        game.round_history.clear()
+        game.tricks_taken = {t: 0 for t in game.seats if t}
+        game.trick_cards = []
+        game.led_suit = None
+        game.bids = {}
+        game.bid_order = []
+        game.bidding_idx = 0
+        game.kings_snip = None
+        for p in game.players.values():
+            p.hand = []
+
+        game.phase = "restarting"
+
+        await self.broadcast({
+            "type": "game_restarted",
+            "data": {
+                "message": f"🔄 {restarted_by} restarted the match! Dealing fresh Round 1…",
+                "restarted_by": restarted_by
+            }
+        })
+
+        if game.all_seats_filled():
+            # Immediately deal fresh Round 1 to all seated players
+            await self._start_round(dealer_seat_override=0)
+        else:
+            game.phase = "lobby"
+            await self.broadcast_game_state()
 
     # ------------------------------------------------------------------
     # Handler: request_state
@@ -997,8 +1052,8 @@ class ConnectionManager:
     async def _start_round(self, dealer_seat_override: Optional[int] = None):
         game = self.game
 
-        # Guard: only allow starting from lobby, dealer_select (round 1) or round_end (subsequent rounds)
-        if game.phase not in ("lobby", "dealer_select", "round_end"):
+        # Guard: allow starting from lobby, dealer_select, round_end, game_end, restarting
+        if game.phase not in ("lobby", "dealer_select", "round_end", "game_end", "restarting"):
             log.warning("Attempted to start round while phase is '%s', ignoring", game.phase)
             return
 
@@ -1013,6 +1068,7 @@ class ConnectionManager:
                 return
 
         # Immediate state transition guard so concurrent calls cannot re-enter
+        self._bot_turn_in_progress = False
         game.phase = "starting"
         game.round += 1
         log.info("=== Starting Round %d ===", game.round)
@@ -1121,6 +1177,10 @@ class ConnectionManager:
             # Check if round is over (all cards played = 13 tricks)
             total_tricks = sum(game.tricks_taken.values())
             if total_tricks == 13:
+                # Clean up table cards and clear bot turn lock before resolving round
+                game.trick_cards = []
+                game.led_suit = None
+                self._bot_turn_in_progress = False
                 await self._resolve_round()
             else:
                 await self.broadcast_game_state()
@@ -1129,6 +1189,7 @@ class ConnectionManager:
             # Guarantee table state is cleared so game loop never hangs
             self.game.trick_cards = []
             self.game.led_suit = None
+            self._bot_turn_in_progress = False
             await self.broadcast_game_state()
         finally:
             self._trigger_bot_turn_if_needed()
@@ -1137,6 +1198,7 @@ class ConnectionManager:
         game = self.game
         log.info("=== Round %d complete ===", game.round)
         game.phase = "round_end"
+        self._bot_turn_in_progress = False
 
         # Calculate scores for each seated player
         for seat_idx in range(MAX_PLAYERS):
@@ -1197,11 +1259,17 @@ class ConnectionManager:
         else:
             # Snappy delay then start next round
             await asyncio.sleep(2.0)
-            await self._start_round()
+            if game.phase == "round_end":
+                self._bot_turn_in_progress = False
+                await self._start_round()
 
     async def _end_game(self):
         game = self.game
         game.phase = "game_end"
+        self._bot_turn_in_progress = False
+        game.trick_cards = []
+        game.led_suit = None
+        game.current_turn_seat = None
         log.info("=== Game Over ===")
 
         # Build final standings sorted by score
