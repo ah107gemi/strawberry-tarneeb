@@ -197,10 +197,8 @@
           <span id="onlineRoundBadge" class="header-round-tag">R1/15</span>
           <span class="header-sep">•</span>
           <button id="onlineDealerBadge" class="header-dealer-btn" type="button" title="Click to Change Dealer">Dealer: -</button>
-          <span id="onlinePhaseInfo" class="header-phase-tag" style="display: none;"></span>
-          <span id="onlineUserRoleBadge" class="header-role-tag" style="display: none;"></span>
         </div>
-        <button id="btnMenu" class="drawer-trigger-btn menu-toggle btn-menu header-menu-btn" type="button" title="Menu & Navigation" aria-label="Open Menu" data-menu-trigger="true" style="pointer-events: auto !important; z-index: 9999 !important;">
+        <button type="button" id="btnMenu" class="drawer-trigger-btn menu-toggle btn-menu header-menu-btn" title="Menu & Navigation" aria-label="Open Menu" data-menu-trigger="true" style="pointer-events: auto !important; z-index: 9999 !important;">
           <span style="font-size: 1.05rem; line-height: 1; pointer-events: none; margin-right: 3px;">☰</span>
           <span style="pointer-events: none;">Menu</span>
         </button>
@@ -244,29 +242,27 @@
 
       </div> <!-- /onlineGameTable -->
 
-      <!-- Centered Pop-up Bidding Modal (Fixed Inset-0 Overlay with z-index 999) -->
-      <div id="biddingPanel" class="bidding-modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="onlineBiddingTitle">
-        <div class="bidding-modal-dialog bidding-modal-card">
-          <div class="bidding-modal-header">
-            <div class="bidding-modal-title-wrap">
-              <span class="bidding-modal-icon">🎯</span>
-              <h3 id="onlineBiddingTitle" class="bidding-modal-title">Select your Bid</h3>
-            </div>
-            <div class="bidding-modal-badge">
-              <span class="bidding-prohibit-pill">⚠️ Bid 1 Prohibited</span>
-            </div>
+      <!-- Centered Pop-up Bidding Modal -->
+      <div id="biddingPanel" class="bidding-modal-card" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="onlineBiddingTitle">
+        <div class="bidding-modal-header">
+          <div class="bidding-modal-title-wrap">
+            <span class="bidding-modal-icon">🎯</span>
+            <h3 id="onlineBiddingTitle" class="bidding-modal-title">Select your Bid</h3>
           </div>
-          <div class="bidding-modal-body">
-            <div class="bidding-instruction-text">Choose your contract bid (0 or 2–13):</div>
-            <div id="biddingGridContainer" class="bidding-grid-container">
-              <!-- Clean touch button grid dynamically rendered via game_client.js -->
-            </div>
+          <div class="bidding-modal-badge">
+            <span class="bidding-prohibit-pill">⚠️ Bid 1 Prohibited</span>
           </div>
-          <div class="bidding-modal-footer">
-            <button id="btnConfirmOnlineBid" class="btn-confirm-online-bid" type="button" disabled>
-              <span id="btnConfirmOnlineBidText">Place Bid</span>
-            </button>
+        </div>
+        <div class="bidding-modal-body">
+          <div class="bidding-instruction-text">Choose your contract bid (0 or 2–13):</div>
+          <div id="biddingGridContainer" class="bidding-grid-container">
+            <!-- Clean touch button grid dynamically rendered via game_client.js -->
           </div>
+        </div>
+        <div class="bidding-modal-footer">
+          <button id="btnConfirmOnlineBid" class="btn-confirm-online-bid" type="button" disabled>
+            <span id="btnConfirmOnlineBidText">Place Bid</span>
+          </button>
         </div>
       </div>
 
