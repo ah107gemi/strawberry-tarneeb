@@ -1656,20 +1656,90 @@ body::before {
   top: 0;
   left: 0;
   right: 0;
-  height: 56px;
+  height: 48px;
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  padding: 4px 8px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
   background: linear-gradient(180deg, rgba(2, 28, 22, 0.98) 0%, rgba(2, 28, 22, 0.92) 80%, rgba(2, 28, 22, 0.6) 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  padding: 0 12px;
-  box-sizing: border-box;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   pointer-events: none;
+}
+
+.unified-header-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-full);
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  pointer-events: auto;
+  white-space: nowrap;
+  max-width: calc(100vw - 82px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-brand-tag {
+  font-weight: 800;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.header-sep {
+  color: rgba(255, 255, 255, 0.25);
+  font-weight: 400;
+}
+
+.header-round-tag {
+  color: #38bdf8;
+  font-weight: 800;
+}
+
+.header-dealer-btn {
+  background: transparent;
+  border: none;
+  color: #facc15;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.header-dealer-btn:hover {
+  color: #fde047;
+  text-decoration: underline;
+}
+
+.header-phase-tag,
+.header-role-tag {
+  font-size: 0.68rem;
+  color: #94a3b8;
+}
+
+.header-menu-btn {
+  pointer-events: auto !important;
+  z-index: 9999 !important;
+  font-size: 0.75rem !important;
+  padding: 4px 10px !important;
+  min-height: 32px !important;
+  flex-shrink: 0;
 }
 
 .online-meta-wrap {
@@ -2020,14 +2090,14 @@ body::before {
   display: none !important;
 }
 
-/* Table Arena (Felt Green) - Full Screen Edge-to-Edge Arena with 65px Top Padding */
+/* Table Arena (Felt Green) - Full Screen Edge-to-Edge Arena with 56px Top Padding */
 .online-table-arena {
   position: absolute;
   inset: 0;
   width: 100vw;
   height: 100vh;
   height: 100dvh;
-  padding-top: 65px;
+  padding-top: 56px;
   border: none;
   border-radius: 0;
   box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.65);
@@ -2058,10 +2128,10 @@ body::before {
   pointer-events: auto;
 }
 
-/* Top Player Hand (North - Bot Furjani) - Pushed DOWN to 65px below 56px header bar */
+/* Top Player Hand (North - Bot Furjani) - Pushed DOWN to 56px below 48px header bar */
 .seat-top {
   position: absolute;
-  top: 65px;
+  top: 56px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -2395,7 +2465,7 @@ body::before {
   width: 100%;
   box-sizing: border-box;
   overflow: visible;
-  z-index: 35;
+  z-index: 600;
   pointer-events: auto;
 }
 
@@ -2432,6 +2502,21 @@ body::before {
   background: rgba(15, 23, 42, 0.7);
   border-color: rgba(255, 255, 255, 0.08);
   color: #cbd5e1;
+}
+
+.hand-turn-status-bar.can-confirm-card {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.45), rgba(34, 197, 94, 0.45)) !important;
+  border-color: rgba(74, 222, 128, 0.8) !important;
+  color: #86efac !important;
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.5) !important;
+  animation: pulseConfirmBar 1.2s infinite alternate ease-in-out !important;
+}
+
+@keyframes pulseConfirmBar {
+  0% { transform: scale(0.98); }
+  100% { transform: scale(1.02); }
 }
 
 .turn-status-dot {
@@ -2641,6 +2726,9 @@ body::before {
 /* ==========================================================================
    Centered Pop-up Bidding Modal (Online Multiplayer)
    ========================================================================== */
+/* ==========================================================================
+   Centered Compact Pop-up Bidding Modal (Online Multiplayer)
+   ========================================================================== */
 .bidding-modal-overlay,
 #biddingPanel {
   position: fixed !important;
@@ -2648,17 +2736,17 @@ body::before {
   width: 100vw !important;
   height: 100vh !important;
   height: 100dvh !important;
-  background: rgba(0, 0, 0, 0.75) !important;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  padding: 16px;
+  padding: 8px;
   box-sizing: border-box;
-  z-index: 999 !important;
+  z-index: 500 !important;
   pointer-events: auto;
-  animation: fadeInBiddingOverlay 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: fadeInBiddingOverlay 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 #biddingPanel[style*="display: none"],
@@ -2682,24 +2770,27 @@ body::before {
 }
 
 .bidding-modal-dialog {
-  background: linear-gradient(150deg, #0f172a 0%, #1e293b 55%, #090d16 100%);
-  border: 1px solid rgba(225, 29, 72, 0.4);
-  box-shadow: 0 24px 50px -12px rgba(0, 0, 0, 0.85), 0 0 35px rgba(225, 29, 72, 0.25);
-  border-radius: 20px;
-  width: 100%;
-  max-width: 380px;
+  max-width: 320px;
+  width: 90%;
+  max-height: 48vh;
+  padding: 12px;
+  margin: auto;
+  background: linear-gradient(150deg, #0f172a 0%, #1e293b 60%, #090d16 100%);
+  border: 1px solid rgba(225, 29, 72, 0.45);
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.8), 0 0 24px rgba(225, 29, 72, 0.25);
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 20px;
+  gap: 8px;
   box-sizing: border-box;
-  animation: popInBiddingDialog 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: popInBiddingDialog 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
 }
 
 @keyframes popInBiddingDialog {
   from {
     opacity: 0;
-    transform: scale(0.92) translateY(12px);
+    transform: scale(0.94) translateY(8px);
   }
   to {
     opacity: 1;
@@ -2711,24 +2802,24 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 12px;
+  padding-bottom: 6px;
 }
 
 .bidding-modal-title-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .bidding-modal-icon {
-  font-size: 1.3rem;
+  font-size: 1.1rem;
   line-height: 1;
 }
 
 .bidding-modal-title {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 800;
   color: #f8fafc;
   margin: 0;
@@ -2741,12 +2832,12 @@ body::before {
 }
 
 .bidding-prohibit-pill {
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
   color: #fca5a5;
   background: rgba(225, 29, 72, 0.16);
   border: 1px solid rgba(225, 29, 72, 0.35);
-  padding: 3px 8px;
+  padding: 2px 6px;
   border-radius: var(--radius-full);
   white-space: nowrap;
 }
@@ -2754,20 +2845,20 @@ body::before {
 .bidding-modal-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
 }
 
 .bidding-instruction-text {
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   color: #94a3b8;
-  line-height: 1.35;
+  line-height: 1.25;
 }
 
-/* Bidding Numbers Grid */
+/* Bidding Numbers Grid (4-column compact touch buttons) */
 .bidding-grid-container {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 6px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -2777,14 +2868,15 @@ body::before {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 48px;
-  padding: 6px 2px;
+  padding: 6px 0;
+  font-size: 0.95rem;
+  min-height: 38px;
   background: rgba(30, 41, 59, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
+  border-radius: 8px;
   color: #f8fafc;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -2792,7 +2884,6 @@ body::before {
 .bid-grid-btn:hover {
   background: rgba(51, 65, 85, 0.95);
   border-color: rgba(255, 255, 255, 0.28);
-  transform: translateY(-1px);
 }
 
 .bid-grid-btn:active {
@@ -2800,17 +2891,17 @@ body::before {
 }
 
 .bid-grid-btn .bid-num {
-  font-size: 1.2rem;
+  font-size: 1rem;
   font-weight: 800;
   line-height: 1;
   color: #f8fafc;
 }
 
 .bid-grid-btn .bid-sub {
-  font-size: 0.58rem;
+  font-size: 0.52rem;
   font-weight: 700;
   color: #94a3b8;
-  margin-top: 3px;
+  margin-top: 2px;
   white-space: nowrap;
   letter-spacing: -0.2px;
 }
@@ -2847,38 +2938,37 @@ body::before {
 .bid-grid-btn.selected {
   background: linear-gradient(135deg, rgba(225, 29, 72, 0.4), rgba(190, 18, 60, 0.7)) !important;
   border: 2px solid #fb7185 !important;
-  box-shadow: 0 0 16px rgba(225, 29, 72, 0.55);
-  transform: translateY(-2px);
+  box-shadow: 0 0 12px rgba(225, 29, 72, 0.55);
 }
 
 .bid-grid-btn.selected .bid-num {
   color: #ffffff !important;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
 }
 
 .bid-grid-btn.selected .bid-sub {
   color: #fecdd3 !important;
 }
 
-/* Modal Footer & Prominent Place Bid Button */
+/* Modal Footer & Wide Prominent Place Bid Button */
 .bidding-modal-footer {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .btn-confirm-online-bid {
   width: 100%;
-  min-height: 50px;
+  min-height: 40px;
+  padding: 8px 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-size: 1.05rem;
+  gap: 6px;
+  font-size: 0.95rem;
   font-weight: 800;
-  border-radius: 12px;
+  border-radius: 10px;
   border: none;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: all 0.15s ease;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -2895,18 +2985,35 @@ body::before {
 .btn-confirm-online-bid.ready {
   background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
   color: #ffffff;
-  box-shadow: 0 6px 20px rgba(225, 29, 72, 0.5);
+  box-shadow: 0 4px 16px rgba(225, 29, 72, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .btn-confirm-online-bid.ready:hover {
   background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
-  box-shadow: 0 8px 24px rgba(225, 29, 72, 0.65);
-  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(225, 29, 72, 0.65);
 }
 
-.btn-confirm-online-bid.ready:active {
-  transform: translateY(1px);
+/* Completed Bid Glowing Outline Ring (Instead of literal checkmark emoji) */
+.opponent-name.is-bid-complete,
+.opponent-seat.is-bid-complete .opponent-name,
+.opponent-meta-group.is-bid-complete,
+.score-row.is-bid-complete,
+.hand-title.is-bid-complete,
+.history-player-row.is-bid-complete {
+  border: 1.5px solid #22c55e !important;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.45) !important;
+  border-radius: 6px;
+}
+
+.history-player-name.is-bid-complete {
+  color: #86efac !important;
+  font-weight: 800 !important;
+}
+
+.opponent-bid-badge.is-bid-complete {
+  border-color: rgba(34, 197, 94, 0.6) !important;
+  color: #86efac !important;
 }
 
 
