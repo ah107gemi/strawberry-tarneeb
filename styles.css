@@ -1652,6 +1652,12 @@ body::before {
 }
 
 .online-header-strip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1659,19 +1665,11 @@ body::before {
   background: linear-gradient(180deg, rgba(2, 28, 22, 0.98) 0%, rgba(2, 28, 22, 0.92) 80%, rgba(2, 28, 22, 0.6) 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  padding: 8px 12px;
-  padding-top: max(8px, env(safe-area-inset-top, 8px));
-  width: 100%;
-  min-height: 48px;
+  padding: 0 12px;
   box-sizing: border-box;
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  pointer-events: none;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
 }
 
 .online-meta-wrap {
@@ -2022,16 +2020,17 @@ body::before {
   display: none !important;
 }
 
-/* Table Arena (Felt Green) - Full Screen Edge-to-Edge Arena */
+/* Table Arena (Felt Green) - Full Screen Edge-to-Edge Arena with 65px Top Padding */
 .online-table-arena {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  padding-top: 65px;
   border: none;
   border-radius: 0;
   box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.65);
-  padding: 0;
   box-sizing: border-box;
   overflow: hidden;
   pointer-events: none;
@@ -2039,14 +2038,15 @@ body::before {
 
 .felt-trump-watermark {
   position: absolute;
-  top: 48%;
+  top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: clamp(6rem, 18vw, 11rem);
+  font-size: clamp(5rem, 16vw, 9rem);
   color: rgba(239, 68, 68, 0.08);
   pointer-events: none;
   font-weight: 900;
   user-select: none;
+  z-index: 1;
 }
 
 /* Opponent Seats */
@@ -2058,10 +2058,10 @@ body::before {
   pointer-events: auto;
 }
 
-/* Top Player Hand (North) - Horizontal fan pushed below the dedicated top status bar */
+/* Top Player Hand (North - Bot Furjani) - Pushed DOWN to 65px below 56px header bar */
 .seat-top {
   position: absolute;
-  top: calc(56px + env(safe-area-inset-top, 0px));
+  top: 65px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -2105,17 +2105,18 @@ body::before {
   margin-left: 0;
 }
 
-/* Left Opponent (West - Hosam) - Grouped cleanly along left edge */
+/* Left Opponent (West - Bot Hosam) - Pinned flush against left screen edge */
 .seat-left {
   position: absolute;
-  left: 6px;
+  left: 4px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   z-index: 25;
+  pointer-events: auto;
 }
 
 .seat-left .opponent-meta-group {
@@ -2123,20 +2124,21 @@ body::before {
   flex-direction: column;
   align-items: flex-start;
   gap: 3px;
-  max-width: 84px;
+  max-width: 76px;
 }
 
-/* Right Opponent (East - Shiba) - Grouped cleanly along right edge */
+/* Right Opponent (East - Bot Shiba) - Pinned flush against right screen edge */
 .seat-right {
   position: absolute;
-  right: 6px;
+  right: 4px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
   flex-direction: row-reverse;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   z-index: 25;
+  pointer-events: auto;
 }
 
 .seat-right .opponent-meta-group {
@@ -2144,7 +2146,7 @@ body::before {
   flex-direction: column;
   align-items: flex-end;
   gap: 3px;
-  max-width: 84px;
+  max-width: 76px;
 }
 
 .seat-left .opponent-cards-row,
@@ -2153,13 +2155,13 @@ body::before {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 32px;
+  width: 30px;
   margin: 0;
 }
 
 .seat-left .card-back,
 .seat-right .card-back {
-  width: 32px;
+  width: 30px;
   height: 20px;
   background: linear-gradient(135deg, #881337, #4c0519);
   border: 1px solid #fda4af;
@@ -2177,15 +2179,15 @@ body::before {
 }
 
 .opponent-name {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 800;
   color: #f8fafc;
-  background: rgba(15, 23, 42, 0.92);
-  padding: 2px 8px;
+  background: rgba(15, 23, 42, 0.95);
+  padding: 2px 7px;
   border-radius: var(--radius-full);
   border: 1px solid rgba(255, 255, 255, 0.16);
   white-space: nowrap;
-  max-width: 82px;
+  max-width: 76px;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: center;
@@ -2204,15 +2206,15 @@ body::before {
 }
 
 .opponent-bid-badge {
-  font-size: 0.64rem;
+  font-size: 0.62rem;
   font-weight: 700;
   color: #cbd5e1;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.8);
   padding: 2px 6px;
   border-radius: var(--radius-full);
   border: 1px solid rgba(255, 255, 255, 0.12);
   white-space: nowrap;
-  max-width: 80px;
+  max-width: 76px;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: center;
@@ -2223,41 +2225,41 @@ body::before {
   max-width: 90px;
 }
 
-/* Center Trick Table - Centered clearly in the felt arena without clipping */
+/* Center Trick Table - Constrained Isolated Center Box (220px x 220px, margin: auto) */
 .table-felt-center {
   position: absolute;
-  top: 49%;
+  top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 190px;
-  height: 190px;
-  margin: 0 auto;
+  width: 220px;
+  height: 220px;
+  margin: auto;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 15;
   pointer-events: none;
-}
-
-.felt-trump-watermark {
-  position: absolute;
-  font-size: 5.5rem;
-  color: rgba(225, 29, 72, 0.08);
-  pointer-events: none;
-  user-select: none;
-  z-index: 1;
+  box-sizing: border-box;
 }
 
 .trick-cards-container {
   position: relative;
-  width: 100%;
-  height: 100%;
+  width: 220px;
+  height: 220px;
+  margin: auto;
   display: grid;
   grid-template-areas:
     ". top ."
     "left . right"
     ". bottom .";
-  grid-template-columns: 46px 1fr 46px;
+  grid-template-columns: 48px 1fr 48px;
+  grid-template-rows: 60px 1fr 60px;
+  gap: 2px;
+  align-items: center;
+  justify-items: center;
+  z-index: 2;
+  box-sizing: border-box;
+}
   grid-template-rows: 56px 1fr 56px;
   gap: 2px;
   align-items: center;
@@ -2640,23 +2642,38 @@ body::before {
    Centered Pop-up Bidding Modal (Online Multiplayer)
    ========================================================================== */
 .bidding-modal-overlay,
-.online-bidding-panel {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
-  background: rgba(0, 0, 0, 0.78);
+#biddingPanel {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  background: rgba(0, 0, 0, 0.75) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   padding: 16px;
   box-sizing: border-box;
-  z-index: 9500;
+  z-index: 999 !important;
   pointer-events: auto;
   animation: fadeInBiddingOverlay 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#biddingPanel[style*="display: none"],
+.bidding-modal-overlay[style*="display: none"] {
+  display: none !important;
+}
+
+/* Completely eradicate any inline numbered bidding buttons */
+.bid-buttons-row,
+.online-bidding-panel-inline,
+.bid-btn-online {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 @keyframes fadeInBiddingOverlay {
@@ -2892,47 +2909,7 @@ body::before {
   transform: translateY(1px);
 }
 
-/* Legacy button classes maintained for safety */
-.bid-panel-title {
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: #fde047;
-}
 
-.bid-buttons-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.bid-btn-online {
-  flex: 1;
-  min-width: 38px;
-  height: 40px;
-  background: #0f172a;
-  border: 1px solid #334155;
-  color: #fff;
-  border-radius: 8px;
-  font-weight: 800;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.bid-btn-online:hover {
-  background: #3b82f6;
-  border-color: #60a5fa;
-}
-
-.bid-btn-online.bid-0 {
-  border-color: #38bdf8;
-  color: #7dd3fc;
-}
-
-.bid-btn-online.bid-7 {
-  border-color: #f59e0b;
-  color: #fde047;
-}
 
 /* Online Score Sidebar/Panel */
 .online-scores-panel {
@@ -3369,13 +3346,14 @@ body::before {
     width: 100%;
     height: 100%;
     min-height: 100%;
-    padding: 0;
+    padding-top: 65px;
     border-radius: 0;
     border: none;
+    box-sizing: border-box;
   }
 
   .seat-top {
-    top: 60px;
+    top: 65px;
   }
 
   .seat-top .card-back {
@@ -3407,15 +3385,19 @@ body::before {
   }
 
   .table-felt-center {
-    width: 240px;
-    height: 240px;
-    top: 49%;
+    width: 220px;
+    height: 220px;
+    margin: auto;
+    top: 50%;
     transform: translate(-50%, -50%);
   }
 
   .trick-cards-container {
-    grid-template-columns: 54px 1fr 54px;
-    grid-template-rows: 68px 1fr 68px;
+    width: 220px;
+    height: 220px;
+    margin: auto;
+    grid-template-columns: 48px 1fr 48px;
+    grid-template-rows: 60px 1fr 60px;
   }
 
   .trick-card-slot .card {
