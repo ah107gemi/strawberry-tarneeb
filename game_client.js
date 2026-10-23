@@ -245,6 +245,9 @@ class TarneebOnlineGame {
         }
         this.isSubmittingPlay = false;
         this.isSubmittingCard = false;
+        if (data.current_turn !== this.myId || data.phase !== 'playing') {
+          this.selectedCard = null;
+        }
 
         // Auto-Sort Prompt: Prompt human player immediately after cards are distributed in a new round
         if (data.my_hand && data.my_hand.length === 13 && data.round > 0 && this._lastSortPromptedRound !== data.round) {
@@ -258,6 +261,9 @@ class TarneebOnlineGame {
         this.cleanupStuckPlayVisuals();
         this.isSubmittingPlay = false;
         this.isSubmittingCard = false;
+        if (data.current_turn !== this.myId || data.phase !== 'playing') {
+          this.selectedCard = null;
+        }
         this.renderGame();
         break;
 
@@ -301,6 +307,9 @@ class TarneebOnlineGame {
         this.cleanupStuckPlayVisuals();
         this.isSubmittingPlay = false;
         this.isSubmittingCard = false;
+        if (data.current_turn !== this.myId || data.phase !== 'playing') {
+          this.selectedCard = null;
+        }
         this.showTrickResult(data);
         break;
 
@@ -308,6 +317,9 @@ class TarneebOnlineGame {
         this.cleanupStuckPlayVisuals();
         this.isSubmittingPlay = false;
         this.isSubmittingCard = false;
+        if (data.current_turn !== this.myId || data.phase !== 'playing') {
+          this.selectedCard = null;
+        }
         if (data && !this.matchHistory.some(h => h.round === data.round)) {
           this.matchHistory.push(data);
         }
@@ -322,6 +334,9 @@ class TarneebOnlineGame {
         this.cleanupStuckPlayVisuals();
         this.isSubmittingPlay = false;
         this.isSubmittingCard = false;
+        if (data.current_turn !== this.myId || data.phase !== 'playing') {
+          this.selectedCard = null;
+        }
         this.showGameVictory(data);
         break;
 
@@ -330,6 +345,9 @@ class TarneebOnlineGame {
         this.cleanupStuckPlayVisuals();
         this.isSubmittingPlay = false;
         this.isSubmittingCard = false;
+        if (data.current_turn !== this.myId || data.phase !== 'playing') {
+          this.selectedCard = null;
+        }
         this.handleMatchTerminated(data);
         break;
 
@@ -337,13 +355,33 @@ class TarneebOnlineGame {
         this.cleanupStuckPlayVisuals();
         this.isSubmittingPlay = false;
         this.isSubmittingCard = false;
+        this.selectedCard = null;
         this.handleTricksClaimed(data);
+        break;
+
+      case 'game_restarted':
+        this.cleanupStuckPlayVisuals();
+        this.isSubmittingPlay = false;
+        this.isSubmittingCard = false;
+        this.selectedCard = null;
+        this.matchHistory = [];
+        this._lastSortPromptedRound = 0;
+        this.dismissClaimModal();
+        document.getElementById('modalRoundSummary')?.classList.remove('open');
+        document.getElementById('modalVictoryOnline')?.classList.remove('open');
+        document.getElementById('modalMatchEnded')?.classList.remove('open');
+        const biddingModal = document.getElementById('biddingPanel');
+        if (biddingModal) biddingModal.style.display = 'none';
+        this.showToast(data.message || '🔄 Game restarted from Round 1!', 'info');
         break;
 
       case 'error':
         this.cleanupStuckPlayVisuals();
         this.isSubmittingPlay = false;
         this.isSubmittingCard = false;
+        if (data.current_turn !== this.myId || data.phase !== 'playing') {
+          this.selectedCard = null;
+        }
         const errMsg = data.message || msg.message || 'Error occurred';
         this.showToast(`❌ ${errMsg}`, 'error');
         if (data.code === 'TABLE_FULL') {
@@ -650,19 +688,19 @@ class TarneebOnlineGame {
 
       if (pos === 'top') {
         el.innerHTML = `
-          <div class="opponent-cards-row">${cardBacks}</div>
           <div class="opponent-meta-group ${isComplete ? 'is-bid-complete' : ''}">
             <span class="opponent-name ${isCurrent ? 'is-current-turn' : ''} ${isComplete ? 'is-bid-complete' : ''}">${this.esc(player.name)} ${isCurrent ? '🔥' : ''}</span>
             ${bid !== undefined && bid !== null ? `<span class="opponent-bid-badge ${isComplete ? 'is-bid-complete' : ''}">Bid ${bid} • ${tricks}(eat)</span>` : ''}
           </div>
+          <div class="opponent-cards-row">${cardBacks}</div>
         `;
       } else {
         el.innerHTML = `
-          <div class="opponent-cards-row">${cardBacks}</div>
           <div class="opponent-meta-group ${isComplete ? 'is-bid-complete' : ''}">
             <div class="opponent-name ${isCurrent ? 'is-current-turn' : ''} ${isComplete ? 'is-bid-complete' : ''}">${this.esc(player.name)} ${isCurrent ? '🔥' : ''}</div>
             ${bid !== undefined && bid !== null ? `<div class="opponent-bid-badge ${isComplete ? 'is-bid-complete' : ''}">Bid ${bid} • ${tricks}(eat)</div>` : ''}
           </div>
+          <div class="opponent-cards-row">${cardBacks}</div>
         `;
       }
     });
@@ -1007,6 +1045,9 @@ class TarneebOnlineGame {
       if (Date.now() - (this._playSubmittedTime || 0) > 250) {
         this.isSubmittingPlay = false;
         this.isSubmittingCard = false;
+        if (data.current_turn !== this.myId || data.phase !== 'playing') {
+          this.selectedCard = null;
+        }
       } else {
         return;
       }
@@ -1138,6 +1179,12 @@ class TarneebOnlineGame {
   rotateDealer() {
     this.send('rotate_dealer', {});
     this.showToast('🂠 Rotating dealer to next player…', 'info');
+  }
+
+  restartGame() {
+    this.closeDrawer();
+    this.send('restart_game', {});
+    this.showToast('🔄 Restarting match from Round 1…', 'info');
   }
 
   placeBid(amount) {
@@ -1809,122 +1856,184 @@ function setupOnlineUIEvents() {
     logoutAndSwitchName();
   });
 
+  // Restart Game button in drawer ("🔄 Restart Game")
+  const restartBtn = document.getElementById('btnRestartGame');
+  if (restartBtn) {
+    restartBtn.onclick = (e) => {
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      window.tarneebGame?.closeDrawer();
+      window.tarneebGame?.restartGame();
+    };
+  }
+
   // Leave Game button in drawer ("🚪 Leave Game") - Terminates active game for table
-  document.getElementById('btnLeaveActiveGame')?.addEventListener('click', () => {
-    window.tarneebGame?.closeDrawer();
-    if (confirm('Are you sure you want to leave the game? This will end the active match for everyone at the table.')) {
-      window.tarneebGame.send('leave_seat', {});
-    }
-  });
+  const leaveBtn = document.getElementById('btnLeaveActiveGame') || document.getElementById('btnLeaveMatch');
+  if (leaveBtn) {
+    leaveBtn.onclick = (e) => {
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      window.tarneebGame?.closeDrawer();
+      if (confirm('Are you sure you want to leave the game? This will end the active match for everyone at the table.')) {
+        window.tarneebGame?.send('leave_seat', {});
+      }
+    };
+  }
 
   // Match Ended Modal buttons
-  document.getElementById('btnEndedViewHistory')?.addEventListener('click', () => {
-    const modal = document.getElementById('modalMatchEnded');
-    if (modal) {
-      modal.classList.remove('open');
-      modal.style.display = 'none';
-    }
-    window.tarneebGame?.showMatchHistoryModal();
-  });
+  const endedHistoryBtn = document.getElementById('btnEndedViewHistory');
+  if (endedHistoryBtn) {
+    endedHistoryBtn.onclick = () => {
+      const modal = document.getElementById('modalMatchEnded');
+      if (modal) {
+        modal.classList.remove('open');
+        modal.style.display = 'none';
+      }
+      window.tarneebGame?.showMatchHistoryModal();
+    };
+  }
 
-  document.getElementById('btnEndedClose')?.addEventListener('click', () => {
-    window.tarneebGame?.closeMatchEndedModal();
-  });
+  const endedCloseBtn = document.getElementById('btnEndedClose');
+  if (endedCloseBtn) {
+    endedCloseBtn.onclick = () => {
+      window.tarneebGame?.closeMatchEndedModal();
+    };
+  }
 
   // Dealer change button (rotates dealer in order) & badge (modal picker)
-  document.getElementById('btnChangeDealer')?.addEventListener('click', () => {
-    window.tarneebGame?.closeDrawer();
-    window.tarneebGame.rotateDealer();
-  });
-  document.getElementById('onlineDealerBadge')?.addEventListener('click', () => {
-    window.tarneebGame.showDealerSelectModal();
-  });
-  document.getElementById('btnCloseDealerModal')?.addEventListener('click', () => {
-    window.tarneebGame.hideDealerSelectModal();
-  });
+  const changeDealerBtn = document.getElementById('btnChangeDealer');
+  if (changeDealerBtn) {
+    changeDealerBtn.onclick = () => {
+      window.tarneebGame?.closeDrawer();
+      window.tarneebGame?.rotateDealer();
+    };
+  }
+
+  const dealerBadge = document.getElementById('onlineDealerBadge');
+  if (dealerBadge) {
+    dealerBadge.onclick = () => {
+      window.tarneebGame?.showDealerSelectModal();
+    };
+  }
+
+  const closeDealerBtn = document.getElementById('btnCloseDealerModal');
+  if (closeDealerBtn) {
+    closeDealerBtn.onclick = () => {
+      window.tarneebGame?.hideDealerSelectModal();
+    };
+  }
 
   // Match History Modal
   const historyModal = document.getElementById('modalMatchHistory');
-  document.getElementById('btnMatchHistory')?.addEventListener('click', () => {
-    window.tarneebGame?.closeDrawer();
-    if (window.tarneebGame) {
-      window.tarneebGame.showMatchHistoryModal();
-    }
-  });
-  document.getElementById('btnCloseMatchHistory')?.addEventListener('click', () => {
-    if (window.tarneebGame) {
-      window.tarneebGame.hideMatchHistoryModal();
-    } else if (historyModal) {
-      historyModal.classList.remove('open');
-      historyModal.style.display = 'none';
-    }
-  });
-  historyModal?.addEventListener('click', (e) => {
-    if (e.target === historyModal) {
+  const matchHistoryBtn = document.getElementById('btnMatchHistory');
+  if (matchHistoryBtn) {
+    matchHistoryBtn.onclick = () => {
+      window.tarneebGame?.closeDrawer();
+      window.tarneebGame?.showMatchHistoryModal();
+    };
+  }
+
+  const closeHistoryBtn = document.getElementById('btnCloseMatchHistory');
+  if (closeHistoryBtn) {
+    closeHistoryBtn.onclick = () => {
       if (window.tarneebGame) {
         window.tarneebGame.hideMatchHistoryModal();
-      } else {
+      } else if (historyModal) {
         historyModal.classList.remove('open');
         historyModal.style.display = 'none';
       }
-    }
-  });
+    };
+  }
+
+  if (historyModal) {
+    historyModal.onclick = (e) => {
+      if (e.target === historyModal) {
+        if (window.tarneebGame) {
+          window.tarneebGame.hideMatchHistoryModal();
+        } else {
+          historyModal.classList.remove('open');
+          historyModal.style.display = 'none';
+        }
+      }
+    };
+  }
 
   // Auto-Sort Prompt buttons
-  document.getElementById('btnAutoSortYes')?.addEventListener('click', () => {
-    window.tarneebGame.sortMode = 'auto';
-    localStorage.setItem('tarneeb_sort_mode', 'auto');
-    window.tarneebGame._lastHandHash = null;
-    if (window.tarneebGame.gameState) {
-      window.tarneebGame.renderMyHand(window.tarneebGame.gameState);
-    }
-    window.tarneebGame.hideAutoSortPrompt();
-    window.tarneebGame.showToast('✨ Hand sorted automatically!', 'info');
-  });
+  const autoSortYes = document.getElementById('btnAutoSortYes');
+  if (autoSortYes) {
+    autoSortYes.onclick = () => {
+      window.tarneebGame.sortMode = 'auto';
+      localStorage.setItem('tarneeb_sort_mode', 'auto');
+      window.tarneebGame._lastHandHash = null;
+      if (window.tarneebGame.gameState) {
+        window.tarneebGame.renderMyHand(window.tarneebGame.gameState);
+      }
+      window.tarneebGame.hideAutoSortPrompt();
+      window.tarneebGame.showToast('✨ Hand sorted automatically!', 'info');
+    };
+  }
 
-  document.getElementById('btnAutoSortNo')?.addEventListener('click', () => {
-    window.tarneebGame.sortMode = 'manual';
-    localStorage.setItem('tarneeb_sort_mode', 'manual');
-    window.tarneebGame._lastHandHash = null;
-    if (window.tarneebGame.gameState) {
-      window.tarneebGame.renderMyHand(window.tarneebGame.gameState);
-    }
-    window.tarneebGame.hideAutoSortPrompt();
-  });
+  const autoSortNo = document.getElementById('btnAutoSortNo');
+  if (autoSortNo) {
+    autoSortNo.onclick = () => {
+      window.tarneebGame.sortMode = 'manual';
+      localStorage.setItem('tarneeb_sort_mode', 'manual');
+      window.tarneebGame._lastHandHash = null;
+      if (window.tarneebGame.gameState) {
+        window.tarneebGame.renderMyHand(window.tarneebGame.gameState);
+      }
+      window.tarneebGame.hideAutoSortPrompt();
+    };
+  }
 
-  document.getElementById('btnCloseAutoSortModal')?.addEventListener('click', () => {
-    window.tarneebGame.hideAutoSortPrompt();
-  });
+  const closeAutoSort = document.getElementById('btnCloseAutoSortModal');
+  if (closeAutoSort) {
+    closeAutoSort.onclick = () => {
+      window.tarneebGame.hideAutoSortPrompt();
+    };
+  }
 
   // Sort toggle (if present in DOM)
-  document.getElementById('sortToggleBtn')?.addEventListener('click', () => {
-    window.tarneebGame.toggleSortMode();
-  });
+  const sortToggle = document.getElementById('sortToggleBtn');
+  if (sortToggle) {
+    sortToggle.onclick = () => {
+      window.tarneebGame.toggleSortMode();
+    };
+  }
 
   // Round summary close
-  document.getElementById('closeRoundSummaryBtn')?.addEventListener('click', () => {
-    document.getElementById('modalRoundSummary')?.classList.remove('open');
-  });
+  const closeSummary = document.getElementById('closeRoundSummaryBtn');
+  if (closeSummary) {
+    closeSummary.onclick = () => {
+      document.getElementById('modalRoundSummary')?.classList.remove('open');
+    };
+  }
 
   // Victory modal close
-  document.getElementById('closeVictoryOnlineBtn')?.addEventListener('click', () => {
-    document.getElementById('modalVictoryOnline')?.classList.remove('open');
-  });
+  const closeVic = document.getElementById('closeVictoryOnlineBtn');
+  if (closeVic) {
+    closeVic.onclick = () => {
+      document.getElementById('modalVictoryOnline')?.classList.remove('open');
+    };
+  }
 
   // Claim Remaining Tricks button
-  document.getElementById('btnClaimTricks')?.addEventListener('click', () => {
-    window.tarneebGame?.claimRemainingTricks();
-  });
+  const claimTricksBtn = document.getElementById('btnClaimTricks');
+  if (claimTricksBtn) {
+    claimTricksBtn.onclick = () => {
+      window.tarneebGame?.claimRemainingTricks();
+    };
+  }
 
   // Claim modal Continue button
-  document.getElementById('btnClaimContinue')?.addEventListener('click', () => {
-    window.tarneebGame?.dismissClaimModal();
-  });
+  const claimContinueBtn = document.getElementById('btnClaimContinue');
+  if (claimContinueBtn) {
+    claimContinueBtn.onclick = () => {
+      window.tarneebGame?.dismissClaimModal();
+    };
+  }
 
   // Turn status bar click to play selected card directly
   const turnBar = document.getElementById('turnStatusBar');
-  if (turnBar && !turnBar.dataset.clickAttached) {
-    turnBar.dataset.clickAttached = 'true';
+  if (turnBar) {
     const handleTurnBarPlay = (e) => {
       if (e) {
         if (typeof e.stopPropagation === 'function') e.stopPropagation();
@@ -1934,8 +2043,8 @@ function setupOnlineUIEvents() {
         window.tarneebGame.handleCardClick(window.tarneebGame.selectedCard);
       }
     };
-    turnBar.addEventListener('click', handleTurnBarPlay);
-    turnBar.addEventListener('touchend', handleTurnBarPlay);
+    turnBar.onclick = handleTurnBarPlay;
+    turnBar.ontouchend = handleTurnBarPlay;
   }
 }
 
