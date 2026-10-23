@@ -380,7 +380,8 @@ class TarneebOnlineGame {
     // Render dealer + round info
     const dealer = gs.players.find(p => p.id === gs.dealer);
     const roundText = `R${gs.round}/15`;
-    const dealerText = `🎴 ${dealer ? dealer.name : '-'}`;
+    const dealerName = dealer ? dealer.name : '-';
+    const dealerText = `Dealer: ${dealerName}`;
     const roundEl = document.getElementById('onlineRoundBadge');
     if (roundEl && roundEl.textContent !== roundText) roundEl.textContent = roundText;
     const dealerEl = document.getElementById('onlineDealerBadge');
@@ -406,14 +407,12 @@ class TarneebOnlineGame {
 
     const roleBadge = document.getElementById('onlineUserRoleBadge');
     if (roleBadge) {
-      roleBadge.style.display = 'inline-block';
       if (isSpectator) {
-        roleBadge.className = 'online-pill-badge role-pill spectator';
-        roleBadge.textContent = `👀 Spectating: ${this.myName || me?.name || 'Spectator'}`;
+        roleBadge.style.display = 'inline-block';
+        roleBadge.className = 'header-role-tag';
+        roleBadge.textContent = '👀 Spec';
       } else {
-        roleBadge.className = 'online-pill-badge role-pill';
-        const seatStr = (me && me.seat !== null && me.seat !== undefined) ? ` (Seat ${me.seat + 1})` : '';
-        roleBadge.textContent = `🎮 Player: ${this.myName || me?.name || 'Player'}${seatStr}`;
+        roleBadge.style.display = 'none';
       }
     }
 
@@ -824,7 +823,7 @@ class TarneebOnlineGame {
     const isRound1 = gs.round === 1;
     if (isRound1) {
       panel.innerHTML = `
-        <div class="bidding-modal-dialog">
+        <div class="bidding-modal-dialog bidding-modal-card">
           <div class="bidding-modal-header">
             <div class="bidding-modal-title-wrap">
               <span class="bidding-modal-icon">🎯</span>
@@ -848,7 +847,7 @@ class TarneebOnlineGame {
 
     const bids = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
     let html = `
-      <div class="bidding-modal-dialog">
+      <div class="bidding-modal-dialog bidding-modal-card">
         <div class="bidding-modal-header">
           <div class="bidding-modal-title-wrap">
             <span class="bidding-modal-icon">🎯</span>
