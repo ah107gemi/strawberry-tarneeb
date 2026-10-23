@@ -209,20 +209,20 @@
         
         <!-- Opponent: Top (Bot Furjani - North) -->
         <div id="opponent-top" class="opponent-seat seat-top" style="display: none;">
-          <div class="opponent-cards-row"></div>
           <div class="opponent-meta-group">
             <div class="opponent-name">Player</div>
             <div class="opponent-bid-badge">Bid -</div>
           </div>
+          <div class="opponent-cards-row"></div>
         </div>
 
         <!-- Opponent: Left (Bot Hosam - West) -->
         <div id="opponent-left" class="opponent-seat seat-left" style="display: none;">
-          <div class="opponent-cards-row"></div>
           <div class="opponent-meta-group">
             <div class="opponent-name">Player</div>
             <div class="opponent-bid-badge">Bid -</div>
           </div>
+          <div class="opponent-cards-row"></div>
         </div>
 
         <!-- Center Trick Felt Area (Constrained 220px x 220px Box) -->
@@ -233,11 +233,11 @@
 
         <!-- Opponent: Right (Bot Shiba - East) -->
         <div id="opponent-right" class="opponent-seat seat-right" style="display: none;">
-          <div class="opponent-cards-row"></div>
           <div class="opponent-meta-group">
             <div class="opponent-name">Player</div>
             <div class="opponent-bid-badge">Bid -</div>
           </div>
+          <div class="opponent-cards-row"></div>
         </div>
 
       </div> <!-- /onlineGameTable -->
@@ -806,16 +806,12 @@
               <span class="drawer-ctrl-icon">🤖</span>
               <span>Fill Table with Bots</span>
             </button>
-            <button id="btnLeaveActiveGame" class="drawer-control-btn leave-table-btn" type="button" title="Leave active table seat" style="display: none;">
-              <span class="drawer-ctrl-icon">🚪</span>
-              <span>Leave Game</span>
-            </button>
             <button id="btnChangeDealer" class="drawer-control-btn dealer-select-btn" type="button" title="Select or change dealer">
               <span class="drawer-ctrl-icon">🂠</span>
               <span>Change Dealer</span>
             </button>
             <button id="btnSwitchIdentity" class="drawer-control-btn switch-id-btn" type="button" title="Change Player / Role">
-              <span class="drawer-ctrl-icon">🔄</span>
+              <span class="drawer-ctrl-icon">👥</span>
               <span>Move to Bench</span>
             </button>
             <button id="btnMatchHistory" class="drawer-control-btn history-btn" type="button" title="View Match History">
@@ -825,6 +821,14 @@
             <button id="btnSwitchName" class="drawer-control-btn switch-name-btn" type="button" title="Switch Name / Logout">
               <span class="drawer-ctrl-icon">👤</span>
               <span>Switch Name</span>
+            </button>
+            <button id="btnRestartGame" class="drawer-control-btn restart-game-btn" type="button" title="Restart Game Match">
+              <span class="drawer-ctrl-icon">🔄</span>
+              <span>Restart Game</span>
+            </button>
+            <button id="btnLeaveActiveGame" class="drawer-control-btn leave-table-btn" type="button" title="Leave active table seat" style="display: none;">
+              <span class="drawer-ctrl-icon">🚪</span>
+              <span>Leave Game</span>
             </button>
           </div>
         </div>
