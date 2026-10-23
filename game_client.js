@@ -842,7 +842,7 @@ class TarneebOnlineGame {
         <div class="bidding-modal-header">
           <div class="bidding-modal-title-wrap">
             <span class="bidding-modal-icon">🎯</span>
-            <h3 id="onlineBiddingTitle" class="bidding-modal-title">Round ${gs.round} Bidding</h3>
+            <h3 id="onlineBiddingTitle" class="bidding-modal-title">Select your Bid</h3>
           </div>
           <div class="bidding-modal-badge">
             <span class="bidding-prohibit-pill">⚠️ Bid 1 Prohibited</span>
@@ -850,7 +850,7 @@ class TarneebOnlineGame {
         </div>
         
         <div class="bidding-modal-body">
-          <div class="bidding-instruction-text">Select your contract bid for this round (0 or 2–13):</div>
+          <div class="bidding-instruction-text">Choose your contract bid (0 or 2–13):</div>
           <div id="biddingGridContainer" class="bidding-grid-container" data-rendered-round="${gs.round}">
             ${bids.map(b => {
               const isSelected = this.selectedBidAmount === b;
@@ -876,8 +876,8 @@ class TarneebOnlineGame {
             onclick="window.tarneebGame.submitSelectedBid()">
             <span id="btnConfirmOnlineBidText">
               ${this.selectedBidAmount !== null && this.selectedBidAmount !== undefined 
-                ? `🎯 Place Bid (${this.selectedBidAmount})` 
-                : 'Select a Bid'}
+                ? `Place Bid (${this.selectedBidAmount})` 
+                : 'Place Bid'}
             </span>
           </button>
         </div>
@@ -907,11 +907,11 @@ class TarneebOnlineGame {
     if (this.selectedBidAmount !== null && this.selectedBidAmount !== undefined) {
       btn.disabled = false;
       btn.classList.add('ready');
-      textEl.textContent = `🎯 Place Bid (${this.selectedBidAmount})`;
+      textEl.textContent = `Place Bid (${this.selectedBidAmount})`;
     } else {
       btn.disabled = true;
       btn.classList.remove('ready');
-      textEl.textContent = 'Select a Bid';
+      textEl.textContent = 'Place Bid';
     }
   }
 
