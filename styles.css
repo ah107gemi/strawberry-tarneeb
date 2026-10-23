@@ -2737,8 +2737,10 @@ body::before {
 /* ==========================================================================
    Centered Compact Pop-up Bidding Modal (Online Multiplayer)
    ========================================================================== */
-.bidding-modal-overlay,
-#biddingPanel {
+/* ==========================================================================
+   Centered Radically Shrunk Pop-up Bidding Modal (Online Multiplayer)
+   ========================================================================== */
+.bidding-modal-overlay {
   position: fixed !important;
   inset: 0 !important;
   width: 100vw !important;
@@ -2757,7 +2759,6 @@ body::before {
   animation: fadeInBiddingOverlay 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-#biddingPanel[style*="display: none"],
 .bidding-modal-overlay[style*="display: none"] {
   display: none !important;
 }
@@ -2777,23 +2778,51 @@ body::before {
   to { opacity: 1; }
 }
 
-.bidding-modal-dialog,
-.bidding-modal-card {
+/* Force #biddingPanel to be a compact box: max-width: 290px !important; width: 85% !important; padding: 12px !important; */
+#biddingPanel,
+.bidding-modal-card,
+.bidding-modal-dialog {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
   max-width: 290px !important;
-  width: 82% !important;
-  max-height: 52vh !important;
-  padding: 10px 14px !important;
+  width: 85% !important;
+  max-height: 48vh !important;
+  max-height: 48dvh !important;
+  padding: 12px !important;
   border-radius: 14px !important;
-  margin: auto !important;
+  margin: 0 auto !important;
   background: linear-gradient(150deg, #0f172a 0%, #1e293b 60%, #090d16 100%) !important;
   border: 1px solid rgba(225, 29, 72, 0.45) !important;
   box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.8), 0 0 24px rgba(225, 29, 72, 0.25) !important;
   display: flex !important;
   flex-direction: column !important;
-  gap: 5px !important;
+  gap: 4px !important;
   box-sizing: border-box !important;
   animation: popInBiddingDialog 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
   overflow-y: auto !important;
+  z-index: 500 !important;
+  pointer-events: auto !important;
+}
+
+#biddingPanel[style*="display: none"],
+.bidding-modal-card[style*="display: none"],
+.bidding-modal-dialog[style*="display: none"] {
+  display: none !important;
+}
+
+#biddingPanel .bidding-modal-dialog,
+#biddingPanel .bidding-modal-card {
+  position: static !important;
+  transform: none !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  margin: 0 !important;
 }
 
 @keyframes popInBiddingDialog {
@@ -2879,8 +2908,8 @@ body::before {
   justify-content: center !important;
   padding: 2px 0 !important;
   font-size: 0.85rem !important;
-  min-height: 32px !important;
-  height: 32px !important;
+  min-height: 30px !important;
+  height: 30px !important;
   background: rgba(30, 41, 59, 0.85) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 6px !important;
@@ -2909,7 +2938,7 @@ body::before {
 }
 
 .bid-grid-btn .bid-sub {
-  font-size: 0.6rem !important;
+  font-size: 0.58rem !important;
   font-weight: 700 !important;
   color: #94a3b8 !important;
   margin-top: 1px !important;
@@ -2933,7 +2962,7 @@ body::before {
 }
 .bid-grid-btn.bid-special-0 .bid-sub {
   color: #7dd3fc !important;
-  font-size: 0.6rem !important;
+  font-size: 0.58rem !important;
 }
 
 .bid-grid-btn.bid-special-7 {
@@ -2945,7 +2974,7 @@ body::before {
 }
 .bid-grid-btn.bid-special-7 .bid-sub {
   color: #fde047 !important;
-  font-size: 0.6rem !important;
+  font-size: 0.58rem !important;
 }
 
 /* Selected State */
@@ -2965,14 +2994,28 @@ body::before {
 
 /* Modal Footer & Wide Prominent Place Bid Button */
 .bidding-modal-footer {
-  margin-top: 6px !important;
+  margin-top: 5px !important;
 }
 
 .btn-confirm-online-bid {
   width: 100% !important;
-  height: 34px !important;
-  min-height: 34px !important;
-  padding: 0 12px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  font-size: 0.85rem !important;
+  font-weight: 800 !important;
+  border-radius: 8px !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3) !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -3661,6 +3704,7 @@ body::before {
   pointer-events: auto !important;
 }
 
+#sideNavDrawer,
 .side-drawer-panel {
   position: absolute !important;
   top: 0 !important;
@@ -3668,6 +3712,8 @@ body::before {
   left: 0 !important;
   width: 320px !important;
   max-width: 86vw !important;
+  max-height: 100vh !important;
+  max-height: 100dvh !important;
   background: #0f172a !important;
   border-right: 1px solid #1e293b !important;
   box-shadow: 6px 0 35px rgba(0, 0, 0, 0.65) !important;
@@ -3677,6 +3723,8 @@ body::before {
   transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
   z-index: 100000 !important;
   pointer-events: auto !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
 }
 
 .side-drawer-overlay.open .side-drawer-panel,
@@ -3724,13 +3772,16 @@ body::before {
 }
 
 .side-drawer-body {
-  padding: 18px 16px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-  flex: 1;
-  -webkit-overflow-scrolling: touch;
+  padding: 16px 16px 80px 16px !important;
+  padding-bottom: 80px !important;
+  overflow-y: auto !important;
+  max-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+  flex: 1 1 auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  box-sizing: border-box !important;
 }
 
 .drawer-section {
