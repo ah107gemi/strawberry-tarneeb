@@ -317,6 +317,32 @@ async def run_simulation():
         assert round_complete_verified, "Expected round_complete event"
         print("  ✓ Verified: Remaining tricks cleanly awarded and round resolved!")
 
+        # Step 7b: Test 'restart_game' (Restart Match resets scores and immediately deals Round 1)
+        print("\n[Step 7b] Testing 'restart_game' (Reset scores, deal fresh Round 1 without leaving seats)...")
+        await ws.send(json.dumps({"type": "restart_game"}))
+
+        restarted_verified = False
+        round1_dealt = False
+
+        while not (restarted_verified and round1_dealt):
+            msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=5.0))
+            mtype = msg.get("type")
+            data = msg.get("data", {})
+
+            if mtype == "game_restarted":
+                restarted_verified = True
+                print(f"  ✓ 'game_restarted' event verified: {data.get('message')}")
+            elif mtype == "game_state":
+                if data.get("round") == 1 and len(data.get("my_hand", [])) == 13:
+                    round1_dealt = True
+                    print(f"  ✓ Round 1 cleanly re-dealt! Phase: '{data.get('phase')}', Hand size: {len(data.get('my_hand'))}")
+                    assert data.get("scores", {}).get(my_token, 0) == 0, "Scores should be reset to 0 on restart"
+                    assert len(data.get("players", [])) == 4, "All 4 seated players must remain seated"
+
+        assert restarted_verified, "Expected game_restarted event"
+        assert round1_dealt, "Expected fresh Round 1 dealt to seated players"
+        print("  ✓ Verified: Match reset and fresh Round 1 immediately running!")
+
         # Step 8: Test 'leave_seat' (Leave Game terminates active match for table)
         print("\n[Step 8] Testing 'leave_seat' (Active player leaves table; match terminates)...")
         await ws.send(json.dumps({"type": "leave_seat"}))
@@ -429,13 +455,20 @@ async def run_full_13_tricks_test():
                 card = data.get("winning_card")
                 print(f"  ✓ Trick {tricks_won}/13 resolved: {winner} won with {card}")
 
+            elif mtype == "tricks_claimed":
+                claimed = data.get("tricks_claimed", 0)
+                tricks_won += claimed
+                print(f"  🏆 {data.get('player_name')} claimed {claimed} tricks! (Total tricks: {tricks_won}/13)")
+
             elif mtype == "round_complete":
                 round_finished = True
+                total_round_tricks = sum(data.get("tricks_taken", {}).values()) or sum(data.get("round_scores", {}).values())
                 print(f"  🎉 All 13 tricks complete! Round finished in {time.time() - start_time:.2f}s")
                 print(f"     Round scores: {data.get('round_scores')}")
+                assert total_round_tricks == 13 or tricks_won == 13, f"Expected 13 tricks accounted for, got {total_round_tricks} / {tricks_won}"
 
-        assert tricks_won == 13, f"Expected 13 tricks, got {tricks_won}"
         assert round_finished, "Expected round_complete event"
+        assert tricks_won == 13, f"Expected 13 tricks accounted for, got {tricks_won}"
         print("=" * 65)
         print("✅ FULL 13-TRICK TEST PASSED WITHOUT FREEZES!")
         print("=" * 65 + "\n")
