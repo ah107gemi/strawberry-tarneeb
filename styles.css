@@ -3682,15 +3682,22 @@ body::before {
   background: rgba(255, 255, 255, 0.12);
 }
 
-.side-drawer-overlay {
+/* ==========================================================================
+   NAVIGATION DRAWER & OVERLAY (Clean Stacking Context & Razor-Sharp Content)
+   ========================================================================== */
+
+/* Dark Backdrop Overlay behind the Menu (Strictly lower z-index: 9998 with blur) */
+.side-drawer-overlay,
+#sideNavOverlay,
+.menu-overlay {
   position: fixed !important;
   inset: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
-  background: rgba(0, 0, 0, 0.7) !important;
-  backdrop-filter: blur(5px) !important;
-  -webkit-backdrop-filter: blur(5px) !important;
-  z-index: 99999 !important;
+  background: rgba(0, 0, 0, 0.72) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  z-index: 9998 !important;
   display: none;
   opacity: 0;
   transition: opacity 0.25s ease !important;
@@ -3698,40 +3705,81 @@ body::before {
 }
 
 .side-drawer-overlay.open,
-.side-drawer-overlay.active {
-  display: flex !important;
+.side-drawer-overlay.active,
+#sideNavOverlay.open,
+#sideNavOverlay.active,
+.menu-overlay.open,
+.menu-overlay.active {
+  display: block !important;
   opacity: 1 !important;
   pointer-events: auto !important;
 }
 
+/* Menu Container (Very high z-index: 9999, Strictly NO blur) */
 #sideNavDrawer,
-.side-drawer-panel {
-  position: absolute !important;
+.side-drawer-panel,
+#sideMenu,
+.menu-drawer {
+  position: fixed !important;
   top: 0 !important;
   bottom: 0 !important;
   left: 0 !important;
   width: 320px !important;
   max-width: 86vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
   max-height: 100vh !important;
   max-height: 100dvh !important;
   background: #0f172a !important;
   border-right: 1px solid #1e293b !important;
-  box-shadow: 6px 0 35px rgba(0, 0, 0, 0.65) !important;
+  box-shadow: 6px 0 35px rgba(0, 0, 0, 0.75) !important;
   display: flex !important;
   flex-direction: column !important;
   transform: translateX(-100%) !important;
   transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
-  z-index: 100000 !important;
-  pointer-events: auto !important;
+  z-index: 9999 !important;
+  pointer-events: none;
+  visibility: hidden;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;
+  padding-bottom: 80px !important;
+  /* Strictly NO filter or blur on the menu drawer container */
+  filter: none !important;
+  -webkit-filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  isolation: isolate !important;
+  will-change: transform !important;
 }
 
-.side-drawer-overlay.open .side-drawer-panel,
-.side-drawer-overlay.active .side-drawer-panel,
+/* Open / Active state for drawer */
+#sideNavDrawer.open,
+#sideNavDrawer.active,
 .side-drawer-panel.open,
-.side-drawer-panel.active {
+.side-drawer-panel.active,
+#sideMenu.open,
+#sideMenu.active,
+.menu-drawer.open,
+.menu-drawer.active,
+.side-drawer-overlay.open ~ #sideNavDrawer,
+.side-drawer-overlay.open ~ .side-drawer-panel,
+.side-drawer-overlay.open ~ .menu-drawer,
+.side-drawer-overlay.open .side-drawer-panel,
+.side-drawer-overlay.active .side-drawer-panel {
   transform: translateX(0) !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+}
+
+/* Ensure all contents, text, and buttons inside the menu drawer are completely sharp and readable */
+#sideNavDrawer *,
+.side-drawer-panel *,
+#sideMenu *,
+.menu-drawer * {
+  filter: none !important;
+  -webkit-filter: none !important;
 }
 
 .side-drawer-header {
