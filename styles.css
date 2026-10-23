@@ -2137,27 +2137,37 @@ body::before {
 }
 
 /* Top Player Hand (North - Bot Furjani) - Pushed DOWN to 56px below 48px header bar */
+/* Top Player Hand (North - Bot Furjani) - Snug under 44px top header, clean outside center */
 .seat-top {
   position: absolute;
-  top: 56px;
+  top: 48px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   margin: 0;
   padding: 0;
-  z-index: 25;
+  z-index: 20 !important;
 }
 
 .opponent-meta-group {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 2px;
   margin: 0;
   padding: 0;
+}
+
+.seat-top .opponent-meta-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 2px;
 }
 
 .seat-top .opponent-cards-row {
@@ -2183,48 +2193,48 @@ body::before {
   margin-left: 0;
 }
 
-/* Left Opponent (West - Bot Hosam) - Pinned flush against left screen edge */
+/* Left Opponent (West - Bot Hosam) - Badge positioned directly ABOVE vertical card deck */
 .seat-left {
   position: absolute;
   left: 4px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
   gap: 4px;
-  z-index: 25;
+  z-index: 20 !important;
   pointer-events: auto;
 }
 
 .seat-left .opponent-meta-group {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  max-width: 76px;
+  align-items: center;
+  gap: 2px;
+  max-width: 80px;
 }
 
-/* Right Opponent (East - Bot Shiba) - Pinned flush against right screen edge */
+/* Right Opponent (East - Bot Shiba) - Badge positioned directly ABOVE vertical card deck */
 .seat-right {
   position: absolute;
   right: 4px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
-  flex-direction: row-reverse;
+  flex-direction: column;
   align-items: center;
   gap: 4px;
-  z-index: 25;
+  z-index: 20 !important;
   pointer-events: auto;
 }
 
 .seat-right .opponent-meta-group {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-  max-width: 76px;
+  align-items: center;
+  gap: 2px;
+  max-width: 80px;
 }
 
 .seat-left .opponent-cards-row,
@@ -2315,7 +2325,7 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 15;
+  z-index: 40 !important;
   pointer-events: none;
   box-sizing: border-box;
 }
@@ -2335,14 +2345,8 @@ body::before {
   gap: 2px;
   align-items: center;
   justify-items: center;
-  z-index: 2;
+  z-index: 45 !important;
   box-sizing: border-box;
-}
-  grid-template-rows: 56px 1fr 56px;
-  gap: 2px;
-  align-items: center;
-  justify-items: center;
-  z-index: 2;
 }
 
 .trick-card-slot {
@@ -2352,7 +2356,12 @@ body::before {
   gap: 2px;
   pointer-events: auto;
   position: relative;
-  z-index: 5;
+  z-index: 50 !important;
+}
+
+.trick-card-slot .card {
+  z-index: 52 !important;
+}
 }
 
 .trick-card-slot .card {
@@ -3518,7 +3527,10 @@ body::before {
   }
 
   .seat-top {
-    top: 65px;
+    top: 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   .seat-top .card-back {
@@ -3528,11 +3540,19 @@ body::before {
   }
 
   .seat-left {
-    left: 12px;
+    left: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
   }
 
   .seat-right {
-    right: 12px;
+    right: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
   }
 
   .seat-left .opponent-cards-row,
@@ -4045,6 +4065,17 @@ body::before {
   background: rgba(16, 185, 129, 0.22);
   border-color: #10b981;
   color: #ffffff;
+}
+
+.drawer-control-btn.restart-game-btn {
+  background: rgba(234, 88, 12, 0.14) !important;
+  border-color: rgba(234, 88, 12, 0.4) !important;
+  color: #fdba74 !important;
+}
+.drawer-control-btn.restart-game-btn:hover {
+  background: rgba(234, 88, 12, 0.25) !important;
+  border-color: #ea580c !important;
+  color: #ffffff !important;
 }
 
 .drawer-control-btn.leave-table-btn {
