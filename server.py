@@ -634,16 +634,21 @@ class ConnectionManager:
         final_history = list(game.round_history)
         round_reached = game.round
 
-        # Broadcast match_terminated event to all connected clients
+        # Broadcast match_terminated & game_terminated events to all connected clients
+        payload = {
+            "reason": reason,
+            "leaving_player": leaving_player_name,
+            "scores": final_scores,
+            "history": final_history,
+            "round": round_reached
+        }
+        await self.broadcast({
+            "type": "game_terminated",
+            "data": payload
+        })
         await self.broadcast({
             "type": "match_terminated",
-            "data": {
-                "reason": reason,
-                "leaving_player": leaving_player_name,
-                "scores": final_scores,
-                "history": final_history,
-                "round": round_reached
-            }
+            "data": payload
         })
 
         # Destroy active game state on server
@@ -1064,55 +1069,64 @@ class ConnectionManager:
         await self.broadcast_game_state()
 
     async def _resolve_trick(self):
-        game = self.game
-        led = game.led_suit
-        winner_play = trick_winner(game.trick_cards, led)
-        winner_token = winner_play["player_id"]
-        winner_name = game.players[winner_token].name if winner_token in game.players else "Winner"
+        try:
+            game = self.game
+            led = game.led_suit
+            winner_play = trick_winner(game.trick_cards, led)
+            winner_token = winner_play["player_id"]
+            winner_name = game.players[winner_token].name if winner_token in game.players else "Winner"
 
-        game.tricks_taken[winner_token] = game.tricks_taken.get(winner_token, 0) + 1
+            game.tricks_taken[winner_token] = game.tricks_taken.get(winner_token, 0) + 1
 
-        # Check special K♥ + A♥ rule
-        kh_play = next((p for p in game.trick_cards if p["card"] == "KH"), None)
-        ah_play = next((p for p in game.trick_cards if p["card"] == "AH"), None)
-        special_kh_token = None
-        special_ah_token = None
-        if kh_play and ah_play:
-            special_kh_token = kh_play["player_id"]
-            special_ah_token = ah_play["player_id"]
-            game.kings_snip = {"kh": special_kh_token, "ah": special_ah_token}
-            log.info("Special rule triggered: KH(%s) AH(%s) in same trick",
-                     game.players[special_kh_token].name, game.players[special_ah_token].name)
+            # Check special K♥ + A♥ rule
+            kh_play = next((p for p in game.trick_cards if p["card"] == "KH"), None)
+            ah_play = next((p for p in game.trick_cards if p["card"] == "AH"), None)
+            special_kh_token = None
+            special_ah_token = None
+            if kh_play and ah_play:
+                special_kh_token = kh_play["player_id"]
+                special_ah_token = ah_play["player_id"]
+                game.kings_snip = {"kh": special_kh_token, "ah": special_ah_token}
+                log.info("Special rule triggered: KH(%s) AH(%s) in same trick",
+                         game.players[special_kh_token].name, game.players[special_ah_token].name)
 
-        trick_summary = {
-            "winner_id": winner_token,
-            "winner_name": winner_name,
-            "winning_card": winner_play["card"],
-            "cards": list(game.trick_cards),
-            "special_kh": special_kh_token,
-            "special_ah": special_ah_token,
-        }
+            trick_summary = {
+                "winner_id": winner_token,
+                "winner_name": winner_name,
+                "winning_card": winner_play["card"],
+                "cards": list(game.trick_cards),
+                "special_kh": special_kh_token,
+                "special_ah": special_ah_token,
+            }
 
-        # Snappy pause so players can see the completed trick
-        await asyncio.sleep(0.75)
+            # Clear timeout pause so players see the trick result
+            await asyncio.sleep(0.75)
 
-        await self.broadcast({"type": "trick_complete", "data": trick_summary})
+            await self.broadcast({"type": "trick_complete", "data": trick_summary})
 
-        # Clear the table and reset led suit
-        game.trick_cards = []
-        game.led_suit = None
+            # Clear the table and reset led suit
+            game.trick_cards = []
+            game.led_suit = None
 
-        # Winner leads next trick
-        winner_seat = game.seat_of_token(winner_token)
-        if winner_seat is not None:
-            game.current_turn_seat = winner_seat
+            # Winner leads next trick
+            winner_seat = game.seat_of_token(winner_token)
+            if winner_seat is not None:
+                game.current_turn_seat = winner_seat
 
-        # Check if round is over (all cards played = 13 tricks)
-        total_tricks = sum(game.tricks_taken.values())
-        if total_tricks == 13:
-            await self._resolve_round()
-        else:
+            # Check if round is over (all cards played = 13 tricks)
+            total_tricks = sum(game.tricks_taken.values())
+            if total_tricks == 13:
+                await self._resolve_round()
+            else:
+                await self.broadcast_game_state()
+        except Exception as exc:
+            log.exception("Error in _resolve_trick: %s", exc)
+            # Guarantee table state is cleared so game loop never hangs
+            self.game.trick_cards = []
+            self.game.led_suit = None
             await self.broadcast_game_state()
+        finally:
+            self._trigger_bot_turn_if_needed()
 
     async def _resolve_round(self):
         game = self.game
@@ -1314,8 +1328,8 @@ class ConnectionManager:
 
     async def _run_bot_turn(self, token: str, action: str):
         try:
-            # Fast, snappy thinking pause: 0.35 to 0.55 seconds
-            await asyncio.sleep(random.uniform(0.35, 0.55))
+            # Smooth natural delay (600ms to 800ms) for reliable, fluid gameplay
+            await asyncio.sleep(random.uniform(0.60, 0.80))
             game = self.game
             player = game.players.get(token)
             if not player or not getattr(player, "is_bot", False):
@@ -1330,7 +1344,7 @@ class ConnectionManager:
                 if len(game.trick_cards) < MAX_PLAYERS and game.token_at_seat(game.current_turn_seat) == token:
                     # Check if bot holds unbeatable remaining trumps to auto-claim!
                     if game.can_claim_tricks(token):
-                        await asyncio.sleep(1.5)
+                        await asyncio.sleep(0.8)
                         if game.phase == "playing" and game.token_at_seat(game.current_turn_seat) == token and game.can_claim_tricks(token):
                             log.info("🤖 Bot %s claims remaining %d tricks!", player.name, len(player.hand))
                             await self._handle_claim_tricks(token)
