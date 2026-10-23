@@ -267,12 +267,6 @@
         </div>
       </div>
 
-      <!-- Live Standing & Spectators Sidebar/Strip -->
-      <div id="onlineScoreboard" class="online-scores-panel">
-        <!-- Injected via game_client.js -->
-      </div>
-
-
       <div id="onlineStatus" class="online-connection-status">Connecting to server…</div>
     </div> <!-- /viewOnlineGame -->
 
@@ -739,6 +733,14 @@
       </div>
 
       <div class="side-drawer-body">
+        <!-- Live Match Scoreboard (Round scores, Team Bids, Trick tallies) -->
+        <div class="drawer-section drawer-score-section">
+          <div class="drawer-section-title">📊 Live Scoreboard</div>
+          <div id="onlineScoreboard" class="online-scores-panel drawer-scores-panel">
+            <!-- Injected via game_client.js -->
+          </div>
+        </div>
+
         <!-- Navigation Modes Section -->
         <div class="drawer-section">
           <div class="drawer-section-title">🧭 Navigation</div>
