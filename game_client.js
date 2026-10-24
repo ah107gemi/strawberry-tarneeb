@@ -571,35 +571,13 @@ class TarneebOnlineGame {
     const container = document.getElementById('onlineScoreboard');
     if (!container) return;
     const players = [...gs.players].filter(p => p.role === 'player');
-    const teamKey = gs.team_scores ? `${gs.team_scores[1] ?? gs.team_scores['1'] ?? 0}:${gs.team_scores[2] ?? gs.team_scores['2'] ?? 0}` : '';
-    const scoreHash = players.map(p => `${p.id}:${gs.scores[p.id]}:${gs.bids[p.id]}:${gs.tricks_taken[p.id]}:${p.id===gs.current_turn}`).join(';') + '|' + gs.phase + '|' + teamKey;
+    const scoreHash = players.map(p => `${p.id}:${gs.scores[p.id]}:${gs.bids[p.id]}:${gs.tricks_taken[p.id]}:${p.id===gs.current_turn}`).join(';') + '|' + gs.phase;
     if (this._lastScoreHash === scoreHash) return;
     this._lastScoreHash = scoreHash;
 
     players.sort((a, b) => (gs.scores[b.id] || 0) - (gs.scores[a.id] || 0));
 
     let html = '<div class="score-sidebar-title">📊 Live Scores</div>';
-
-    // Team Scores Summary Banner
-    if (gs.team_scores) {
-      const t1 = Number(gs.team_scores[1] ?? gs.team_scores['1'] ?? 0);
-      const t2 = Number(gs.team_scores[2] ?? gs.team_scores['2'] ?? 0);
-      const t1Str = t1 > 0 ? `+${t1}` : `${t1}`;
-      const t2Str = t2 > 0 ? `+${t2}` : `${t2}`;
-      html += `
-        <div class="team-scores-bar">
-          <div class="team-score-chip ${t1 < 0 ? 'neg' : ''}">
-            <span class="team-score-lbl">Team 1 (Seats 1 & 3)</span>
-            <span class="team-score-val ${t1 < 0 ? 'negative-score' : (t1 > 0 ? 'positive-score' : 'zero-score')}">${t1Str} pts</span>
-          </div>
-          <div class="team-score-vs">VS</div>
-          <div class="team-score-chip ${t2 < 0 ? 'neg' : ''}">
-            <span class="team-score-lbl">Team 2 (Seats 2 & 4)</span>
-            <span class="team-score-val ${t2 < 0 ? 'negative-score' : (t2 > 0 ? 'positive-score' : 'zero-score')}">${t2Str} pts</span>
-          </div>
-        </div>
-      `;
-    }
 
     players.forEach((p, idx) => {
       const score = Number(gs.scores[p.id] ?? 0);
@@ -1484,19 +1462,6 @@ class TarneebOnlineGame {
     });
     html += '</div>';
 
-    if (data.team_scores) {
-      const t1 = Number(data.team_scores[1] ?? data.team_scores['1'] ?? 0);
-      const t2 = Number(data.team_scores[2] ?? data.team_scores['2'] ?? 0);
-      const t1Str = t1 > 0 ? `+${t1}` : `${t1}`;
-      const t2Str = t2 > 0 ? `+${t2}` : `${t2}`;
-      html += `
-        <div style="display:flex;justify-content:space-around;background:rgba(15,23,42,0.8);border:1px solid rgba(255,255,255,0.1);padding:6px 10px;border-radius:8px;margin-top:8px;font-size:0.82rem;">
-          <div><span style="color:#94a3b8;">Team 1:</span> <strong style="color:${t1 < 0 ? '#f87171' : '#38bdf8'}">${t1Str} pts</strong></div>
-          <div style="color:#64748b;">|</div>
-          <div><span style="color:#94a3b8;">Team 2:</span> <strong style="color:${t2 < 0 ? '#f87171' : '#38bdf8'}">${t2Str} pts</strong></div>
-        </div>
-      `;
-    }
     if (data.special_kh && data.special_ah) {
       const khName = this.gameState?.players?.find(p => p.id === data.special_kh)?.name || 'K♥';
       const ahName = this.gameState?.players?.find(p => p.id === data.special_ah)?.name || 'A♥';
@@ -1846,7 +1811,7 @@ function setupOnlineUIEvents() {
     handleJoinSubmit('player');
     setTimeout(() => {
       window.tarneebGame.send('fill_bots', {});
-    }, 200);
+    }, 50);
   });
 
   // Fill with Bots button in drawer
