@@ -94,8 +94,12 @@ body::before {
   letter-spacing: -0.3px !important;
 }
 
-.brand-strawberry {
-  filter: drop-shadow(0 0 6px var(--electric-blue-glow));
+.brand-strawberry,
+.brand-card-ace {
+  display: inline-block;
+  color: #FF4D6D !important;
+  font-weight: 800;
+  filter: drop-shadow(0 0 8px rgba(255, 77, 109, 0.5));
 }
 
 .brand-subtitle {
