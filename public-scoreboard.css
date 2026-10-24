@@ -96,43 +96,75 @@ body::before {
   gap: 10px !important;
 }
 
-/* Mini Playing Card Logo Icon (Ace of Hearts) */
-.brand-card-icon {
-  width: 32px !important;
-  height: 42px !important;
+/* Mini Realistic Playing Card Logo Icon (Ace of Hearts) */
+.brand-card-icon,
+.playing-card-ace {
+  position: relative !important;
+  width: 40px !important;
+  height: 56px !important;
   background: #FFFFFF !important;
   border-radius: 6px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.8) inset !important;
-  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 1px rgba(255, 255, 255, 0.8) inset !important;
   display: flex !important;
-  flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-  line-height: 1 !important;
   user-select: none !important;
   flex-shrink: 0 !important;
+  box-sizing: border-box !important;
+  padding: 2px !important;
+  overflow: hidden !important;
   transition: transform 0.15s ease, box-shadow 0.15s ease !important;
   cursor: pointer;
 }
 
 .brand-card-icon:hover {
-  transform: translateY(-1px) rotate(-3deg);
-  box-shadow: 0 4px 14px rgba(0, 212, 255, 0.35) !important;
+  transform: translateY(-1px) rotate(-2deg);
+  box-shadow: 0 4px 14px rgba(0, 212, 255, 0.4) !important;
 }
 
-.card-ace-rank {
-  font-size: 0.92rem !important;
+.card-corner {
+  position: absolute !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  line-height: 1 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+.card-top-left {
+  top: 3px !important;
+  left: 3px !important;
+}
+
+.card-bottom-right {
+  bottom: 3px !important;
+  right: 3px !important;
+  transform: rotate(180deg) !important;
+}
+
+.card-corner-rank {
+  font-size: 0.72rem !important;
   font-weight: 900 !important;
   color: #D90429 !important; /* Authentic playing card ruby red */
-  line-height: 1 !important;
+  line-height: 0.85 !important;
 }
 
-.card-ace-suit {
-  font-size: 0.72rem !important;
+.card-corner-suit {
+  font-size: 0.55rem !important;
+  color: #D90429 !important;
+  line-height: 0.85 !important;
+  margin-top: 1px !important;
+}
+
+.card-center-suit {
+  font-size: 1.35rem !important;
   color: #D90429 !important;
   line-height: 1 !important;
-  margin-top: 1px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  filter: drop-shadow(0 1px 1px rgba(217, 4, 41, 0.25));
 }
 
 .brand-title {
@@ -234,24 +266,28 @@ body::before {
 }
 
 .strip-actions {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
-/* Bids & Score Tricks Buttons */
+/* Equal-Sized Bids & Score Tricks Buttons */
 .btn-strip {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 6px !important;
-  padding: 7px 14px !important;
+  padding: 10px 12px !important;
   border-radius: 10px !important;
-  font-size: 0.82rem !important;
+  font-size: 0.88rem !important;
   font-weight: 800 !important;
   cursor: pointer !important;
   transition: all 0.15s ease !important;
-  min-height: 38px !important;
+  min-height: 44px !important;
+  height: 44px !important;
+  width: 100% !important;
   white-space: nowrap !important;
   box-sizing: border-box !important;
 }
@@ -384,21 +420,29 @@ body::before {
   box-shadow: 0 0 6px var(--electric-blue-glow) !important;
 }
 
-/* 4-Player Podium Grid: ALWAYS sleek 4 columns */
+/* 4-Player Podium Grid: ULTRA-COMPACT horizontal strip */
+.podium-section {
+  margin-bottom: 10px !important;
+}
+
+.podium-grid,
 .podium-grid.four-players {
   display: grid !important;
   grid-template-columns: repeat(4, 1fr) !important;
   align-items: stretch !important;
   gap: 4px !important;
-  padding-top: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
 }
 
 .podium-item {
-  background: var(--bg-charcoal) !important;
+  background: var(--surface-card) !important;
   border: 1px solid var(--border-subtle) !important;
-  border-radius: 10px !important;
-  padding: 6px 3px !important;
-  min-height: 74px !important;
+  border-radius: 8px !important;
+  padding: 4px 2px !important;
+  min-height: 48px !important;
+  height: 48px !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
@@ -406,13 +450,15 @@ body::before {
   gap: 1px !important;
   transform: none !important;
   transition: all 0.15s ease !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 
 /* Leading Player: Sleek Electric Blue Glow */
 .podium-item.first {
-  background: linear-gradient(180deg, rgba(0, 212, 255, 0.15) 0%, var(--bg-charcoal) 100%) !important;
+  background: linear-gradient(180deg, rgba(0, 212, 255, 0.14) 0%, var(--surface-card) 100%) !important;
   border: 1.5px solid var(--electric-blue) !important;
-  box-shadow: 0 0 16px var(--electric-blue-glow) !important;
+  box-shadow: 0 0 12px var(--electric-blue-glow) !important;
 }
 
 .podium-item.second {
@@ -420,51 +466,27 @@ body::before {
 }
 
 .podium-item.third {
-  border-color: #333846 !important;
+  border-color: #2E3340 !important;
 }
 
 .podium-item.fourth {
-  border-color: #2D323E !important;
+  border-color: #252832 !important;
+}
+
+/* Hide bulky rank tag & king card badge to keep ultra-compact height */
+.podium-rank-tag,
+.king-card-badge {
+  display: none !important;
 }
 
 .podium-badge {
-  font-size: 0.95rem !important;
+  font-size: 0.76rem !important;
   line-height: 1 !important;
-  margin-bottom: 1px !important;
-}
-
-.podium-rank-tag {
-  font-size: 0.58rem !important;
-  font-weight: 800 !important;
-  padding: 1px 4px !important;
-  border-radius: 4px !important;
-  margin-bottom: 2px !important;
-  text-transform: uppercase !important;
-}
-
-.podium-item.first .podium-rank-tag {
-  background: var(--electric-blue) !important;
-  color: #121212 !important;
-  font-weight: 900 !important;
-}
-
-.podium-item.second .podium-rank-tag {
-  background: #3A4150 !important;
-  color: #FFFFFF !important;
-}
-
-.podium-item.third .podium-rank-tag {
-  background: #2E3340 !important;
-  color: #CBD5E1 !important;
-}
-
-.podium-item.fourth .podium-rank-tag {
-  background: #22252E !important;
-  color: #94A3B8 !important;
+  margin: 0 !important;
 }
 
 .podium-name {
-  font-size: 0.76rem !important;
+  font-size: 0.72rem !important;
   font-weight: 700 !important;
   color: #FFFFFF !important;
   text-align: center !important;
@@ -472,38 +494,29 @@ body::before {
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  line-height: 1.2 !important;
+  line-height: 1.1 !important;
 }
 
 .podium-score {
-  font-size: 1.15rem !important;
+  font-size: 0.95rem !important;
   font-weight: 900 !important;
-  margin-top: 1px !important;
-  line-height: 1.1 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
   color: #FFFFFF !important;
 }
 
 .podium-item.first .podium-score {
   color: var(--electric-blue) !important;
-  text-shadow: 0 0 10px var(--electric-blue-glow) !important;
+  text-shadow: 0 0 8px var(--electric-blue-glow) !important;
 }
 
 .podium-gap {
-  font-size: 0.6rem !important;
+  font-size: 0.54rem !important;
   font-weight: 600 !important;
   color: var(--text-muted) !important;
-  margin-top: 1px !important;
+  margin: 0 !important;
+  line-height: 1 !important;
   white-space: nowrap !important;
-}
-
-.king-card-badge {
-  font-size: 0.58rem !important;
-  padding: 1px 4px !important;
-  margin: 1px 0 !important;
-  background: var(--electric-blue-subtle) !important;
-  border: 1px solid var(--border-electric) !important;
-  color: var(--electric-blue) !important;
-  border-radius: 4px !important;
 }
 
 /* Bench Strip: Compact Charcoal */
@@ -1543,4 +1556,110 @@ body::before {
 
 .toast-notice span:first-child {
   color: var(--electric-blue) !important;
+}
+
+/* ==========================================================================
+   OFFICIAL MATCH RULES PANEL (GRAPHITE & ELECTRIC ACCENTS)
+   ========================================================================== */
+.official-rules-panel {
+  background: #1A1C23 !important;
+  border: 1px solid #2B303C !important;
+  border-radius: 8px !important;
+  padding: 12px 14px !important;
+  margin-top: 16px !important;
+  margin-bottom: 24px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+.rules-panel-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 10px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  padding-bottom: 8px !important;
+}
+
+.rules-header-icon {
+  font-size: 1rem !important;
+  line-height: 1 !important;
+}
+
+.rules-panel-title {
+  margin: 0 !important;
+  font-size: 0.88rem !important;
+  font-weight: 800 !important;
+  color: #FFFFFF !important;
+  letter-spacing: 0.3px !important;
+}
+
+.rules-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.rule-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 6px 10px !important;
+  background: #22252E !important;
+  border-radius: 6px !important;
+  border: 1px solid #2D323E !important;
+  font-size: 0.78rem !important;
+  color: var(--text-primary) !important;
+}
+
+.rule-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 2px 7px !important;
+  border-radius: 4px !important;
+  font-size: 0.7rem !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+  min-width: 52px !important;
+  text-align: center !important;
+}
+
+.rule-badge.rule-zero {
+  background: rgba(0, 212, 255, 0.15) !important;
+  border: 1px solid var(--border-electric) !important;
+  color: var(--electric-blue) !important;
+}
+
+.rule-badge.rule-seven {
+  background: rgba(0, 230, 153, 0.15) !important;
+  border: 1px solid rgba(0, 230, 153, 0.4) !important;
+  color: var(--feedback-pos) !important;
+}
+
+.rule-badge.rule-standard {
+  background: rgba(148, 163, 184, 0.15) !important;
+  border: 1px solid #3A4150 !important;
+  color: #E2E8F0 !important;
+  min-width: 105px !important;
+}
+
+.rule-badge.rule-prohibited {
+  background: rgba(255, 77, 109, 0.18) !important;
+  border: 1px solid rgba(255, 77, 109, 0.4) !important;
+  color: #FF4D6D !important;
+}
+
+.rule-text {
+  font-size: 0.78rem !important;
+  color: #CBD5E1 !important;
+}
+
+.rule-text strong {
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+}
+
+.rule-sep {
+  color: var(--text-dim) !important;
+  margin: 0 4px !important;
 }
