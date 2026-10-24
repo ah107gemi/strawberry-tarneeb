@@ -34,9 +34,16 @@
       <!-- Top App Header -->
       <header class="app-header">
         <div class="brand-wrapper">
-          <div class="brand-card-icon" title="Ace of Hearts" aria-label="Ace of Hearts">
-            <span class="card-ace-rank">A</span>
-            <span class="card-ace-suit">♥</span>
+          <div class="brand-card-icon playing-card-ace" title="Ace of Hearts" aria-label="Ace of Hearts">
+            <div class="card-corner card-top-left">
+              <span class="card-corner-rank">A</span>
+              <span class="card-corner-suit">♥</span>
+            </div>
+            <div class="card-center-suit">♥</div>
+            <div class="card-corner card-bottom-right">
+              <span class="card-corner-rank">A</span>
+              <span class="card-corner-suit">♥</span>
+            </div>
           </div>
           <div>
             <h1 class="brand-title">Tarneeb</h1>
@@ -171,16 +178,31 @@
         </div>
       </section>
 
-      <!-- Rules Quick Guide Pill -->
-      <div class="rules-pill-card">
-        <div class="rules-pill-title">Tarneeb Scoring Rules:</div>
-        <div class="rules-pill-content">
-          <span>• Bid 0: +5 (0 tricks), -5 (≥1)</span>
-          <span>• Bid 7: +14 (≥7), -14 (&lt;7)</span>
-          <span>• Bids 2-6, 8-13: +Bid if made, -Bid if failed</span>
-          <span>• Bid 1 is strictly prohibited</span>
+      <!-- Dedicated Official Match Rules Section -->
+      <section class="official-rules-panel">
+        <div class="rules-panel-header">
+          <span class="rules-header-icon">📋</span>
+          <h3 class="rules-panel-title">Official Match Rules</h3>
         </div>
-      </div>
+        <div class="rules-grid">
+          <div class="rule-item">
+            <span class="rule-badge rule-zero">Bid 0</span>
+            <span class="rule-text"><strong>+5</strong> (0 tricks) <span class="rule-sep">|</span> <strong>-5</strong> (≥1 trick)</span>
+          </div>
+          <div class="rule-item">
+            <span class="rule-badge rule-seven">Bid 7</span>
+            <span class="rule-text"><strong>+14</strong> (≥7 tricks) <span class="rule-sep">|</span> <strong>-14</strong> (&lt;7 tricks)</span>
+          </div>
+          <div class="rule-item">
+            <span class="rule-badge rule-standard">Bids 2–6 &amp; 8–13</span>
+            <span class="rule-text"><strong>+Bid</strong> (if made) <span class="rule-sep">|</span> <strong>-Bid</strong> (if failed)</span>
+          </div>
+          <div class="rule-item rule-prohibited-item">
+            <span class="rule-badge rule-prohibited">Bid 1</span>
+            <span class="rule-text"><strong>Strictly prohibited</strong></span>
+          </div>
+        </div>
+      </section>
 
     </div> <!-- End viewScoreboard -->
 
