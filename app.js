@@ -20,18 +20,16 @@
   const STORAGE_KEY_HISTORY = 'strawberry_tarneeb_v2_history';
 
   const DEFAULT_ROSTER = [
-    { id: 'p_ahmed', name: 'Ahmed', active: true },
-    { id: 'p_hosam', name: 'Hosam', active: true },
-    { id: 'p_shiba', name: 'Shiba', active: true },
-    { id: 'p_furjani', name: 'Furjani', active: true },
-    { id: 'p_naas', name: 'Naas', active: false },
-    { id: 'p_zentani', name: 'Zentani', active: false }
+    { id: 'p_1', name: 'Player 1', active: true },
+    { id: 'p_2', name: 'Player 2', active: true },
+    { id: 'p_3', name: 'Player 3', active: true },
+    { id: 'p_4', name: 'Player 4', active: true }
   ];
 
   // Application State
   let state = {
     roster: JSON.parse(JSON.stringify(DEFAULT_ROSTER)),
-    activePlayerIds: ['p_ahmed', 'p_hosam', 'p_shiba', 'p_furjani'],
+    activePlayerIds: ['p_1', 'p_2', 'p_3', 'p_4'],
     // 15 rounds
     rounds: Array.from({ length: TOTAL_ROUNDS }, () => ({
       bids: {},    // { [playerId]: number | null }
@@ -126,17 +124,6 @@
         const parsed = JSON.parse(saved);
         if (parsed.roster && Array.isArray(parsed.roster)) {
           state.roster = parsed.roster;
-          // Migration: rename Surum to Naas
-          state.roster.forEach(p => {
-            if (p.name === 'Surum') {
-              p.name = 'Naas';
-              if (p.id === 'p_surum') p.id = 'p_naas';
-            }
-          });
-          // Migration: add Zentani if not already present
-          if (!state.roster.some(p => p.name.toLowerCase() === 'zentani')) {
-            state.roster.push({ id: 'p_zentani', name: 'Zentani', active: false });
-          }
         }
         if (parsed.activePlayerIds && Array.isArray(parsed.activePlayerIds) && parsed.activePlayerIds.length === 4) {
           state.activePlayerIds = parsed.activePlayerIds.map(id => id === 'p_surum' ? 'p_naas' : id);
@@ -976,13 +963,13 @@
   }
 
   function handleResetDefaultRoster() {
-    if (confirm('Reset to default group ("Ahmed", "Hosam", "Shiba", "Furjani" active, "Naas" & "Zentani" on bench)?')) {
+    if (confirm('Reset to default table (Player 1, Player 2, Player 3, Player 4)?')) {
       state.roster = JSON.parse(JSON.stringify(DEFAULT_ROSTER));
-      state.activePlayerIds = ['p_ahmed', 'p_hosam', 'p_shiba', 'p_furjani'];
+      state.activePlayerIds = ['p_1', 'p_2', 'p_3', 'p_4'];
       saveState();
       renderRosterManageLists();
       renderAll();
-      showToast('Reset to default group with Naas & Zentani on bench.');
+      showToast('Reset to default 4-player table.');
     }
   }
 
