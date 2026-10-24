@@ -2387,7 +2387,7 @@
 
     renderAll();
 
-    showToast('New Tarneeb match started! Good luck! 🍓');
+    showToast('New Tarneeb match started! Good luck! A♥️');
 
   }
 
