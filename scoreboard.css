@@ -1,55 +1,51 @@
 /* ==========================================================================
-   GRAPHITE & ELECTRIC BLUE THEME
-   File: public-scoreboard.css
-   Clean, sleek, high-contrast dark graphite palette with electric blue accents
+   MIDNIGHT ROYALE PALETTE & MOBILE-FIRST USABILITY ENHANCEMENTS
+   Strawberry Tarneeb — Standalone Scoreboard (scoreboard.html)
    ========================================================================== */
 
 :root {
-  /* Main Backgrounds */
-  --bg-main: #121212;             /* Deep Graphite / Dark Charcoal base */
-  --bg-charcoal: #1A1C23;         /* Layered Dark Charcoal (headers, sticky columns, inputs) */
+  /* Midnight Royale Color System */
+  --mr-bg-deep: #101522;          /* Deep navy base background */
+  --mr-surface: #202A42;          /* Layered navy surfaces (cards, panels, modals) */
+  --mr-surface-alt: #182033;      /* Darker layered navy (table sticky col, headers) */
+  --mr-surface-hover: #2A3654;    /* Surface hover */
+  --mr-surface-input: #121827;    /* Input background */
   
-  /* Cards & Surfaces */
-  --surface-card: #22252E;        /* Lighter Graphite for Cards, Modals, Panels */
-  --surface-hover: #2B2F3B;       /* Surface Hover */
-  --surface-active: #323746;      /* Surface Active */
+  --mr-primary: #E8174F;          /* Primary actions & active states (crimson/magenta) */
+  --mr-primary-hover: #D01244;    /* Primary hover */
+  --mr-primary-glow: rgba(232, 23, 79, 0.4);
+  --mr-primary-subtle: rgba(232, 23, 79, 0.15);
   
-  /* Primary Actions & Active States */
-  --electric-blue: #00D4FF;       /* Electric Blue primary action color */
-  --electric-blue-hover: #00B8E0; /* Electric Blue hover */
-  --electric-blue-glow: rgba(0, 212, 255, 0.4);
-  --electric-blue-subtle: rgba(0, 212, 255, 0.14);
+  --mr-secondary: #32C6E8;        /* Secondary actions (cyan) */
+  --mr-secondary-glow: rgba(50, 198, 232, 0.35);
+  --mr-secondary-subtle: rgba(50, 198, 232, 0.15);
   
-  /* Secondary Highlights & Accents */
-  --electric-cyan: #0A84FF;       /* Deep Electric Blue / Secondary Accent */
-  --electric-cyan-glow: rgba(10, 132, 255, 0.35);
+  --mr-gold: #F4C84A;             /* Important highlights (dealer, leader) */
+  --mr-gold-glow: rgba(244, 200, 74, 0.35);
+  --mr-gold-subtle: rgba(244, 200, 74, 0.15);
   
-  /* Text & Typography */
-  --text-primary: #F8FAFC;        /* Crisp off-white primary text */
-  --text-secondary: #E2E8F0;      /* Secondary off-white text */
-  --text-muted: #94A3B8;          /* Cool grey supporting text */
-  --text-dim: #64748B;            /* Muted cool grey labels */
+  --mr-green: #20C997;            /* Positive scoring feedback */
+  --mr-green-glow: rgba(32, 201, 151, 0.35);
+  --mr-green-subtle: rgba(32, 201, 151, 0.15);
   
-  /* Borders */
-  --border-subtle: #2D323E;       /* Subtle graphite border */
-  --border-strong: #3A4150;       /* Strong graphite border */
-  --border-electric: rgba(0, 212, 255, 0.45);
+  --mr-negative: #F43F5E;         /* Negative score feedback */
+  --mr-negative-subtle: rgba(244, 63, 94, 0.15);
   
-  /* Feedback States */
-  --feedback-pos: #00E699;        /* Electric Mint / Positive score feedback */
-  --feedback-pos-glow: rgba(0, 230, 153, 0.35);
-  --feedback-pos-subtle: rgba(0, 230, 153, 0.14);
+  --mr-text-primary: #F8FAFC;     /* High-contrast white/near-white */
+  --mr-text-muted: #94A3B8;       /* Muted grey supporting text */
+  --mr-text-dim: #64748B;         /* Dim supporting labels */
   
-  --feedback-neg: #FF4D6D;        /* Clean Coral / Negative score feedback */
-  --feedback-neg-subtle: rgba(255, 77, 109, 0.15);
+  --mr-border: rgba(255, 255, 255, 0.08);
+  --mr-border-strong: rgba(255, 255, 255, 0.15);
+  --mr-border-gold: rgba(244, 200, 74, 0.5);
 }
 
 /* ==========================================================================
-   1. BASE LAYOUT & HORIZONTAL OVERFLOW PREVENTION
+   1. BASE LAYOUT & STRICT HORIZONTAL OVERFLOW PREVENTION
    ========================================================================== */
 html, body {
-  background-color: var(--bg-main) !important;
-  color: var(--text-primary) !important;
+  background-color: var(--mr-bg-deep) !important;
+  color: var(--mr-text-primary) !important;
   width: 100% !important;
   max-width: 100vw !important;
   overflow-x: hidden !important;
@@ -58,8 +54,8 @@ html, body {
 }
 
 body::before {
-  background-image: radial-gradient(circle at 50% 5%, rgba(0, 212, 255, 0.08) 0%, transparent 60%),
-                    radial-gradient(circle at 85% 85%, rgba(34, 37, 46, 0.45) 0%, transparent 50%) !important;
+  background-image: radial-gradient(circle at 50% 5%, rgba(232, 23, 79, 0.08) 0%, transparent 60%),
+                    radial-gradient(circle at 85% 85%, rgba(32, 42, 66, 0.3) 0%, transparent 50%) !important;
 }
 
 .app-container {
@@ -69,7 +65,6 @@ body::before {
   padding: 0 10px 40px 10px !important;
   overflow-x: hidden !important;
   box-sizing: border-box !important;
-  background-color: transparent !important;
 }
 
 .mode-view {
@@ -79,167 +74,50 @@ body::before {
 }
 
 /* ==========================================================================
-   2. APP HEADER & STATUS STRIP (GRAPHITE & ELECTRIC BLUE)
+   2. APP HEADER & STATUS STRIP
    ========================================================================== */
 .app-header {
   padding: 12px 2px !important;
-  border-bottom: 1px solid var(--border-subtle) !important;
-  background: var(--bg-main) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-}
-
-.brand-wrapper {
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-}
-
-/* Mini Realistic Playing Card Logo Icon (Ace of Hearts) */
-.brand-card-icon,
-.playing-card-ace {
-  position: relative !important;
-  width: 40px !important;
-  height: 56px !important;
-  background: #FFFFFF !important;
-  border-radius: 6px !important;
-  border: 1px solid rgba(0, 0, 0, 0.12) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 1px rgba(255, 255, 255, 0.8) inset !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  user-select: none !important;
-  flex-shrink: 0 !important;
-  box-sizing: border-box !important;
-  padding: 2px !important;
-  overflow: hidden !important;
-  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
-  cursor: pointer;
-}
-
-.brand-card-icon:hover {
-  transform: translateY(-1px) rotate(-2deg);
-  box-shadow: 0 4px 14px rgba(0, 212, 255, 0.4) !important;
-}
-
-.card-corner {
-  position: absolute !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  line-height: 1 !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-}
-
-.card-top-left {
-  top: 3px !important;
-  left: 3px !important;
-}
-
-.card-bottom-right {
-  bottom: 3px !important;
-  right: 3px !important;
-  transform: rotate(180deg) !important;
-}
-
-.card-corner-rank {
-  font-size: 0.72rem !important;
-  font-weight: 900 !important;
-  color: #D90429 !important; /* Authentic playing card ruby red */
-  line-height: 0.85 !important;
-}
-
-.card-corner-suit {
-  font-size: 0.55rem !important;
-  color: #D90429 !important;
-  line-height: 0.85 !important;
-  margin-top: 1px !important;
-}
-
-.card-center-suit {
-  font-size: 1.35rem !important;
-  color: #D90429 !important;
-  line-height: 1 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  filter: drop-shadow(0 1px 1px rgba(217, 4, 41, 0.25));
+  border-bottom: 1px solid var(--mr-border) !important;
 }
 
 .brand-title {
   color: #FFFFFF !important;
   font-size: 1.25rem !important;
   font-weight: 800 !important;
-  letter-spacing: -0.3px !important;
-  margin: 0 !important;
-  line-height: 1.2 !important;
 }
 
 .brand-subtitle {
-  color: var(--text-muted) !important;
+  color: var(--mr-text-muted) !important;
   font-size: 0.72rem !important;
-  margin: 0 !important;
-  display: flex !important;
-  gap: 6px !important;
 }
 
 .btn-icon {
-  background: var(--surface-card) !important;
-  border: 1px solid var(--border-subtle) !important;
-  color: var(--electric-blue) !important;
+  background: var(--mr-surface) !important;
+  border: 1px solid var(--mr-border) !important;
+  color: var(--mr-secondary) !important;
   width: 38px !important;
   height: 38px !important;
   border-radius: 10px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
   transition: all 0.15s ease !important;
-  cursor: pointer !important;
-}
-
-.btn-icon:hover {
-  background: var(--surface-hover) !important;
-  border-color: var(--electric-blue) !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 0 10px var(--electric-blue-glow) !important;
 }
 
 .btn-icon:active {
   transform: scale(0.94);
-  background: var(--surface-active) !important;
+  background: var(--mr-surface-hover) !important;
 }
 
 #btnNewGame {
-  color: var(--electric-blue) !important;
+  color: var(--mr-primary) !important;
 }
 
-/* Base Generic Button Classes */
-.btn {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 6px !important;
-  font-family: inherit !important;
-  font-weight: 700 !important;
-  cursor: pointer !important;
-  border-radius: 8px !important;
-  transition: all 0.15s ease !important;
-  user-select: none !important;
-  text-decoration: none !important;
-  border: none;
-  outline: none;
-}
-
-/* Status Strip */
 .status-strip {
-  background: var(--surface-card) !important;
-  border: 1px solid var(--border-subtle) !important;
+  background: var(--mr-surface) !important;
+  border: 1px solid var(--mr-border) !important;
   border-radius: 14px !important;
   padding: 10px 12px !important;
   margin-bottom: 12px !important;
   gap: 10px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
 }
 
 #activeRoundLabel {
@@ -249,150 +127,73 @@ body::before {
 }
 
 #dealerInfoTag {
-  color: var(--electric-blue) !important;
+  color: var(--mr-gold) !important;
   font-weight: 700 !important;
 }
 
 .progress-bar-wrap {
-  background: var(--bg-charcoal) !important;
+  background: var(--mr-surface-alt) !important;
   height: 6px !important;
   border-radius: 9999px !important;
-  border: 1px solid var(--border-subtle) !important;
 }
 
 .progress-bar-fill {
-  background: linear-gradient(90deg, var(--electric-cyan), var(--electric-blue)) !important;
-  box-shadow: 0 0 8px var(--electric-blue-glow) !important;
+  background: linear-gradient(90deg, var(--mr-primary), var(--mr-secondary)) !important;
 }
 
 .strip-actions {
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
-  gap: 10px !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-/* Equal-Sized Bids & Score Tricks Buttons */
-.btn-strip {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 6px !important;
-  padding: 10px 12px !important;
-  border-radius: 10px !important;
-  font-size: 0.88rem !important;
-  font-weight: 800 !important;
-  cursor: pointer !important;
-  transition: all 0.15s ease !important;
-  min-height: 44px !important;
-  height: 44px !important;
-  width: 100% !important;
-  white-space: nowrap !important;
-  box-sizing: border-box !important;
-}
-
-.btn-strip.btn-bidding,
-#btnTriggerBidding {
-  background: var(--surface-card) !important;
-  color: #FFFFFF !important;
-  border: 1px solid var(--border-strong) !important;
-}
-
-.btn-strip.btn-bidding:hover,
-#btnTriggerBidding:hover {
-  background: var(--surface-hover) !important;
-  border-color: var(--electric-blue) !important;
-  color: var(--electric-blue) !important;
-  box-shadow: 0 0 10px var(--electric-blue-glow) !important;
-}
-
-.btn-strip.btn-bidding:active,
-#btnTriggerBidding:active {
-  transform: scale(0.96) !important;
-  background: var(--surface-active) !important;
-}
-
-.btn-strip.btn-scoring,
-#btnTriggerScoring {
-  background: linear-gradient(135deg, var(--electric-cyan), var(--electric-blue)) !important;
-  color: #121212 !important;
-  border: none !important;
-  font-weight: 800 !important;
-  box-shadow: 0 2px 10px var(--electric-blue-glow) !important;
-}
-
-.btn-strip.btn-scoring:hover,
-#btnTriggerScoring:hover {
-  filter: brightness(1.1) !important;
-  box-shadow: 0 4px 16px var(--electric-blue-glow) !important;
-}
-
-.btn-strip.btn-scoring:active,
-#btnTriggerScoring:active {
-  transform: scale(0.96) !important;
+  gap: 8px !important;
 }
 
 .btn-bid-action {
-  background: var(--electric-blue-subtle) !important;
-  border: 1px solid var(--electric-blue) !important;
-  color: var(--electric-blue) !important;
+  background: rgba(50, 198, 232, 0.12) !important;
+  border: 1px solid var(--mr-secondary) !important;
+  color: var(--mr-secondary) !important;
   font-weight: 700 !important;
   padding: 8px 12px !important;
   border-radius: 10px !important;
   font-size: 0.82rem !important;
   cursor: pointer;
-  transition: all 0.15s ease !important;
-}
-
-.btn-bid-action:hover {
-  background: var(--electric-blue) !important;
-  color: #121212 !important;
-  box-shadow: 0 0 12px var(--electric-blue-glow) !important;
 }
 
 .btn-bid-action:active {
+  background: var(--mr-secondary) !important;
+  color: #101522 !important;
   transform: scale(0.96);
 }
 
 .btn-fast-entry {
-  background: linear-gradient(135deg, var(--electric-cyan), var(--electric-blue)) !important;
+  background: linear-gradient(135deg, var(--mr-primary), #be123c) !important;
   border: none !important;
-  color: #121212 !important;
+  color: #FFFFFF !important;
   font-weight: 800 !important;
   padding: 8px 14px !important;
   border-radius: 10px !important;
   font-size: 0.82rem !important;
-  box-shadow: 0 2px 12px var(--electric-blue-glow) !important;
+  box-shadow: 0 2px 10px var(--mr-primary-glow) !important;
   cursor: pointer;
-  transition: all 0.15s ease !important;
-}
-
-.btn-fast-entry:hover {
-  filter: brightness(1.1);
-  box-shadow: 0 4px 16px var(--electric-blue-glow) !important;
 }
 
 .btn-fast-entry:active {
   transform: scale(0.96);
+  opacity: 0.9;
 }
 
 /* ==========================================================================
-   3. COMPACT LIVE STANDINGS (GRAPHITE & ELECTRIC BLUE)
+   3. COMPACT LIVE STANDINGS (STEP 3)
    ========================================================================== */
 .leaderboard-card {
-  background: var(--surface-card) !important;
-  border: 1px solid var(--border-subtle) !important;
+  background: var(--mr-surface) !important;
+  border: 1px solid var(--mr-border) !important;
   border-radius: 14px !important;
   padding: 8px 10px !important;
   gap: 8px !important;
   margin-bottom: 12px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
 }
 
 .leaderboard-card::before {
   height: 2px !important;
-  background: linear-gradient(90deg, var(--electric-blue), var(--electric-cyan), var(--feedback-pos), var(--border-strong)) !important;
+  background: linear-gradient(90deg, var(--mr-gold), var(--mr-primary), var(--mr-secondary), var(--mr-green)) !important;
 }
 
 .leaderboard-header {
@@ -408,166 +209,135 @@ body::before {
 
 .live-indicator {
   font-size: 0.62rem !important;
-  padding: 2px 7px !important;
-  background: var(--electric-blue-subtle) !important;
-  border: 1px solid var(--border-electric) !important;
-  color: var(--electric-blue) !important;
-  border-radius: 9999px !important;
+  padding: 1px 6px !important;
+  background: rgba(32, 201, 151, 0.12) !important;
+  border: 1px solid rgba(32, 201, 151, 0.3) !important;
+  color: var(--mr-green) !important;
 }
 
 .live-dot {
-  background: var(--electric-blue) !important;
-  box-shadow: 0 0 6px var(--electric-blue-glow) !important;
+  background: var(--mr-green) !important;
 }
 
-/* ==========================================================================
-   3. ACTIVE TABLE STANDINGS - SLEEK VERTICAL LIST (GRAPHITE & ELECTRIC BLUE)
-   ========================================================================== */
-.podium-section {
-  margin-bottom: 14px !important;
+/* 4-Player Podium Grid: ALWAYS sleek 4 columns side-by-side on mobile! */
+.podium-grid.four-players {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  align-items: stretch !important;
+  gap: 4px !important;
+  padding-top: 0 !important;
 }
 
-.standings-list,
-.podium-grid {
+.podium-item {
+  background: var(--mr-surface-alt) !important;
+  border: 1px solid var(--mr-border) !important;
+  border-radius: 10px !important;
+  padding: 6px 3px !important;
+  min-height: 74px !important;
   display: flex !important;
   flex-direction: column !important;
-  background: var(--surface-card, #22252E) !important;
-  border: 1px solid var(--border-subtle, #2B303C) !important;
-  border-radius: 12px !important;
-  overflow: hidden !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
-  width: 100% !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-.standings-row {
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  padding: 12px 14px !important;
-  border-bottom: 1px solid #2B303C !important;
-  background: transparent !important;
-  transition: background-color 0.15s ease !important;
-  position: relative !important;
-}
-
-.standings-row:last-child {
-  border-bottom: none !important;
-}
-
-.standings-row:hover {
-  background: rgba(255, 255, 255, 0.02) !important;
-}
-
-.standings-left {
-  display: flex !important;
-  align-items: center !important;
-  gap: 12px !important;
-  min-width: 0 !important;
-  flex: 1 !important;
-}
-
-/* Circular Rank badge */
-.standings-rank-badge {
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px !important;
-  border-radius: 50% !important;
-  display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  font-size: 0.74rem !important;
-  font-weight: 800 !important;
-  background: #1A1C23 !important;
-  color: #94A3B8 !important;
-  border: 1.5px solid #2B303C !important;
-  box-sizing: border-box !important;
-  transition: all 0.2s ease !important;
-  letter-spacing: -0.2px !important;
+  gap: 1px !important;
+  transform: none !important;
 }
 
-/* 1st Place Default Accent (when not King) */
-.standings-row.rank-1 .standings-rank-badge {
-  background: rgba(0, 212, 255, 0.12) !important;
-  color: var(--electric-blue, #00D4FF) !important;
-  border-color: var(--electric-blue, #00D4FF) !important;
+/* Leading Player: Clean gold highlight accents */
+.podium-item.first {
+  background: linear-gradient(180deg, rgba(244, 200, 74, 0.14) 0%, var(--mr-surface-alt) 100%) !important;
+  border: 1.5px solid var(--mr-gold) !important;
+  box-shadow: 0 0 12px var(--mr-gold-glow) !important;
 }
 
-.standings-player-name {
+.podium-item.second {
+  border-color: rgba(148, 163, 184, 0.25) !important;
+}
+
+.podium-item.third {
+  border-color: rgba(217, 119, 6, 0.25) !important;
+}
+
+.podium-item.fourth {
+  border-color: rgba(100, 116, 139, 0.2) !important;
+}
+
+.podium-badge {
   font-size: 0.95rem !important;
+  line-height: 1 !important;
+  margin-bottom: 1px !important;
+}
+
+.podium-rank-tag {
+  font-size: 0.58rem !important;
+  font-weight: 800 !important;
+  padding: 1px 4px !important;
+  border-radius: 4px !important;
+  margin-bottom: 2px !important;
+  text-transform: uppercase !important;
+}
+
+.podium-item.first .podium-rank-tag {
+  background: var(--mr-gold) !important;
+  color: #101522 !important;
+}
+
+.podium-item.second .podium-rank-tag {
+  background: #64748B !important;
+  color: #FFFFFF !important;
+}
+
+.podium-item.third .podium-rank-tag {
+  background: #B45309 !important;
+  color: #FFFFFF !important;
+}
+
+.podium-item.fourth .podium-rank-tag {
+  background: #334155 !important;
+  color: #94A3B8 !important;
+}
+
+.podium-name {
+  font-size: 0.76rem !important;
   font-weight: 700 !important;
   color: #FFFFFF !important;
+  text-align: center !important;
+  max-width: 100% !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  display: inline-flex !important;
-  align-items: center !important;
+  line-height: 1.2 !important;
 }
 
-.standings-right {
-  display: flex !important;
-  align-items: baseline !important;
-  gap: 4px !important;
-  flex-shrink: 0 !important;
-  padding-left: 12px !important;
-}
-
-.standings-score-num {
+.podium-score {
   font-size: 1.15rem !important;
   font-weight: 900 !important;
+  margin-top: 1px !important;
+  line-height: 1.1 !important;
   color: #FFFFFF !important;
-  font-variant-numeric: tabular-nums !important;
 }
 
-.standings-row.rank-1 .standings-score-num {
-  color: var(--electric-blue, #00D4FF) !important;
+.podium-item.first .podium-score {
+  color: var(--mr-gold) !important;
 }
 
-.standings-score-label {
-  font-size: 0.72rem !important;
+.podium-gap {
+  font-size: 0.6rem !important;
   font-weight: 600 !important;
-  color: var(--text-muted, #94A3B8) !important;
+  color: var(--mr-text-muted) !important;
+  margin-top: 1px !important;
+  white-space: nowrap !important;
 }
 
-/* ==========================================================================
-   KING LOGIC & VISUALS (18+ POINTS)
-   ========================================================================== */
-.standings-row.is-king {
-  background: rgba(255, 215, 0, 0.04) !important;
+.king-card-badge {
+  font-size: 0.58rem !important;
+  padding: 1px 4px !important;
+  margin: 1px 0 !important;
 }
 
-.standings-row.is-king:hover {
-  background: rgba(255, 215, 0, 0.08) !important;
-}
-
-/* Automatically append crown emoji (👑) directly next to their name */
-.standings-row.is-king .standings-player-name::after {
-  content: " 👑" !important;
-  font-size: 0.95rem !important;
-  display: inline-block !important;
-  margin-left: 4px !important;
-}
-
-/* Glowing circle effect on King's rank badge */
-.standings-row.is-king .standings-rank-badge {
-  box-shadow: 0 0 12px 2px #FFD700 !important;
-  border-radius: 50% !important;
-  border: 2px solid #FFD700 !important;
-  background-color: rgba(255, 215, 0, 0.15) !important;
-  color: #FFD700 !important;
-  font-weight: 900 !important;
-}
-
-.standings-row.is-king .standings-score-num {
-  color: #FFD700 !important;
-  text-shadow: 0 0 8px rgba(255, 215, 0, 0.3) !important;
-}
-
-/* Bench Strip: Compact Charcoal */
+/* Bench Strip: Compact */
 .bench-strip {
-  background: rgba(26, 28, 35, 0.8) !important;
-  border: 1px dashed var(--border-strong) !important;
+  background: rgba(16, 21, 34, 0.7) !important;
+  border: 1px dashed var(--mr-border-strong) !important;
   border-radius: 8px !important;
   padding: 4px 8px !important;
   font-size: 0.72rem !important;
@@ -575,13 +345,13 @@ body::before {
 }
 
 .bench-title {
-  color: var(--text-muted) !important;
+  color: var(--mr-text-muted) !important;
   font-size: 0.72rem !important;
 }
 
 .bench-pill {
-  background: var(--surface-card) !important;
-  border: 1px solid var(--border-subtle) !important;
+  background: var(--mr-surface-alt) !important;
+  border: 1px solid var(--mr-border) !important;
   padding: 1px 6px !important;
   border-radius: 4px !important;
   font-size: 0.68rem !important;
@@ -589,241 +359,126 @@ body::before {
 }
 
 /* ==========================================================================
-   4. SCORECARD MATRIX TABLE (GRAPHITE SURFACES & ELECTRIC BLUE ACCENTS)
+   4. MOBILE SCORECARD TABLE (STEP 4)
    ========================================================================== */
-.table-section,
 .table-card {
-  background: var(--surface-card) !important;
-  border: 1px solid var(--border-subtle) !important;
+  background: var(--mr-surface) !important;
+  border: 1px solid var(--mr-border) !important;
   border-radius: 14px !important;
   overflow: hidden !important;
   width: 100% !important;
   max-width: 100% !important;
-  min-width: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
-  margin-bottom: 20px !important;
 }
 
-.table-section-header,
 .table-card-header {
-  background: var(--bg-charcoal) !important;
-  border-bottom: 1px solid var(--border-subtle) !important;
-  padding: 10px 12px !important;
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  gap: 8px !important;
-  flex-wrap: wrap !important;
+  background: var(--mr-surface-alt) !important;
+  border-bottom: 1px solid var(--mr-border) !important;
+  padding: 8px 12px !important;
 }
 
-.table-title {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  font-size: 0.84rem !important;
-  font-weight: 800 !important;
-  color: #FFFFFF !important;
-}
-
-.table-title .sub {
-  font-size: 0.65rem !important;
-  color: var(--text-muted) !important;
-  font-weight: normal !important;
-  background: var(--electric-blue-subtle) !important;
-  border: 1px solid var(--border-electric) !important;
+.rules-hint-tag {
+  font-size: 0.62rem !important;
+  background: rgba(232, 23, 79, 0.12) !important;
+  border: 1px solid rgba(232, 23, 79, 0.3) !important;
+  color: #FDA4AF !important;
   padding: 1px 6px !important;
-  border-radius: 4px !important;
 }
 
-.table-actions {
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-}
-
-.btn-table-action,
-#btnScrollToActive,
-#btnClearRound {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: var(--surface-card) !important;
-  color: var(--text-muted) !important;
-  border: 1px solid var(--border-subtle) !important;
+.btn-subtle {
+  background: var(--mr-surface) !important;
+  color: var(--mr-text-muted) !important;
+  border: 1px solid var(--mr-border) !important;
   font-size: 0.72rem !important;
-  font-weight: 700 !important;
-  padding: 5px 10px !important;
+  padding: 4px 8px !important;
   border-radius: 6px !important;
-  cursor: pointer !important;
-  transition: all 0.15s ease !important;
-  white-space: nowrap !important;
-  box-sizing: border-box !important;
 }
 
-.btn-table-action:hover,
-#btnScrollToActive:hover {
-  background: var(--surface-hover) !important;
-  border-color: var(--electric-blue) !important;
+.btn-subtle:active {
   color: #FFFFFF !important;
-  box-shadow: 0 0 8px var(--electric-blue-glow) !important;
+  border-color: var(--mr-primary) !important;
 }
 
-.btn-table-action:active,
-#btnScrollToActive:active {
-  transform: scale(0.96) !important;
-}
-
-.btn-table-action.danger,
-#btnClearRound {
-  color: #FF4D6D !important;
-  border-color: rgba(255, 77, 109, 0.3) !important;
-}
-
-.btn-table-action.danger:hover,
-#btnClearRound:hover {
-  background: rgba(255, 77, 109, 0.15) !important;
-  border-color: #FF4D6D !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 0 8px rgba(255, 77, 109, 0.4) !important;
-}
-
-.btn-table-action.danger:active,
-#btnClearRound:active {
-  transform: scale(0.96) !important;
-}
-
-/* Table Horizontal Scrolling Wrapper */
-.table-scroll-wrap,
-.scorecard-table-wrapper,
-.table-responsive,
-#tableScrollContainer,
-#scorecardTableContainer {
-  overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-  max-width: 100% !important;
-  display: block !important;
+/* Horizontal scroll strictly isolated inside table-scroll-wrap */
+.table-scroll-wrap {
   width: 100% !important;
-  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
   overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
   overscroll-behavior-x: contain !important;
   max-height: 480px !important;
-  position: relative !important;
 }
 
-/* Scorecard Matrix Table */
-.scoreboard-matrix,
-.scoreboard-table,
-#scoreboardTable {
-  width: 100% !important;
-  min-width: 440px !important;
-  table-layout: fixed !important;
+.scoreboard-table {
+  width: max-content !important;
+  min-width: 100% !important;
   border-collapse: separate !important;
   border-spacing: 0 !important;
   font-size: 0.82rem !important;
-  margin: 0 !important;
 }
 
-/* Sticky First Column (Round # and Dealer) */
-.scoreboard-matrix th.col-round,
-.scoreboard-matrix td.col-round,
-.scoreboard-table th.col-round,
-.scoreboard-table td.col-round,
-#scoreboardTable th.col-round,
-#scoreboardTable td.col-round {
-  position: sticky !important;
-  left: 0 !important;
-  z-index: 10 !important;
-  background: var(--bg-charcoal) !important;
-  width: 76px !important;
-  min-width: 76px !important;
-  max-width: 76px !important;
-  text-align: center !important;
-  border-right: 2px solid var(--border-strong) !important;
-  box-shadow: 3px 0 8px rgba(0, 0, 0, 0.4) !important;
-  padding: 6px 4px !important;
-  box-sizing: border-box !important;
-}
-
-/* Sticky Corner Header */
-.scoreboard-matrix thead th.col-round,
-.scoreboard-table thead th.col-round,
-#scoreboardTable thead th.col-round {
-  z-index: 30 !important;
-  top: 0 !important;
-  left: 0 !important;
-  background: var(--bg-charcoal) !important;
-  color: var(--text-muted) !important;
-  font-weight: 800 !important;
-  font-size: 0.76rem !important;
-  border-bottom: 2px solid var(--electric-blue) !important;
-}
-
-/* Sticky Corner Footer */
-.scoreboard-matrix tfoot td.col-round,
-.scoreboard-table tfoot td.col-round,
-#scoreboardTable tfoot td.col-round {
-  z-index: 30 !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  background: var(--bg-charcoal) !important;
-  color: var(--electric-blue) !important;
-  font-weight: 900 !important;
-  font-size: 0.78rem !important;
-  border-top: 2px solid var(--electric-blue) !important;
-}
-
-/* Player Column Headers (thead th) */
-.scoreboard-matrix thead th,
-.scoreboard-table thead th,
-#scoreboardTable thead th {
+/* Sticky Headers & Columns with opaque Midnight Royale background */
+.scoreboard-table thead th {
   position: sticky !important;
   top: 0 !important;
-  z-index: 20 !important;
-  background: var(--bg-charcoal) !important;
-  color: var(--text-primary) !important;
+  z-index: 12 !important;
+  background: #182033 !important;
+  color: var(--mr-text-muted) !important;
   padding: 8px 6px !important;
-  border-bottom: 2px solid var(--electric-blue) !important;
-  border-right: 1px solid var(--border-subtle) !important;
+  border-bottom: 2px solid var(--mr-primary) !important;
+  border-right: 1px solid var(--mr-border) !important;
   min-width: 82px !important;
-  width: calc((100% - 76px) / 4) !important;
-  text-align: center !important;
-  box-sizing: border-box !important;
-}
-
-.player-header-wrap {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 3px !important;
-  width: 100% !important;
 }
 
 .player-header-name {
-  display: block !important;
-  font-size: 0.8rem !important;
+  font-size: 0.82rem !important;
   font-weight: 700 !important;
   color: #FFFFFF !important;
-  max-width: 100% !important;
+  max-width: 85px !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
-  line-height: 1.2 !important;
-  text-align: center !important;
 }
 
 .player-header-total {
-  display: inline-block !important;
   font-size: 0.72rem !important;
   font-weight: 800 !important;
-  color: var(--electric-blue) !important;
-  background: var(--electric-blue-subtle) !important;
-  border: 1px solid var(--border-electric) !important;
-  padding: 1px 6px !important;
+  color: var(--mr-primary) !important;
+  background: rgba(232, 23, 79, 0.15) !important;
+  padding: 1px 5px !important;
   border-radius: 4px !important;
-  line-height: 1.2 !important;
+}
+
+/* Sticky First Column (Round) - Stays visible during horizontal scrolling! */
+.scoreboard-table td.col-round,
+.scoreboard-table th.col-round {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 10 !important;
+  background: #182033 !important;
+  width: 72px !important;
+  min-width: 72px !important;
+  max-width: 76px !important;
+  text-align: center !important;
+  border-right: 2px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 3px 0 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+.scoreboard-table thead th.col-round {
+  z-index: 25 !important;
+  top: 0 !important;
+  left: 0 !important;
+  background: #182033 !important;
+}
+
+.scoreboard-table tfoot td.col-round {
+  z-index: 25 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  background: #182033 !important;
+  color: var(--mr-primary) !important;
+  font-weight: 900 !important;
+  font-size: 0.8rem !important;
 }
 
 .round-info-cell {
@@ -831,168 +486,124 @@ body::before {
   flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 1px !important;
-  width: 100% !important;
+  gap: 2px !important;
 }
 
 .round-num-label {
-  font-size: 0.8rem !important;
+  font-size: 0.82rem !important;
   font-weight: 800 !important;
   color: #FFFFFF !important;
 }
 
 .dealer-tag {
-  font-size: 0.6rem !important;
-  color: var(--electric-blue) !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  font-size: 0.62rem !important;
+  color: var(--mr-gold) !important;
+  background: rgba(244, 200, 74, 0.15) !important;
+  border-radius: 3px !important;
+  padding: 1px 3px !important;
   max-width: 68px !important;
 }
 
 /* Rows & Active Round */
-.scoreboard-matrix tbody tr,
-.scoreboard-table tbody tr,
-#scoreboardTable tbody tr {
+.scoreboard-table tbody tr {
   background: transparent;
 }
 
-.scoreboard-matrix tbody tr:nth-child(even),
-.scoreboard-table tbody tr:nth-child(even),
-#scoreboardTable tbody tr:nth-child(even) {
+.scoreboard-table tbody tr:nth-child(even) {
   background-color: rgba(255, 255, 255, 0.02) !important;
 }
 
-.scoreboard-matrix tbody tr:hover td,
-.scoreboard-table tbody tr:hover td,
-#scoreboardTable tbody tr:hover td {
-  background: var(--surface-hover) !important;
+.scoreboard-table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
 }
 
-.scoreboard-matrix tbody tr.active-round td,
-.scoreboard-table tbody tr.active-round td,
-#scoreboardTable tbody tr.active-round td {
-  background-color: rgba(0, 212, 255, 0.08) !important;
-  border-top: 1px solid var(--border-electric) !important;
-  border-bottom: 1px solid var(--border-electric) !important;
+.scoreboard-table tbody tr.active-round {
+  background-color: rgba(232, 23, 79, 0.14) !important;
 }
 
-.scoreboard-matrix tbody tr.active-round td.col-round,
-.scoreboard-table tbody tr.active-round td.col-round,
-#scoreboardTable tbody tr.active-round td.col-round {
-  background-color: #242936 !important;
-  border-left: 3.5px solid var(--electric-blue) !important;
+.scoreboard-table tbody tr.active-round .col-round {
+  background-color: #231b2e !important;
+  border-left: 3.5px solid var(--mr-primary) !important;
 }
 
-.scoreboard-matrix tbody tr.active-round .round-num-label,
-.scoreboard-table tbody tr.active-round .round-num-label,
-#scoreboardTable tbody tr.active-round .round-num-label {
-  color: var(--electric-blue) !important;
+.scoreboard-table tbody tr.active-round .round-num-label {
+  color: var(--mr-primary) !important;
   font-weight: 900 !important;
 }
 
-/* Player Column Body Cells (tbody td) */
-.scoreboard-matrix tbody td,
-.scoreboard-table tbody td,
-#scoreboardTable tbody td {
-  padding: 6px 4px !important;
-  border-bottom: 1px solid var(--border-subtle) !important;
-  border-right: 1px solid var(--border-subtle) !important;
+.scoreboard-table td {
+  padding: 5px 3px !important;
+  border-bottom: 1px solid var(--mr-border) !important;
+  border-right: 1px solid var(--mr-border) !important;
   min-width: 82px !important;
-  width: calc((100% - 76px) / 4) !important;
-  text-align: center !important;
-  vertical-align: middle !important;
-  background: var(--surface-card) !important;
-  box-sizing: border-box !important;
-  cursor: pointer !important;
-  transition: background 0.12s ease !important;
 }
 
 .table-score-cell {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 100% !important;
   min-height: 38px !important;
   padding: 2px !important;
 }
 
 .cell-score-num {
-  font-size: 0.98rem !important;
+  font-size: 1.05rem !important;
   font-weight: 900 !important;
   line-height: 1.1 !important;
 }
 
 .cell-score-num.pos {
-  color: var(--feedback-pos) !important;
+  color: var(--mr-green) !important;
 }
 
 .cell-score-num.neg {
-  color: var(--feedback-neg) !important;
+  color: var(--mr-negative) !important;
 }
 
 .cell-sub-detail {
   font-size: 0.62rem !important;
-  color: var(--text-muted) !important;
+  color: var(--mr-text-muted) !important;
   font-weight: 600 !important;
   white-space: nowrap !important;
 }
 
 .cell-bid-only {
-  font-size: 0.74rem !important;
+  font-size: 0.72rem !important;
   font-weight: 800 !important;
-  color: var(--electric-blue) !important;
-  background: var(--electric-blue-subtle) !important;
+  color: var(--mr-secondary) !important;
+  background: rgba(50, 198, 232, 0.14) !important;
   padding: 1px 6px !important;
-  border-radius: 4px !important;
-}
-
-.cell-empty-dash {
-  font-size: 0.9rem !important;
-  color: var(--text-dim) !important;
 }
 
 /* Sticky Footer (Total Row) */
-.scoreboard-matrix tfoot td,
-.scoreboard-table tfoot td,
-#scoreboardTable tfoot td {
+.scoreboard-table tfoot td {
   position: sticky !important;
   bottom: 0 !important;
-  z-index: 20 !important;
-  background: var(--bg-charcoal) !important;
+  z-index: 12 !important;
+  background: #182033 !important;
   padding: 8px 4px !important;
-  border-top: 2px solid var(--electric-blue) !important;
-  border-right: 1px solid var(--border-subtle) !important;
-  min-width: 82px !important;
-  width: calc((100% - 76px) / 4) !important;
-  text-align: center !important;
-  box-sizing: border-box !important;
-  font-weight: 800 !important;
+  border-top: 2px solid var(--mr-primary) !important;
+  border-right: 1px solid var(--mr-border) !important;
 }
 
 .footer-total-score {
   font-size: 1.15rem !important;
-  color: var(--electric-blue) !important;
+  color: var(--mr-gold) !important;
   font-weight: 900 !important;
-  text-shadow: 0 0 10px var(--electric-blue-glow) !important;
 }
 
 /* ==========================================================================
-   5. SETUP / EDIT PLAYERS MODAL (#modalPlayers) - GRAPHITE & ELECTRIC BLUE
+   5. ACCELERATED ACTIVE SCORING & MODALS (STEP 5)
    ========================================================================== */
 .modal-overlay {
-  background: rgba(10, 12, 16, 0.88) !important;
+  background: rgba(8, 11, 18, 0.88) !important;
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
   z-index: 9999 !important;
 }
 
 .modal-content {
-  background: var(--surface-card) !important;
-  border: 1px solid var(--border-strong) !important;
+  background: var(--mr-surface) !important;
+  border: 1px solid var(--mr-border-strong) !important;
   border-radius: 18px 18px 0 0 !important;
-  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.7) !important;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.6) !important;
   max-height: 92vh !important;
 }
 
@@ -1003,8 +614,8 @@ body::before {
 }
 
 .modal-header {
-  background: var(--bg-charcoal) !important;
-  border-bottom: 1px solid var(--border-subtle) !important;
+  background: var(--mr-surface-alt) !important;
+  border-bottom: 1px solid var(--mr-border) !important;
   padding: 12px 14px !important;
 }
 
@@ -1017,272 +628,31 @@ body::before {
 .modal-body {
   padding: 12px 14px !important;
   gap: 10px !important;
-  background: var(--surface-card) !important;
 }
 
 .modal-footer {
-  background: var(--bg-charcoal) !important;
-  border-top: 1px solid var(--border-subtle) !important;
+  background: var(--mr-surface-alt) !important;
+  border-top: 1px solid var(--mr-border) !important;
   padding: 10px 14px !important;
   gap: 8px !important;
 }
 
-/* Roster Instructions & Counter Pill */
-.roster-instruction-box {
-  background: var(--bg-charcoal) !important;
-  border: 1px solid var(--border-subtle) !important;
-  border-radius: 10px !important;
-  padding: 10px !important;
-  font-size: 0.82rem !important;
-  color: var(--text-secondary) !important;
-}
-
-.active-counter-pill {
-  background: var(--electric-blue-subtle) !important;
-  color: var(--electric-blue) !important;
-  border: 1px solid var(--border-electric) !important;
-  font-weight: 800 !important;
-  padding: 4px 10px !important;
-  border-radius: 6px !important;
-  display: inline-block !important;
-  margin-top: 6px !important;
-}
-
-.active-counter-pill.valid {
-  background: rgba(0, 212, 255, 0.22) !important;
-  border-color: var(--electric-blue) !important;
-  color: var(--electric-blue) !important;
-  box-shadow: 0 0 12px var(--electric-blue-glow) !important;
-}
-
-.roster-section-title {
-  color: var(--text-muted) !important;
-  font-size: 0.78rem !important;
-  font-weight: 800 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.6px !important;
-  margin-bottom: 4px !important;
-}
-
-/* Player Manage Rows */
-.player-list-manage {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 6px !important;
-}
-
-.player-manage-row {
-  background: var(--bg-charcoal) !important;
-  border: 1px solid var(--border-subtle) !important;
-  border-radius: 10px !important;
-  padding: 6px 10px !important;
-  gap: 8px !important;
-  display: flex !important;
-  align-items: center !important;
-  transition: all 0.15s ease !important;
-}
-
-.player-manage-row.is-active-seated {
-  border-color: var(--border-electric) !important;
-  background: linear-gradient(90deg, rgba(0, 212, 255, 0.08), var(--bg-charcoal)) !important;
-}
-
-.player-manage-row.is-bench {
-  border-color: var(--border-subtle) !important;
-  opacity: 0.9 !important;
-}
-
-.player-manage-row > span {
-  color: var(--electric-blue) !important;
-  font-weight: 800 !important;
-}
-
-.player-name-input {
-  background: var(--bg-main) !important;
-  border: 1px solid var(--border-strong) !important;
-  border-radius: 8px !important;
-  color: var(--text-primary) !important;
-  font-size: 0.88rem !important;
-  font-weight: 600 !important;
-  padding: 6px 10px !important;
-  outline: none !important;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
-}
-
-.player-name-input:focus {
-  border-color: var(--electric-blue) !important;
-  box-shadow: 0 0 8px var(--electric-blue-glow) !important;
-}
-
-/* Roster Action Buttons */
-.btn-toggle-seat {
-  padding: 6px 10px !important;
-  border-radius: 6px !important;
-  font-size: 0.72rem !important;
-  font-weight: 700 !important;
-  cursor: pointer !important;
-  white-space: nowrap !important;
-  transition: all 0.15s ease !important;
-}
-
-.btn-toggle-seat.to-bench {
-  background: var(--surface-card) !important;
-  border: 1px solid var(--border-strong) !important;
-  color: var(--text-muted) !important;
-}
-
-.btn-toggle-seat.to-bench:hover {
-  background: var(--surface-hover) !important;
-  color: #FFFFFF !important;
-}
-
-.btn-toggle-seat.to-table {
-  background: var(--electric-blue-subtle) !important;
-  border: 1px solid var(--border-electric) !important;
-  color: var(--electric-blue) !important;
-}
-
-.btn-toggle-seat.to-table:hover {
-  background: var(--electric-blue) !important;
-  color: #121212 !important;
-  box-shadow: 0 0 10px var(--electric-blue-glow) !important;
-}
-
-.btn-del-player {
-  background: var(--feedback-neg-subtle) !important;
-  border: 1px solid rgba(255, 77, 109, 0.3) !important;
-  color: var(--feedback-neg) !important;
-  width: 28px !important;
-  height: 28px !important;
-  border-radius: 6px !important;
-  cursor: pointer !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  font-size: 1.1rem !important;
-}
-
-.btn-del-player:hover {
-  background: var(--feedback-neg) !important;
-  color: #FFFFFF !important;
-}
-
-.add-player-box {
-  display: flex !important;
-  gap: 8px !important;
-}
-
-#btnAddPlayer {
-  background: var(--electric-blue-subtle) !important;
-  border: 1px solid var(--electric-blue) !important;
-  color: var(--electric-blue) !important;
-  border-radius: 8px !important;
-  font-weight: 700 !important;
-  cursor: pointer !important;
-  transition: all 0.15s ease !important;
-}
-
-#btnAddPlayer:hover {
-  background: var(--electric-blue) !important;
-  color: #121212 !important;
-  box-shadow: 0 0 10px var(--electric-blue-glow) !important;
-}
-
-/* ==========================================================================
-   REMEMBER PLAYERS FOR FUTURE MATCHES TOGGLE
-   ========================================================================== */
-.remember-players-box {
-  background: var(--bg-charcoal, #121212) !important;
-  border: 1px solid var(--border-subtle, #2B303C) !important;
-  border-radius: 10px !important;
-  padding: 10px 12px !important;
-  margin-top: 14px !important;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
-}
-
-.remember-players-box:hover {
-  border-color: var(--electric-blue, #00D4FF) !important;
-  box-shadow: 0 0 8px rgba(0, 212, 255, 0.15) !important;
-}
-
-.remember-players-toggle {
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-  cursor: pointer !important;
-  user-select: none !important;
-  margin: 0 !important;
-}
-
-.remember-checkbox {
-  width: 18px !important;
-  height: 18px !important;
-  cursor: pointer !important;
-  accent-color: var(--electric-blue, #00D4FF) !important;
-  border-radius: 4px !important;
-  flex-shrink: 0 !important;
-}
-
-.remember-text {
-  color: #CBD5E1 !important;
-  font-size: 0.84rem !important;
-  font-weight: 600 !important;
-  line-height: 1.3 !important;
-}
-
-#btnResetDefaultPlayers {
-  background: var(--surface-card) !important;
-  border: 1px solid var(--border-strong) !important;
-  color: var(--text-muted) !important;
-  border-radius: 10px !important;
-  cursor: pointer !important;
-}
-
-#btnResetDefaultPlayers:hover {
-  background: var(--surface-hover) !important;
-  color: #FFFFFF !important;
-}
-
-#btnSaveRoster {
-  background: var(--electric-blue) !important;
-  color: #121212 !important;
-  font-weight: 800 !important;
-  border: none !important;
-  border-radius: 10px !important;
-  box-shadow: 0 0 16px var(--electric-blue-glow) !important;
-  cursor: pointer !important;
-  transition: all 0.15s ease !important;
-}
-
-#btnSaveRoster:hover {
-  background: var(--electric-blue-hover) !important;
-  box-shadow: 0 0 20px var(--electric-blue-glow) !important;
-}
-
-/* ==========================================================================
-   6. SCORING & BIDDING MODALS (GRAPHITE & ELECTRIC BLUE)
-   ========================================================================== */
+/* Scoring Phase Controls */
 .round-selector-bar {
-  background: var(--bg-charcoal) !important;
-  border: 1px solid var(--border-subtle) !important;
+  background: var(--mr-surface-alt) !important;
+  border: 1px solid var(--mr-border) !important;
   border-radius: 10px !important;
   padding: 6px 10px !important;
 }
 
 .round-nav-btn {
-  background: var(--surface-card) !important;
-  border: 1px solid var(--border-subtle) !important;
+  background: var(--mr-surface) !important;
+  border: 1px solid var(--mr-border) !important;
   color: #FFFFFF !important;
   width: 40px !important;
   height: 40px !important;
   border-radius: 8px !important;
   font-size: 1.15rem !important;
-  cursor: pointer;
-}
-
-.round-nav-btn:hover {
-  border-color: var(--electric-blue) !important;
-  color: var(--electric-blue) !important;
 }
 
 .round-selector-title h3 {
@@ -1293,13 +663,13 @@ body::before {
 
 .round-selector-title span {
   font-size: 0.72rem !important;
-  color: var(--electric-blue) !important;
+  color: var(--mr-gold) !important;
 }
 
-/* Tricks Total Counter Strip */
+/* Total Tricks Played Strip: Prominent display */
 .tricks-total-strip {
-  background: var(--bg-charcoal) !important;
-  border: 1.5px solid var(--border-strong) !important;
+  background: var(--mr-surface-alt) !important;
+  border: 1.5px solid var(--mr-border-strong) !important;
   border-radius: 10px !important;
   padding: 8px 12px !important;
   font-size: 0.88rem !important;
@@ -1315,21 +685,21 @@ body::before {
   font-weight: 900 !important;
   padding: 3px 12px !important;
   border-radius: 9999px !important;
-  background: var(--electric-blue-subtle) !important;
-  color: var(--electric-blue) !important;
-  border: 1px solid var(--border-electric) !important;
+  background: rgba(244, 200, 74, 0.15) !important;
+  color: var(--mr-gold) !important;
+  border: 1px solid rgba(244, 200, 74, 0.4) !important;
   letter-spacing: 0.5px !important;
   transition: all 0.2s ease !important;
 }
 
 .tricks-badge.valid {
-  background: var(--feedback-pos-subtle) !important;
-  color: var(--feedback-pos) !important;
-  border-color: var(--feedback-pos) !important;
-  box-shadow: 0 0 14px var(--feedback-pos-glow) !important;
+  background: rgba(32, 201, 151, 0.22) !important;
+  color: var(--mr-green) !important;
+  border-color: var(--mr-green) !important;
+  box-shadow: 0 0 14px var(--mr-green-glow) !important;
 }
 
-/* Player Scoring Rows */
+/* Player Scoring Rows: Compact vertical spacing, large touch controls */
 .scoring-player-list {
   display: flex !important;
   flex-direction: column !important;
@@ -1337,22 +707,23 @@ body::before {
 }
 
 .scoring-player-card {
-  background: var(--bg-charcoal) !important;
-  border: 1px solid var(--border-subtle) !important;
+  background: var(--mr-surface-alt) !important;
+  border: 1px solid var(--mr-border) !important;
   border-radius: 10px !important;
-  padding: 6px 10px !important;
-  gap: 8px !important;
+  padding: 6px 8px !important;
+  gap: 6px !important;
   min-height: 54px !important;
 }
 
 .scoring-player-info {
-  min-width: 80px !important;
-  max-width: 95px !important;
+  min-width: 68px !important;
+  max-width: 90px !important;
+  flex: 1 1 auto !important;
   gap: 2px !important;
 }
 
 .scoring-player-name {
-  font-size: 0.88rem !important;
+  font-size: 0.86rem !important;
   font-weight: 700 !important;
   color: #FFFFFF !important;
   white-space: nowrap !important;
@@ -1363,28 +734,30 @@ body::before {
 .scoring-bid-badge {
   font-size: 0.68rem !important;
   font-weight: 800 !important;
-  color: var(--electric-blue) !important;
-  background: var(--electric-blue-subtle) !important;
-  border: 1px solid var(--border-electric) !important;
+  color: var(--mr-secondary) !important;
+  background: rgba(50, 198, 232, 0.14) !important;
   padding: 1px 5px !important;
   border-radius: 4px !important;
 }
 
 .scoring-player-controls {
-  gap: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  flex-shrink: 0 !important;
 }
 
-/* Stepper Buttons (44x44px minimum) */
+/* Touch controls: Compact 38x40px to fit 4 buttons comfortably */
 .btn-step {
-  min-width: 44px !important;
-  min-height: 44px !important;
-  width: 44px !important;
-  height: 44px !important;
-  background: var(--surface-card) !important;
-  border: 1.5px solid var(--border-strong) !important;
-  border-radius: 10px !important;
+  min-width: 38px !important;
+  min-height: 40px !important;
+  width: 38px !important;
+  height: 40px !important;
+  background: var(--mr-surface) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 8px !important;
   color: #FFFFFF !important;
-  font-size: 1.4rem !important;
+  font-size: 1.25rem !important;
   font-weight: 800 !important;
   display: flex !important;
   align-items: center !important;
@@ -1396,36 +769,58 @@ body::before {
 }
 
 .btn-step:hover {
-  border-color: var(--electric-blue) !important;
-  color: var(--electric-blue) !important;
+  border-color: var(--mr-secondary) !important;
+  color: var(--mr-secondary) !important;
 }
 
 .btn-step:active {
-  background: var(--electric-blue) !important;
-  color: #121212 !important;
-  border-color: var(--electric-blue) !important;
+  background: var(--mr-primary) !important;
+  color: #FFFFFF !important;
+  border-color: var(--mr-primary) !important;
+  transform: scale(0.92) !important;
+}
+
+/* Quick-Fill Bid Button (Green Tick) - Midnight Royale */
+.btn-step.btn-quick-bid {
+  background: rgba(46, 204, 113, 0.12) !important;
+  border-color: rgba(46, 204, 113, 0.45) !important;
+  color: var(--mr-green, #2ECC71) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.btn-step.btn-quick-bid:hover {
+  background: rgba(46, 204, 113, 0.22) !important;
+  border-color: var(--mr-green, #2ECC71) !important;
+  color: var(--mr-green, #2ECC71) !important;
+  box-shadow: 0 0 10px rgba(46, 204, 113, 0.35) !important;
+}
+
+.btn-step.btn-quick-bid:active {
+  background: var(--mr-green, #2ECC71) !important;
+  color: #101522 !important;
+  border-color: var(--mr-green, #2ECC71) !important;
   transform: scale(0.92) !important;
 }
 
 .tricks-input-box {
-  width: 46px !important;
-  height: 44px !important;
-  background: var(--bg-main) !important;
-  border: 1.5px solid var(--border-strong) !important;
+  width: 38px !important;
+  height: 40px !important;
+  background: var(--mr-bg-deep) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.18) !important;
   border-radius: 8px !important;
   color: #FFFFFF !important;
-  font-size: 1.25rem !important;
-  font-weight: 900 !important;
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
   text-align: center !important;
-}
-
-.tricks-input-box:focus {
-  border-color: var(--electric-blue) !important;
-  box-shadow: 0 0 8px var(--electric-blue-glow) !important;
+  outline: none !important;
+  padding: 0 !important;
 }
 
 .scoring-live-preview {
-  min-width: 58px !important;
+  min-width: 44px !important;
+  flex-shrink: 0 !important;
 }
 
 .score-badge-live {
@@ -1436,93 +831,82 @@ body::before {
 }
 
 .score-badge-live.pos {
-  color: var(--feedback-pos) !important;
-  background: var(--feedback-pos-subtle) !important;
+  color: var(--mr-green) !important;
+  background: rgba(32, 201, 151, 0.16) !important;
 }
 
 .score-badge-live.neg {
-  color: var(--feedback-neg) !important;
-  background: var(--feedback-neg-subtle) !important;
+  color: var(--mr-negative) !important;
+  background: rgba(244, 63, 94, 0.16) !important;
 }
 
 .scoring-help-note {
   font-size: 0.68rem !important;
-  color: var(--text-muted) !important;
+  color: var(--mr-text-muted) !important;
   text-align: center !important;
   padding: 2px 4px !important;
 }
 
-/* Primary "Save & Next Round" button: Electric Blue */
+/* Primary "Save & Next Round" button: prominent #E8174F */
 #btnSaveScoring, .btn-primary {
-  background: var(--electric-blue) !important;
-  color: #121212 !important;
+  background: var(--mr-primary) !important;
+  color: #FFFFFF !important;
   border: none !important;
   border-radius: 12px !important;
   padding: 12px 18px !important;
   font-size: 0.95rem !important;
   font-weight: 800 !important;
   min-height: 48px !important;
-  box-shadow: 0 4px 16px var(--electric-blue-glow) !important;
+  box-shadow: 0 4px 16px var(--mr-primary-glow) !important;
   cursor: pointer !important;
   transition: all 0.15s ease !important;
 }
 
-#btnSaveScoring:hover, .btn-primary:hover {
-  background: var(--electric-blue-hover) !important;
-  box-shadow: 0 6px 20px var(--electric-blue-glow) !important;
-}
-
 #btnSaveScoring:active, .btn-primary:active {
+  background: var(--mr-primary-hover) !important;
   transform: scale(0.98) !important;
 }
 
 .btn-secondary {
-  background: var(--surface-card) !important;
-  border: 1px solid var(--border-strong) !important;
-  color: var(--text-primary) !important;
+  background: var(--mr-surface) !important;
+  border: 1px solid var(--mr-border-strong) !important;
+  color: var(--mr-text-primary) !important;
   border-radius: 12px !important;
   padding: 12px 16px !important;
   font-size: 0.9rem !important;
   font-weight: 700 !important;
-  cursor: pointer;
-  transition: all 0.15s ease !important;
 }
 
-.btn-secondary:hover {
-  background: var(--surface-hover) !important;
-  border-color: var(--electric-blue) !important;
-}
-
-/* Bidding Modal */
+/* Bidding Modal Grid & Buttons */
 .phase-info-banner {
-  background: var(--bg-charcoal) !important;
-  border: 1px solid var(--border-subtle) !important;
+  background: var(--mr-surface-alt) !important;
+  border: 1px solid var(--mr-border) !important;
   border-radius: 10px !important;
   padding: 8px 10px !important;
 }
 
 .phase-dealer-wrap {
-  color: var(--electric-blue) !important;
+  color: var(--mr-gold) !important;
   font-weight: 700 !important;
 }
 
 .prohibit-badge {
-  background: var(--feedback-neg-subtle) !important;
-  border: 1px solid rgba(255, 77, 109, 0.35) !important;
-  color: var(--feedback-neg) !important;
+  background: rgba(244, 63, 94, 0.15) !important;
+  border: 1px solid rgba(244, 63, 94, 0.35) !important;
+  color: var(--mr-negative) !important;
 }
 
 .bidding-player-card {
-  background: var(--bg-charcoal) !important;
-  border: 1px solid var(--border-subtle) !important;
+  background: var(--mr-surface-alt) !important;
+  border: 1px solid var(--mr-border) !important;
   border-radius: 10px !important;
   padding: 8px 10px !important;
   gap: 6px !important;
 }
 
 .bidding-player-card.is-dealer {
-  border-color: var(--border-electric) !important;
-  background: linear-gradient(90deg, rgba(0, 212, 255, 0.08), var(--bg-charcoal)) !important;
+  border-color: rgba(244, 200, 74, 0.45) !important;
+  background: linear-gradient(90deg, rgba(244, 200, 74, 0.08), var(--mr-surface-alt)) !important;
 }
 
 .bidding-card-name {
@@ -1531,222 +915,97 @@ body::before {
 }
 
 .bidding-current-val {
-  color: var(--electric-blue) !important;
-  background: var(--electric-blue-subtle) !important;
-  border: 1px solid var(--border-electric) !important;
+  color: var(--mr-secondary) !important;
+  background: rgba(50, 198, 232, 0.14) !important;
   border-radius: 4px !important;
 }
 
 .bid-btn {
-  background: var(--surface-card) !important;
-  border: 1px solid var(--border-subtle) !important;
-  color: var(--text-primary) !important;
+  background: var(--mr-surface) !important;
+  border: 1px solid var(--mr-border) !important;
+  color: var(--mr-text-primary) !important;
   min-height: 38px !important;
   border-radius: 8px !important;
   font-weight: 700 !important;
-  cursor: pointer;
-  transition: all 0.12s ease !important;
 }
 
-.bid-btn:hover {
-  border-color: var(--electric-blue) !important;
-  color: var(--electric-blue) !important;
+.bid-btn:active {
+  transform: scale(0.95);
 }
 
 .bid-btn.bid-0 {
-  color: var(--feedback-pos) !important;
+  color: var(--mr-green) !important;
 }
 
 .bid-btn.bid-7 {
-  color: var(--electric-blue) !important;
+  color: var(--mr-gold) !important;
 }
 
 .bid-btn.active {
-  background: var(--electric-blue) !important;
-  border-color: var(--electric-blue) !important;
-  color: #121212 !important;
-  font-weight: 900 !important;
-  box-shadow: 0 0 12px var(--electric-blue-glow) !important;
+  background: var(--mr-secondary) !important;
+  border-color: #38bdf8 !important;
+  color: #101522 !important;
+  box-shadow: 0 0 10px var(--mr-secondary-glow) !important;
 }
 
 .bid-btn.active.bid-0 {
-  background: var(--feedback-pos) !important;
-  border-color: var(--feedback-pos) !important;
-  color: #121212 !important;
-  box-shadow: 0 0 12px var(--feedback-pos-glow) !important;
+  background: var(--mr-green) !important;
+  border-color: #20C997 !important;
+  color: #101522 !important;
+  box-shadow: 0 0 10px var(--mr-green-glow) !important;
 }
 
 .bid-btn.active.bid-7 {
-  background: var(--electric-cyan) !important;
-  border-color: var(--electric-cyan) !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 0 12px var(--electric-cyan-glow) !important;
+  background: var(--mr-gold) !important;
+  border-color: #F4C84A !important;
+  color: #101522 !important;
+  box-shadow: 0 0 12px var(--mr-gold-glow) !important;
 }
 
 #btnSaveBidsAndPlay {
-  background: var(--electric-blue) !important;
-  color: #121212 !important;
-  font-weight: 800 !important;
-  box-shadow: 0 4px 16px var(--electric-blue-glow) !important;
+  background: var(--mr-primary) !important;
+  box-shadow: 0 4px 16px var(--mr-primary-glow) !important;
 }
 
-/* ==========================================================================
-   7. NEW MATCH, HISTORY & VICTORY MODALS
-   ========================================================================== */
-#modalNewGame .modal-title {
-  color: var(--electric-blue) !important;
-}
-
-#modalNewGame input[type="checkbox"] {
-  accent-color: var(--electric-blue) !important;
-}
-
-#btnConfirmNewGame {
-  background: var(--electric-blue) !important;
-  color: #121212 !important;
-  font-weight: 800 !important;
-  box-shadow: 0 4px 16px var(--electric-blue-glow) !important;
-}
-
-.history-card {
-  background: var(--bg-charcoal) !important;
-  border: 1px solid var(--border-subtle) !important;
+/* Roster / Table Management */
+.roster-instruction-box {
+  background: var(--mr-surface-alt) !important;
+  border: 1px solid var(--mr-border) !important;
   border-radius: 10px !important;
+  padding: 10px !important;
+  font-size: 0.82rem !important;
 }
 
-#btnClearAllHistory {
-  color: var(--feedback-neg) !important;
-  border-color: rgba(255, 77, 109, 0.3) !important;
+.active-counter-pill {
+  background: rgba(232, 23, 79, 0.15) !important;
+  color: var(--mr-primary) !important;
+  border: 1px solid rgba(232, 23, 79, 0.35) !important;
+  font-weight: 800 !important;
 }
 
-#modalVictory .modal-title {
-  color: var(--electric-blue) !important;
+.roster-player-item {
+  background: var(--mr-surface-alt) !important;
+  border: 1px solid var(--mr-border) !important;
+  border-radius: 8px !important;
 }
 
-#victoryWinnerName {
+.player-name-input {
+  background: var(--mr-bg-deep) !important;
+  border: 1px solid var(--mr-border-strong) !important;
   color: #FFFFFF !important;
-}
-
-#victoryScore {
-  color: var(--electric-blue) !important;
-  text-shadow: 0 0 12px var(--electric-blue-glow) !important;
+  border-radius: 8px !important;
+  padding: 8px 10px !important;
 }
 
 /* Toast Notice */
 .toast-notice {
-  background: var(--bg-charcoal) !important;
-  border: 1px solid var(--electric-blue) !important;
+  background: #182033 !important;
+  border: 1px solid var(--mr-green) !important;
   color: #FFFFFF !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 12px var(--electric-blue-glow) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
   border-radius: 10px !important;
 }
 
 .toast-notice span:first-child {
-  color: var(--electric-blue) !important;
-}
-
-/* ==========================================================================
-   OFFICIAL MATCH RULES PANEL (GRAPHITE & ELECTRIC ACCENTS)
-   ========================================================================== */
-.official-rules-panel {
-  background: #1A1C23 !important;
-  border: 1px solid #2B303C !important;
-  border-radius: 8px !important;
-  padding: 12px 14px !important;
-  margin-top: 16px !important;
-  margin-bottom: 24px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
-}
-
-.rules-panel-header {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  margin-bottom: 10px !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
-  padding-bottom: 8px !important;
-}
-
-.rules-header-icon {
-  font-size: 1rem !important;
-  line-height: 1 !important;
-}
-
-.rules-panel-title {
-  margin: 0 !important;
-  font-size: 0.88rem !important;
-  font-weight: 800 !important;
-  color: #FFFFFF !important;
-  letter-spacing: 0.3px !important;
-}
-
-.rules-grid {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 6px !important;
-}
-
-.rule-item {
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-  padding: 6px 10px !important;
-  background: #22252E !important;
-  border-radius: 6px !important;
-  border: 1px solid #2D323E !important;
-  font-size: 0.78rem !important;
-  color: var(--text-primary) !important;
-}
-
-.rule-badge {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 2px 7px !important;
-  border-radius: 4px !important;
-  font-size: 0.7rem !important;
-  font-weight: 800 !important;
-  white-space: nowrap !important;
-  min-width: 52px !important;
-  text-align: center !important;
-}
-
-.rule-badge.rule-zero {
-  background: rgba(0, 212, 255, 0.15) !important;
-  border: 1px solid var(--border-electric) !important;
-  color: var(--electric-blue) !important;
-}
-
-.rule-badge.rule-seven {
-  background: rgba(0, 230, 153, 0.15) !important;
-  border: 1px solid rgba(0, 230, 153, 0.4) !important;
-  color: var(--feedback-pos) !important;
-}
-
-.rule-badge.rule-standard {
-  background: rgba(148, 163, 184, 0.15) !important;
-  border: 1px solid #3A4150 !important;
-  color: #E2E8F0 !important;
-  min-width: 105px !important;
-}
-
-.rule-badge.rule-prohibited {
-  background: rgba(255, 77, 109, 0.18) !important;
-  border: 1px solid rgba(255, 77, 109, 0.4) !important;
-  color: #FF4D6D !important;
-}
-
-.rule-text {
-  font-size: 0.78rem !important;
-  color: #CBD5E1 !important;
-}
-
-.rule-text strong {
-  color: #FFFFFF !important;
-  font-weight: 700 !important;
-}
-
-.rule-sep {
-  color: var(--text-dim) !important;
-  margin: 0 4px !important;
+  color: var(--mr-green) !important;
 }
