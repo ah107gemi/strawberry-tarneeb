@@ -128,7 +128,7 @@
           <span>🏆 Active Table Standings</span>
           <span class="sub">Sorted by Points</span>
         </div>
-        <div id="podiumContainer" class="podium-grid">
+        <div id="podiumContainer" class="standings-list">
           <!-- Injected via JS -->
         </div>
       </section>
@@ -329,6 +329,14 @@
         <div class="add-player-box" style="margin-top: 14px;">
           <input type="text" id="newPlayerNameInput" class="player-name-input" placeholder="Add new person to roster..." maxlength="16">
           <button id="btnAddPlayer" class="btn-secondary" style="padding: 8px 14px;">+ Add</button>
+        </div>
+
+        <!-- Remember players for future matches -->
+        <div class="remember-players-box">
+          <label class="remember-players-toggle" for="chkRememberPlayers">
+            <input type="checkbox" id="chkRememberPlayers" class="remember-checkbox">
+            <span class="remember-text">Remember these players for future matches</span>
+          </label>
         </div>
       </div>
       <div class="modal-footer">
