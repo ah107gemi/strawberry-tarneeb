@@ -3444,3 +3444,242 @@ body::before {
 
 }
 
+
+
+/* ==========================================================================
+   PWA INSTALL BANNER (GRAPHITE & ELECTRIC BLUE)
+   ========================================================================== */
+.pwa-banner {
+  background: #1A1C23 !important;
+  border: 1.5px solid rgba(0, 212, 255, 0.45) !important;
+  border-radius: 12px !important;
+  padding: 10px 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(0, 212, 255, 0.2) !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  margin-bottom: 12px !important;
+}
+
+.pwa-banner-text {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  font-size: 0.8rem !important;
+  color: #F8FAFC !important;
+  line-height: 1.35 !important;
+}
+
+.pwa-banner-text strong {
+  color: #00D4FF !important;
+  display: block !important;
+  font-size: 0.86rem !important;
+  font-weight: 800 !important;
+  margin-bottom: 2px !important;
+}
+
+.pwa-banner-text span {
+  display: block !important;
+  font-size: 0.74rem !important;
+  color: #94A3B8 !important;
+}
+
+.btn-install {
+  flex-shrink: 0 !important;
+  padding: 8px 14px !important;
+  background: linear-gradient(135deg, #0A84FF, #00D4FF) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  color: #121212 !important;
+  font-weight: 800 !important;
+  font-size: 0.82rem !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 10px rgba(0, 212, 255, 0.35) !important;
+  transition: all 0.15s ease !important;
+}
+
+.btn-install:hover {
+  filter: brightness(1.1) !important;
+  box-shadow: 0 4px 14px rgba(0, 212, 255, 0.5) !important;
+}
+
+.btn-install:active {
+  transform: scale(0.96) !important;
+}
+
+/* ==========================================================================
+   HEADER BARS & BRANDING OVERRIDES
+   ========================================================================== */
+.brand-icon,
+.brand-strawberry {
+  display: none !important;
+}
+
+.app-header {
+  padding: 12px 14px !important;
+  border-bottom: 1px solid #2B303C !important;
+  background: #1A1C23 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.brand-wrapper {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.brand-title {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.3px !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+}
+
+.brand-subtitle {
+  color: #94A3B8 !important;
+  font-size: 0.72rem !important;
+  margin: 0 !important;
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.header-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.btn-icon {
+  background: #22252E !important;
+  border: 1px solid #2B303C !important;
+  color: #00D4FF !important;
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.btn-icon:hover {
+  background: #2B2F3B !important;
+  border-color: #00D4FF !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.4) !important;
+}
+
+/* Base utilities & missing classes */
+.progress-info {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 4px !important;
+}
+
+.progress-label {
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  color: #00D4FF !important;
+}
+
+.progress-bar-fill {
+  background: linear-gradient(90deg, #0A84FF, #00D4FF) !important;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.4) !important;
+}
+
+.bench-section {
+  background: #1A1C23 !important;
+  border: 1px dashed #2B303C !important;
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+  margin-bottom: 14px !important;
+}
+
+.bench-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  color: #94A3B8 !important;
+  margin-bottom: 6px !important;
+}
+
+.bench-chips {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+}
+
+.section-title {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  font-size: 0.82rem !important;
+  font-weight: 800 !important;
+  color: #FFFFFF !important;
+  margin-bottom: 8px !important;
+}
+
+.section-title .sub {
+  font-size: 0.7rem !important;
+  color: #94A3B8 !important;
+  font-weight: 600 !important;
+}
+
+.modal-close {
+  background: transparent !important;
+  border: none !important;
+  color: #94A3B8 !important;
+  font-size: 1.5rem !important;
+  cursor: pointer !important;
+  line-height: 1 !important;
+  transition: color 0.15s ease !important;
+}
+
+.modal-close:hover {
+  color: #00D4FF !important;
+}
+
+.dealer-crown {
+  font-size: 1.1rem !important;
+}
+
+.phase-note {
+  font-size: 0.75rem !important;
+  color: #94A3B8 !important;
+}
+
+.bidding-player-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.num {
+  font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+.font-bold {
+  font-weight: 800 !important;
+}
+
+.sticky-col {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 5 !important;
+  background: #1A1C23 !important;
+}
