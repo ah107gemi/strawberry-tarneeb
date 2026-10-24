@@ -1170,7 +1170,7 @@ class ConnectionManager:
             }
 
             # Clear timeout pause so players see the trick result
-            await asyncio.sleep(0.75)
+            await asyncio.sleep(0.40)
 
             await self.broadcast({"type": "trick_complete", "data": trick_summary})
 
@@ -1285,7 +1285,7 @@ class ConnectionManager:
             await self._end_game()
         else:
             # Snappy delay then start next round
-            await asyncio.sleep(2.0)
+            await asyncio.sleep(0.80)
             if game.phase == "round_end":
                 self._bot_turn_in_progress = False
                 await self._start_round()
@@ -1428,8 +1428,8 @@ class ConnectionManager:
 
     async def _run_bot_turn(self, token: str, action: str):
         try:
-            # Smooth natural delay (600ms to 800ms) for reliable, fluid gameplay
-            await asyncio.sleep(random.uniform(0.60, 0.80))
+            # Snappy bot delay (200ms to 350ms <= 0.5s) so rounds start quickly and flow smoothly
+            await asyncio.sleep(random.uniform(0.20, 0.35))
             game = self.game
             player = game.players.get(token)
             if not player or not getattr(player, "is_bot", False):
@@ -1444,7 +1444,7 @@ class ConnectionManager:
                 if len(game.trick_cards) < MAX_PLAYERS and game.token_at_seat(game.current_turn_seat) == token:
                     # Check if bot holds unbeatable remaining trumps to auto-claim!
                     if game.can_claim_tricks(token):
-                        await asyncio.sleep(0.8)
+                        await asyncio.sleep(0.30)
                         if game.phase == "playing" and game.token_at_seat(game.current_turn_seat) == token and game.can_claim_tricks(token):
                             log.info("🤖 Bot %s claims remaining %d tricks!", player.name, len(player.hand))
                             await self._handle_claim_tricks(token)
