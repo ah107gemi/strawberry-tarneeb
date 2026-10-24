@@ -4,18 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#121212">
-  <meta name="description" content="Standalone 24/7 client-side digital scorecard for Strawberry Tarneeb with 4-player active seating, pre-round bidding, and custom Tarneeb scoring rules.">
+  <meta name="description" content="Standalone 24/7 client-side digital scorecard for Tarneeb with 4-player active seating, pre-round bidding, and custom Tarneeb scoring rules.">
   
   <!-- Apple Touch & PWA Meta -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Tarneeb 🍓">
+  <meta name="apple-mobile-web-app-title" content="Tarneeb A♥️">
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
   
-  <title>Strawberry Tarneeb — Standalone Scoreboard (24/7)</title>
+  <title>Tarneeb Scoreboard A♥️ — Standalone Digital Scorecard</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="public-scoreboard.css">
 </head>
@@ -35,10 +35,10 @@
       <header class="app-header">
         <div class="brand-wrapper">
           <div class="brand-icon">
-            <img src="icon.svg" alt="Strawberry Tarneeb Logo">
+            <img src="icon.svg" alt="Tarneeb Scoreboard Logo">
           </div>
           <div>
-            <h1 class="brand-title">Tarneeb <span class="brand-strawberry">🍓</span></h1>
+            <h1 class="brand-title">Tarneeb <span class="brand-card-ace" style="color: #FF4D6D; margin-left: 2px;">A♥️</span></h1>
             <p class="brand-subtitle">
               <span>15 Rounds</span>
               <span>•</span>
@@ -85,7 +85,7 @@
       <!-- PWA Install Banner -->
       <div id="pwaBanner" class="pwa-banner" style="display: none;">
         <div class="pwa-banner-text">
-          <strong>Install Strawberry Tarneeb</strong>
+          <strong>Install Tarneeb Scoreboard</strong>
           <span>Add to Home Screen for instant offline play at the card table!</span>
         </div>
         <button id="btnInstallPwa" class="btn-install">Install App</button>
@@ -96,71 +96,64 @@
         <div class="progress-info">
           <div class="progress-label">
             <span id="activeRoundLabel">Round 1 of 15</span>
-            <span id="dealerInfoTag" style="font-size: 0.72rem; color: #00D4FF; font-weight: normal;">• Dealer: Ahmed 🂠</span>
+            <span id="dealerInfoTag" style="font-size: 0.72rem; color: #00D4FF; font-weight: normal;">• Dealer: Player 1 🂠</span>
           </div>
           <div class="progress-bar-wrap">
             <div id="roundProgressBar" class="progress-bar-fill"></div>
           </div>
         </div>
         <div class="strip-actions">
-          <button id="btnTriggerBidding" class="btn-bid-action">
-            <span>🎯 Enter Bids</span>
+          <button id="btnTriggerBidding" class="btn-strip btn-bidding" title="Enter Bids for this Round">
+            <span>🎯</span>
+            <span>Bids</span>
           </button>
-          <button id="btnTriggerScoring" class="btn-fast-entry">
-            <span>⚡ Score Tricks</span>
+          <button id="btnTriggerScoring" class="btn-strip btn-scoring" title="Score Tricks for this Round">
+            <span>⚡</span>
+            <span>Score Tricks</span>
           </button>
         </div>
       </section>
 
-      <!-- Dynamic Live Leaderboard Card -->
-      <section class="leaderboard-card">
-        <div class="leaderboard-header">
-          <h2 class="card-title">
-            <span>🏆</span>
-            <span>Live Standings</span>
-          </h2>
-          <span class="live-indicator">
-            <span class="live-dot"></span>
-            <span>4-PLAYER TABLE</span>
-          </span>
+      <!-- Standings Cards (Live Matrix of 4 Seated Players) -->
+      <section class="podium-section">
+        <div class="section-title">
+          <span>🏆 Active Table Standings</span>
+          <span class="sub">Sorted by Points</span>
         </div>
-
-        <!-- Top 4 Podium Cards (1st Gold, 2nd Silver, 3rd Bronze, 4th Slate) -->
-        <div id="podiumContainer" class="podium-grid four-players">
-          <!-- Injected via JavaScript -->
-        </div>
-
-        <!-- Bench / Sitting Out Players Strip -->
-        <div id="benchContainer" class="bench-strip">
-          <!-- Injected via JavaScript -->
+        <div id="podiumContainer" class="podium-grid">
+          <!-- Injected via JS -->
         </div>
       </section>
 
-      <!-- Scoreboard Matrix Table Card -->
-      <section class="table-card">
-        <div class="table-card-header">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <h2 class="card-title" style="font-size: 0.88rem;">
-              <span>📋</span>
-              <span>15-Round Scorecard</span>
-            </h2>
-            <span class="rules-hint-tag" title="Exact scoring rules: Bid 0 (+5/-5), Bid 7 (+14/-14), Others (+Bid/-Bid)">Rules: 0 (±5) • 7 (±14) • Bid 1 Prohibited</span>
+      <!-- Bench / Sitting Out Players Strip -->
+      <section id="benchSection" class="bench-section" style="display: none;">
+        <div class="bench-header">
+          <span>🪑 Sitting Out / Bench</span>
+          <span class="sub">Tap 'Roster' in header to seat</span>
+        </div>
+        <div id="benchContainer" class="bench-chips">
+          <!-- Injected via JS -->
+        </div>
+      </section>
+
+      <!-- Scorecard Table (15 Rounds x 4 Active Players Matrix) -->
+      <section class="table-section">
+        <div class="table-section-header">
+          <div class="table-title">
+            <span>📋 Scorecard Matrix</span>
+            <span class="sub">15 Rounds (0, 2-13 Bids)</span>
           </div>
-          <div class="table-controls">
-            <button id="btnScrollToActive" class="btn-subtle" title="Jump to current active round">
-              🎯 Current
-            </button>
-            <button id="btnClearRound" class="btn-subtle" title="Clear scores in active round">
-              🧹 Clear
-            </button>
+          <div class="table-actions">
+            <button id="btnScrollToActive" class="btn-table-action" title="Jump to Current Round">Jump to Active</button>
+            <button id="btnClearRound" class="btn-table-action danger" title="Clear current round values">Clear Round</button>
           </div>
         </div>
 
         <div class="table-scroll-wrap scorecard-table-wrapper table-responsive" id="tableScrollContainer">
-          <table class="scoreboard-table" id="scoreboardTable">
+          <table class="scoreboard-matrix" id="scoreboardTable">
             <thead>
               <tr id="tableHeaderRow">
-                <th class="col-round">Round</th>
+                <th class="col-round sticky-col">Rnd</th>
                 <!-- 4 Active Player columns injected dynamically -->
               </tr>
             </thead>
@@ -169,7 +162,7 @@
             </tbody>
             <tfoot>
               <tr id="tableFooterRow">
-                <td class="col-round">TOTAL</td>
+                <td class="col-round sticky-col font-bold">Total</td>
                 <!-- 4 Player sums injected dynamically -->
               </tr>
             </tfoot>
@@ -177,15 +170,26 @@
         </div>
       </section>
 
-    </div> <!-- /viewScoreboard -->
+      <!-- Rules Quick Guide Pill -->
+      <div class="rules-pill-card">
+        <div class="rules-pill-title">Tarneeb Scoring Rules:</div>
+        <div class="rules-pill-content">
+          <span>• Bid 0: +5 (0 tricks), -5 (≥1)</span>
+          <span>• Bid 7: +14 (≥7), -14 (&lt;7)</span>
+          <span>• Bids 2-6, 8-13: +Bid if made, -Bid if failed</span>
+          <span>• Bid 1 is strictly prohibited</span>
+        </div>
+      </div>
 
-  </div> <!-- /app-container -->
+    </div> <!-- End viewScoreboard -->
+
+  </div> <!-- End app-container -->
 
   <!-- ==========================================================================
        MODAL: Pre-Round Bidding Phase
        ========================================================================== -->
   <div id="modalBidding" class="modal-overlay" role="dialog" aria-modal="true">
-    <div class="modal-content modal-bidding-content">
+    <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title">
           <span>🎯</span>
@@ -197,7 +201,7 @@
         <div class="phase-info-banner">
           <div class="phase-dealer-wrap">
             <span class="dealer-crown">🂠</span>
-            <span id="biddingModalDealer">Dealer: Ahmed</span>
+            <span id="biddingModalDealer">Dealer: Player 1</span>
           </div>
           <div class="phase-note">
             <span class="prohibit-badge">⚠️ Bid 1 is PROHIBITED</span>
@@ -235,7 +239,7 @@
           <button id="btnPrevRound" class="round-nav-btn" aria-label="Previous Round">&larr;</button>
           <div class="round-selector-title">
             <h3 id="scoringModalRoundNum">Round 1</h3>
-            <span id="scoringModalDealer">Dealer: Ahmed 🂠</span>
+            <span id="scoringModalDealer">Dealer: Player 1 🂠</span>
           </div>
           <button id="btnNextRound" class="round-nav-btn" aria-label="Next Round">&rarr;</button>
         </div>
@@ -251,15 +255,10 @@
         <div id="scoringPlayerList" class="scoring-player-list">
           <!-- Injected via JS -->
         </div>
-
-        <!-- Quick Numerical Numpad Pills for active focused player -->
-        <div class="scoring-help-note">
-          <span>Exact Rules: Bid 0 = <strong>±5</strong> • Bid 7 = <strong>±14</strong> • General = <strong>±Bid</strong></span>
-        </div>
       </div>
       <div class="modal-footer">
-        <button id="btnBackToBidding" class="btn-secondary" style="font-size: 0.82rem;">Edit Bids</button>
-        <button id="btnSaveScoring" class="btn-primary">Save & Next Round &rarr;</button>
+        <button id="btnSaveScoring" class="btn-primary">Confirm & Next Round &rarr;</button>
+        <button id="btnBackToBidding" class="btn-secondary">&larr; Edit Bids</button>
       </div>
     </div>
   </div>
@@ -386,7 +385,7 @@
       <div class="modal-body" style="align-items: center; gap: 14px; padding: 24px 16px;">
         <div style="font-size: 3.5rem; line-height: 1;">👑</div>
         <div>
-          <span style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px; color: #00D4FF; font-weight: 800;">Strawberry Tarneeb Champion</span>
+          <span style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px; color: #00D4FF; font-weight: 800;">Tarneeb Champion</span>
           <h2 id="victoryWinnerName" style="font-size: 1.8rem; font-weight: 900; color: #fff; margin-top: 4px;">Player Name</h2>
           <p id="victoryScore" style="font-size: 1.2rem; font-weight: 800; color: #00D4FF; margin-top: 2px;">Total Score: 0</p>
         </div>
@@ -408,6 +407,6 @@
   </div>
 
   <!-- Scoreboard Engine Script (100% Client-Side LocalStorage) -->
-  <script src="app.js"></script>
+  <script src="public-scoreboard.js"></script>
 </body>
 </html>
