@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#e11d48">
+  <meta name="theme-color" content="#101522">
   <meta name="description" content="Standalone 24/7 client-side digital scorecard for Strawberry Tarneeb with 4-player active seating, pre-round bidding, and custom Tarneeb scoring rules.">
   
   <!-- Apple Touch & PWA Meta -->
@@ -17,6 +17,7 @@
   
   <title>Strawberry Tarneeb — Standalone Scoreboard (24/7)</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="scoreboard.css">
 </head>
 <body>
 
@@ -70,7 +71,7 @@
               <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
             </svg>
           </button>
-          <button id="btnNewGame" class="btn-icon" style="color: #f43f5e;" title="New Match" aria-label="New Match">
+          <button id="btnNewGame" class="btn-icon" style="color: #E8174F;" title="New Match" aria-label="New Match">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
               <path d="M21 3v5h-5"></path>
@@ -95,7 +96,7 @@
         <div class="progress-info">
           <div class="progress-label">
             <span id="activeRoundLabel">Round 1 of 15</span>
-            <span id="dealerInfoTag" style="font-size: 0.72rem; color: #fbbf24; font-weight: normal;">• Dealer: Ahmed 🂠</span>
+            <span id="dealerInfoTag" style="font-size: 0.72rem; color: #F4C84A; font-weight: normal;">• Dealer: Ahmed 🂠</span>
           </div>
           <div class="progress-bar-wrap">
             <div id="roundProgressBar" class="progress-bar-fill"></div>
@@ -321,7 +322,7 @@
   <div id="modalNewGame" class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 class="modal-title" style="color: #f43f5e;">
+        <h3 class="modal-title" style="color: #E8174F;">
           <span>🔄</span>
           <span>Start New Match?</span>
         </h3>
@@ -332,16 +333,16 @@
           Are you sure you want to start a new 15-round match? You can save the current game to <strong>Match History</strong> before resetting scores.
         </p>
         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #cbd5e1; cursor: pointer; margin-top: 8px;">
-          <input type="checkbox" id="chkArchiveBeforeReset" checked style="width: 18px; height: 18px; accent-color: var(--crimson-600);">
+          <input type="checkbox" id="chkArchiveBeforeReset" checked style="width: 18px; height: 18px; accent-color: var(--mr-primary);">
           <span>Archive current match to Match History</span>
         </label>
         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #cbd5e1; cursor: pointer;">
-          <input type="checkbox" id="chkKeepActivePlayers" checked style="width: 18px; height: 18px; accent-color: var(--crimson-600);">
+          <input type="checkbox" id="chkKeepActivePlayers" checked style="width: 18px; height: 18px; accent-color: var(--mr-primary);">
           <span>Keep same 4 active players seated</span>
         </label>
       </div>
       <div class="modal-footer">
-        <button id="btnConfirmNewGame" class="btn-primary" style="background: linear-gradient(135deg, #e11d48, #9f1239);">Start New Match</button>
+        <button id="btnConfirmNewGame" class="btn-primary" style="background: linear-gradient(135deg, #E8174F, #be123c);">Start New Match</button>
         <button id="btnCancelNewGame" class="btn-secondary">Cancel</button>
       </div>
     </div>
@@ -377,7 +378,7 @@
   <div id="modalVictory" class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal-content" style="text-align: center;">
       <div class="modal-header" style="justify-content: center; position: relative;">
-        <h3 class="modal-title" style="color: #fde047;">
+        <h3 class="modal-title" style="color: #F4C84A;">
           <span>🎉 MATCH COMPLETED! 🎉</span>
         </h3>
         <button class="modal-close" id="btnCloseVictoryModal" style="position: absolute; right: 12px;">&times;</button>
@@ -385,9 +386,9 @@
       <div class="modal-body" style="align-items: center; gap: 14px; padding: 24px 16px;">
         <div style="font-size: 3.5rem; line-height: 1;">👑</div>
         <div>
-          <span style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px; color: #f59e0b; font-weight: 800;">Strawberry Tarneeb Champion</span>
+          <span style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px; color: #F4C84A; font-weight: 800;">Strawberry Tarneeb Champion</span>
           <h2 id="victoryWinnerName" style="font-size: 1.8rem; font-weight: 900; color: #fff; margin-top: 4px;">Player Name</h2>
-          <p id="victoryScore" style="font-size: 1.2rem; font-weight: 800; color: #fde047; margin-top: 2px;">Total Score: 0</p>
+          <p id="victoryScore" style="font-size: 1.2rem; font-weight: 800; color: #F4C84A; margin-top: 2px;">Total Score: 0</p>
         </div>
         <div id="victoryPodiumList" style="width: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
           <!-- Podiums -->
