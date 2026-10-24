@@ -34,11 +34,12 @@
       <!-- Top App Header -->
       <header class="app-header">
         <div class="brand-wrapper">
-          <div class="brand-icon">
-            <img src="icon.svg" alt="Tarneeb Scoreboard Logo">
+          <div class="brand-card-icon" title="Ace of Hearts" aria-label="Ace of Hearts">
+            <span class="card-ace-rank">A</span>
+            <span class="card-ace-suit">♥</span>
           </div>
           <div>
-            <h1 class="brand-title">Tarneeb <span class="brand-card-ace" style="color: #FF4D6D; margin-left: 2px;">A♥️</span></h1>
+            <h1 class="brand-title">Tarneeb</h1>
             <p class="brand-subtitle">
               <span>15 Rounds</span>
               <span>•</span>
@@ -103,11 +104,11 @@
           </div>
         </div>
         <div class="strip-actions">
-          <button id="btnTriggerBidding" class="btn-strip btn-bidding" title="Enter Bids for this Round">
+          <button id="btnTriggerBidding" class="btn btn-secondary btn-strip btn-bidding" title="Enter Bids for this Round">
             <span>🎯</span>
             <span>Bids</span>
           </button>
-          <button id="btnTriggerScoring" class="btn-strip btn-scoring" title="Score Tricks for this Round">
+          <button id="btnTriggerScoring" class="btn btn-primary btn-strip btn-scoring" title="Score Tricks for this Round">
             <span>⚡</span>
             <span>Score Tricks</span>
           </button>
@@ -144,13 +145,13 @@
             <span class="sub">15 Rounds (0, 2-13 Bids)</span>
           </div>
           <div class="table-actions">
-            <button id="btnScrollToActive" class="btn-table-action" title="Jump to Current Round">Jump to Active</button>
-            <button id="btnClearRound" class="btn-table-action danger" title="Clear current round values">Clear Round</button>
+            <button id="btnScrollToActive" class="btn btn-secondary btn-table-action" title="Jump to Current Round">Jump to Active</button>
+            <button id="btnClearRound" class="btn btn-secondary btn-table-action danger" title="Clear current round values">Clear Round</button>
           </div>
         </div>
 
         <div class="table-scroll-wrap scorecard-table-wrapper table-responsive" id="tableScrollContainer">
-          <table class="scoreboard-matrix" id="scoreboardTable">
+          <table class="scoreboard-matrix scoreboard-table" id="scoreboardTable">
             <thead>
               <tr id="tableHeaderRow">
                 <th class="col-round sticky-col">Rnd</th>
