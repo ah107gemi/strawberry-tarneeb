@@ -588,6 +588,7 @@ body::before {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .table-card-header {
@@ -636,12 +637,19 @@ body::before {
   border-color: var(--crimson-600);
 }
 
-.table-scroll-wrap {
-  width: 100%;
-  overflow-x: auto;
+.table-scroll-wrap,
+.scorecard-table-wrapper,
+.table-responsive,
+#tableScrollContainer,
+#scorecardTableContainer {
+  overflow-x: auto !important;
   -webkit-overflow-scrolling: touch;
+  max-width: 100% !important;
+  display: block;
+  width: 100%;
   max-height: 520px;
   overflow-y: auto;
+  min-width: 0;
 }
 
 .scoreboard-table {
