@@ -4509,3 +4509,120 @@ body::before {
   font-size: 0.85rem;
   font-weight: 800;
 }
+
+/* ==========================================================================
+   Feature 1 & Feature 2: 7-Card Redeal & Match Hold Overlay Styles
+   ========================================================================== */
+
+.header-hold-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #38bdf8 !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  padding: 2px 7px !important;
+  border-radius: 4px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  line-height: 1.2 !important;
+  transition: all 0.2s ease !important;
+}
+
+.header-hold-btn:hover {
+  background: rgba(56, 189, 248, 0.2) !important;
+  border-color: #38bdf8 !important;
+  color: #bae6fd !important;
+}
+
+.header-hold-btn.is-paused {
+  background: rgba(245, 158, 11, 0.25) !important;
+  border-color: #f59e0b !important;
+  color: #fef08a !important;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.4) !important;
+  animation: pulse-hold 1.5s infinite ease-in-out !important;
+}
+
+@keyframes pulse-hold {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.03); }
+}
+
+.match-hold-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 29, 0.88);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9990;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.match-hold-content {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 14px;
+  padding: 28px 24px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: modalPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hold-icon {
+  font-size: 2.8rem;
+  line-height: 1;
+}
+
+.hold-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #f8fafc;
+  letter-spacing: -0.02em;
+}
+
+.hold-message {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+.btn-resume-match {
+  margin-top: 6px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-resume-match:hover {
+  background: linear-gradient(135deg, #34d399, #059669);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+.modal-redeal-content {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 14px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+
