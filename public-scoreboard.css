@@ -378,7 +378,7 @@ body::before {
 
   color: var(--electric-blue) !important;
 
-  width: 38px !important;
+  width: 35px !important;
 
   height: 38px !important;
 
@@ -2550,7 +2550,7 @@ body::before {
 
   width: 40px !important;
 
-  height: 40px !important;
+  height: 38px !important;
 
   border-radius: 8px !important;
 
@@ -2712,16 +2712,16 @@ body::before {
 .scoring-player-controls {
   display: flex !important;
   align-items: center !important;
-  gap: 4px !important;
+  gap: 3px !important;
   flex-shrink: 0 !important;
 }
 
 /* Stepper Buttons (compact 38x40px to fit 4 buttons comfortably) */
 .btn-step {
-  min-width: 38px !important;
-  min-height: 40px !important;
-  width: 38px !important;
-  height: 40px !important;
+  min-width: 35px !important;
+  min-height: 38px !important;
+  width: 35px !important;
+  height: 38px !important;
   background: var(--surface-card) !important;
   border: 1.5px solid var(--border-strong) !important;
   border-radius: 8px !important;
@@ -2749,6 +2749,40 @@ body::before {
   transform: scale(0.92) !important;
 }
 
+/* Persistent Penalty (-5) Skull Button - Graphite & Electric Blue */
+.btn-step.btn-penalty {
+  background: rgba(255, 77, 79, 0.08) !important;
+  border-color: rgba(255, 77, 79, 0.35) !important;
+  color: #ff7875 !important;
+  font-size: 1.05rem !important;
+}
+
+.btn-step.btn-penalty:hover {
+  background: rgba(255, 77, 79, 0.18) !important;
+  border-color: #ff4d4f !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 8px rgba(255, 77, 79, 0.45) !important;
+}
+
+.btn-step.btn-penalty.active {
+  background: rgba(255, 77, 79, 0.28) !important;
+  border-color: #ff4d4f !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 12px rgba(255, 77, 79, 0.75), inset 0 0 6px rgba(255, 77, 79, 0.35) !important;
+}
+
+.btn-step.btn-penalty:active {
+  transform: scale(0.92) !important;
+}
+
+.penalty-tag {
+  display: inline-block !important;
+  font-size: 0.75rem !important;
+  margin-left: 2px !important;
+  vertical-align: middle !important;
+  filter: drop-shadow(0 0 4px rgba(255, 77, 79, 0.8)) !important;
+}
+
 /* Quick-Fill Bid Button (Green Tick) - Graphite & Electric Blue */
 .btn-step.btn-quick-bid {
   background: rgba(16, 185, 129, 0.12) !important;
@@ -2774,8 +2808,8 @@ body::before {
 }
 
 .tricks-input-box {
-  width: 38px !important;
-  height: 40px !important;
+  width: 35px !important;
+  height: 38px !important;
   background: var(--bg-main) !important;
   border: 1.5px solid var(--border-strong) !important;
   border-radius: 8px !important;
@@ -3563,7 +3597,7 @@ body::before {
   background: #22252E !important;
   border: 1px solid #2B303C !important;
   color: #00D4FF !important;
-  width: 38px !important;
+  width: 35px !important;
   height: 38px !important;
   border-radius: 8px !important;
   display: flex !important;
