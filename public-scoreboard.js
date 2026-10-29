@@ -90,6 +90,8 @@
 
       scores: {},  // { [playerId]: number | null }
 
+      penalties: {}, // { [playerId]: boolean }
+
       completed: false
 
     })),
@@ -380,6 +382,8 @@
 
               scores: r.scores || {},
 
+              penalties: r.penalties || {},
+
               completed: !!r.completed
 
             };
@@ -598,7 +602,9 @@
 
    */
 
-  function calculateRoundScore(bid, tricks, roundIndex = null) {
+  function calculateRoundScore(bid, tricks, roundIndex = null, hasPenalty = false) {
+
+    let standardScore = null;
 
     if (roundIndex === 0) {
 
@@ -608,45 +614,47 @@
 
       }
 
-      return Number(tricks); // Get what you take: +1 pt per trick
+      standardScore = Number(tricks); // Get what you take: +1 pt per trick
+
+    } else {
+
+      if (bid === null || tricks === null || isNaN(bid) || isNaN(tricks)) {
+
+        return null;
+
+      }
+
+      bid = Number(bid);
+
+      tricks = Number(tricks);
+
+
+
+      // Bid 0 special rule
+
+      if (bid === 0) {
+
+        standardScore = tricks === 0 ? 5 : -5;
+
+      } else if (bid === 7) {
+
+        // Bid 7 special rule
+
+        standardScore = tricks >= 7 ? 14 : -14;
+
+      } else {
+
+        // General Bids (2-6, 8-13)
+
+        standardScore = tricks >= bid ? bid : -bid;
+
+      }
 
     }
 
-    if (bid === null || tricks === null || isNaN(bid) || isNaN(tricks)) {
+    if (standardScore === null) return null;
 
-      return null;
-
-    }
-
-    bid = Number(bid);
-
-    tricks = Number(tricks);
-
-
-
-    // Bid 0 special rule
-
-    if (bid === 0) {
-
-      return tricks === 0 ? 5 : -5;
-
-    }
-
-
-
-    // Bid 7 special rule
-
-    if (bid === 7) {
-
-      return tricks >= 7 ? 14 : -14;
-
-    }
-
-
-
-    // General Bids (2-6, 8-13)
-
-    return tricks >= bid ? bid : -bid;
+    return hasPenalty ? standardScore - 5 : standardScore;
 
   }
 
@@ -1020,6 +1028,8 @@
 
         const score = roundObj.scores[player.id];
 
+        const hasPenalty = Boolean(roundObj.penalties && roundObj.penalties[player.id]);
+
 
 
         let cellContent = '';
@@ -1032,9 +1042,9 @@
 
             <div class="table-score-cell">
 
-              <span class="cell-score-num ${isPos ? 'pos' : 'neg'} num">${isPos ? '+' : ''}${score}</span>
+              <span class="cell-score-num ${isPos ? 'pos' : 'neg'} num">${isPos ? '+' : ''}${score}${hasPenalty ? ' <span class="penalty-tag" title="-5 Penalty Applied">💀</span>' : ''}</span>
 
-              <span class="cell-sub-detail">Bid ${bid ?? '-'} • ${tricks ?? 0}(eat)</span>
+              <span class="cell-sub-detail">Bid ${bid ?? '-'} • ${tricks ?? 0}(eat)${hasPenalty ? ' • -5' : ''}</span>
 
             </div>
 
@@ -1179,6 +1189,8 @@
         tricks: {},
 
         scores: {},
+
+        penalties: {},
 
         completed: false
 
@@ -1480,13 +1492,17 @@
 
     const isRound1 = currentModalRound === 0;
 
+    if (!roundObj.penalties) roundObj.penalties = {};
+
     actives.forEach((player) => {
 
       const bid = roundObj.bids[player.id];
 
       const tricks = roundObj.tricks[player.id] ?? 0;
 
-      const score = calculateRoundScore(bid, tricks, currentModalRound);
+      const hasPenalty = Boolean(roundObj.penalties[player.id]);
+
+      const score = calculateRoundScore(bid, tricks, currentModalRound, hasPenalty);
 
 
 
@@ -1509,6 +1525,7 @@
 
 
           <div class="scoring-player-controls">
+            <button class="btn-step btn-penalty ${hasPenalty ? 'active' : ''}" data-action="penalty" data-player-id="${player.id}" title="${hasPenalty ? 'Active -5 Penalty (Click to remove)' : 'Apply -5 Penalty'}" aria-label="Toggle -5 Penalty">💀</button>
             <button class="btn-step" data-action="minus" data-player-id="${player.id}">-</button>
             <input 
               type="number" 
@@ -1613,6 +1630,17 @@
             ? Math.min(Math.max(0, parseInt(bid, 10)), 13)
             : 0;
         }
+        if (action === 'penalty') {
+          triggerHaptic(15);
+          const roundObj = state.rounds[currentModalRound];
+          if (!roundObj.penalties) roundObj.penalties = {};
+          roundObj.penalties[pId] = !roundObj.penalties[pId];
+          const isNowActive = Boolean(roundObj.penalties[pId]);
+          this.classList.toggle('active', isNowActive);
+          this.title = isNowActive ? 'Active -5 Penalty (Click to remove)' : 'Apply -5 Penalty';
+          recalculateAndSaveModalScores();
+          return;
+        }
 
 
         state.rounds[currentModalRound].tricks[pId] = current;
@@ -1639,6 +1667,8 @@
 
     const roundObj = state.rounds[currentModalRound];
 
+    if (!roundObj.penalties) roundObj.penalties = {};
+
 
 
     actives.forEach((player) => {
@@ -1647,7 +1677,9 @@
 
       const tricks = roundObj.tricks[player.id] ?? 0;
 
-      const score = calculateRoundScore(bid, tricks, currentModalRound);
+      const hasPenalty = Boolean(roundObj.penalties[player.id]);
+
+      const score = calculateRoundScore(bid, tricks, currentModalRound, hasPenalty);
 
 
 
@@ -2370,6 +2402,8 @@
       tricks: {},
 
       scores: {},
+
+      penalties: {},
 
       completed: false
 
