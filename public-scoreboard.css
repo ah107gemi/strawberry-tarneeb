@@ -378,9 +378,9 @@ body::before {
 
   color: var(--electric-blue) !important;
 
-  width: 35px !important;
+  width: 38px !important;
 
-  height: 38px !important;
+  height: 40px !important;
 
   border-radius: 10px !important;
 
@@ -1830,7 +1830,7 @@ body::before {
 
   width: 100% !important;
 
-  min-height: 38px !important;
+  min-height: 40px !important;
 
   padding: 2px !important;
 
@@ -2550,7 +2550,7 @@ body::before {
 
   width: 40px !important;
 
-  height: 38px !important;
+  height: 40px !important;
 
   border-radius: 8px !important;
 
@@ -2684,10 +2684,17 @@ body::before {
 }
 
 .scoring-player-info {
-  min-width: 68px !important;
-  max-width: 90px !important;
+  min-width: 80px !important;
+  max-width: 115px !important;
   flex: 1 1 auto !important;
   gap: 2px !important;
+}
+
+.scoring-player-name-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  min-width: 0 !important;
 }
 
 .scoring-player-name {
@@ -2712,16 +2719,16 @@ body::before {
 .scoring-player-controls {
   display: flex !important;
   align-items: center !important;
-  gap: 3px !important;
+  gap: 4px !important;
   flex-shrink: 0 !important;
 }
 
 /* Stepper Buttons (compact 38x40px to fit 4 buttons comfortably) */
 .btn-step {
-  min-width: 35px !important;
-  min-height: 38px !important;
-  width: 35px !important;
-  height: 38px !important;
+  min-width: 38px !important;
+  min-height: 40px !important;
+  width: 38px !important;
+  height: 40px !important;
   background: var(--surface-card) !important;
   border: 1.5px solid var(--border-strong) !important;
   border-radius: 8px !important;
@@ -2749,30 +2756,43 @@ body::before {
   transform: scale(0.92) !important;
 }
 
-/* Persistent Penalty (-5) Skull Button - Graphite & Electric Blue */
-.btn-step.btn-penalty {
-  background: rgba(255, 77, 79, 0.08) !important;
-  border-color: rgba(255, 77, 79, 0.35) !important;
-  color: #ff7875 !important;
-  font-size: 1.05rem !important;
+/* Compact Skull Button beside Player Name - Graphite & Electric Blue */
+.btn-penalty {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 25px !important;
+  height: 25px !important;
+  min-width: 25px !important;
+  min-height: 25px !important;
+  padding: 0 !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 6px !important;
+  font-size: 0.85rem !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  touch-action: manipulation !important;
+  user-select: none !important;
+  transition: all 0.15s ease !important;
+  flex-shrink: 0 !important;
 }
 
-.btn-step.btn-penalty:hover {
-  background: rgba(255, 77, 79, 0.18) !important;
-  border-color: #ff4d4f !important;
-  color: #ffffff !important;
-  box-shadow: 0 0 8px rgba(255, 77, 79, 0.45) !important;
+.btn-penalty:hover {
+  background: rgba(255, 77, 79, 0.12) !important;
+  border-color: rgba(255, 77, 79, 0.4) !important;
 }
 
-.btn-step.btn-penalty.active {
-  background: rgba(255, 77, 79, 0.28) !important;
-  border-color: #ff4d4f !important;
-  color: #ffffff !important;
-  box-shadow: 0 0 12px rgba(255, 77, 79, 0.75), inset 0 0 6px rgba(255, 77, 79, 0.35) !important;
-}
-
-.btn-step.btn-penalty:active {
+.btn-penalty:active {
   transform: scale(0.92) !important;
+}
+
+/* Active Penalty State: Distinct Red Highlight */
+.btn-penalty.active {
+  border: 1.5px solid #ff4d4f !important;
+  background: rgba(255, 77, 79, 0.2) !important;
+  box-shadow: 0 0 8px rgba(255, 77, 79, 0.4) !important;
+  color: #ffffff !important;
 }
 
 .penalty-tag {
@@ -2808,8 +2828,8 @@ body::before {
 }
 
 .tricks-input-box {
-  width: 35px !important;
-  height: 38px !important;
+  width: 38px !important;
+  height: 40px !important;
   background: var(--bg-main) !important;
   border: 1.5px solid var(--border-strong) !important;
   border-radius: 8px !important;
@@ -3060,7 +3080,7 @@ body::before {
 
   color: var(--text-primary) !important;
 
-  min-height: 38px !important;
+  min-height: 40px !important;
 
   border-radius: 8px !important;
 
@@ -3597,8 +3617,8 @@ body::before {
   background: #22252E !important;
   border: 1px solid #2B303C !important;
   color: #00D4FF !important;
-  width: 35px !important;
-  height: 38px !important;
+  width: 38px !important;
+  height: 40px !important;
   border-radius: 8px !important;
   display: flex !important;
   align-items: center !important;
