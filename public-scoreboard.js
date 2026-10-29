@@ -1512,7 +1512,13 @@
 
           <div class="scoring-player-info">
 
-            <span class="scoring-player-name">${escapeHtml(player.name)}</span>
+            <div class="scoring-player-name-row">
+
+              <span class="scoring-player-name" title="${escapeHtml(player.name)}">${escapeHtml(player.name)}</span>
+
+              <button class="btn-penalty ${hasPenalty ? 'active' : ''}" data-action="penalty" data-player-id="${player.id}" title="${hasPenalty ? 'Active -5 Penalty (Click to remove)' : 'Apply -5 Penalty'}" aria-label="Toggle -5 Penalty">💀</button>
+
+            </div>
 
             <span class="scoring-bid-badge num">
 
@@ -1525,7 +1531,6 @@
 
 
           <div class="scoring-player-controls">
-            <button class="btn-step btn-penalty ${hasPenalty ? 'active' : ''}" data-action="penalty" data-player-id="${player.id}" title="${hasPenalty ? 'Active -5 Penalty (Click to remove)' : 'Apply -5 Penalty'}" aria-label="Toggle -5 Penalty">💀</button>
             <button class="btn-step" data-action="minus" data-player-id="${player.id}">-</button>
             <input 
               type="number" 
@@ -1604,6 +1609,23 @@
 
 
 
+    const penaltyBtns = scoringPlayerList.querySelectorAll('.btn-penalty');
+    penaltyBtns.forEach((btn) => {
+      btn.addEventListener('click', function () {
+        triggerHaptic(15);
+        const pId = this.dataset.playerId;
+        const roundObj = state.rounds[currentModalRound];
+        if (!roundObj.penalties) roundObj.penalties = {};
+        roundObj.penalties[pId] = !roundObj.penalties[pId];
+
+        const isNowActive = Boolean(roundObj.penalties[pId]);
+        this.classList.toggle('active', isNowActive);
+        this.title = isNowActive ? 'Active -5 Penalty (Click to remove)' : 'Apply -5 Penalty';
+
+        recalculateAndSaveModalScores();
+      });
+    });
+
     const stepBtns = scoringPlayerList.querySelectorAll('.btn-step');
 
     stepBtns.forEach((btn) => {
@@ -1629,17 +1651,6 @@
           current = (bid !== null && bid !== undefined && !isNaN(bid))
             ? Math.min(Math.max(0, parseInt(bid, 10)), 13)
             : 0;
-        }
-        if (action === 'penalty') {
-          triggerHaptic(15);
-          const roundObj = state.rounds[currentModalRound];
-          if (!roundObj.penalties) roundObj.penalties = {};
-          roundObj.penalties[pId] = !roundObj.penalties[pId];
-          const isNowActive = Boolean(roundObj.penalties[pId]);
-          this.classList.toggle('active', isNowActive);
-          this.title = isNowActive ? 'Active -5 Penalty (Click to remove)' : 'Apply -5 Penalty';
-          recalculateAndSaveModalScores();
-          return;
         }
 
 
