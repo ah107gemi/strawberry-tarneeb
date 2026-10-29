@@ -74,20 +74,31 @@ class TarneebOnlineGame {
     if (this._visibilityHandlerAttached) return;
     this._visibilityHandlerAttached = true;
 
+    const triggerReconnect = () => {
+      const sessionId = sessionStorage.getItem('tarneeb_session_id') || this.myId;
+      const roomCode = sessionStorage.getItem('tarneeb_room_code') || 'default';
+      if (!sessionId) return;
+
+      if (!this.ws || this.ws.readyState === WebSocket.CLOSED || this.ws.readyState === WebSocket.CLOSING) {
+        console.log('[Tarneeb] Reconnecting WebSocket session…');
+        this.connect(sessionId);
+      } else if (this.ws.readyState === WebSocket.OPEN) {
+        this.send('reconnect', { session_id: sessionId, player_id: sessionId, room_code: roomCode });
+      }
+    };
+
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && this.myId) {
-        if (!this.ws || this.ws.readyState === WebSocket.CLOSED || this.ws.readyState === WebSocket.CLOSING) {
-          console.log('[Tarneeb] Tab visible again and socket disconnected, reconnecting…');
-          this.connect(this.myId);
-        }
+      if (document.visibilityState === 'visible') {
+        triggerReconnect();
       }
     });
 
+    window.addEventListener('focus', () => {
+      triggerReconnect();
+    });
+
     window.addEventListener('online', () => {
-      if (this.myId && (!this.ws || this.ws.readyState !== WebSocket.OPEN)) {
-        console.log('[Tarneeb] Network online, reconnecting…');
-        this.connect(this.myId);
-      }
+      triggerReconnect();
     });
   }
 
@@ -222,12 +233,17 @@ class TarneebOnlineGame {
     if (!this.myName) return;
     const isSpec = (this.myRole === 'spectator');
     const roleToSend = isSpec ? 'spectator' : 'player';
+    const sessionId = sessionStorage.getItem('tarneeb_session_id') || this.myId;
+    const roomCode = sessionStorage.getItem('tarneeb_room_code') || 'default';
     this.send('JOIN', {
       name: this.myName,
       roster_pick: this.myName,
       role: roleToSend,
       is_spectator: isSpec,
-      as_spectator: isSpec
+      as_spectator: isSpec,
+      session_id: sessionId,
+      player_id: sessionId,
+      room_code: roomCode
     });
   }
 
@@ -258,6 +274,12 @@ class TarneebOnlineGame {
           }
         }
 
+        // Feature 1: 7-Card Non-Trump Redeal Check
+        this.checkAndPromptRedeal(data);
+
+        // Feature 2: Update Hold / Pause UI
+        this.updateHoldUI(data.is_paused, data.paused_by_name);
+
         this.cleanupStuckPlayVisuals();
         this.isSubmittingPlay = false;
         this.isSubmittingCard = false;
@@ -276,6 +298,30 @@ class TarneebOnlineGame {
 
       case 'dealer_updated':
         this.showToast(`🂠 Dealer set to ${data.dealer_name}`, 'info');
+        break;
+
+      case 'redeal_declared':
+        this.closeRedealPrompt();
+        this._lastRedealHandSignature = null;
+        this.showToast(data.message || `🔄 ${data.player_name || 'A player'} declared a redeal. Re-shuffling...`, 'info');
+        break;
+
+      case 'game_paused':
+        this.updateHoldUI(true, data.paused_by);
+        this.showToast(data.message || `⏸️ Match paused by ${data.paused_by || 'player'}`, 'info');
+        break;
+
+      case 'game_resumed':
+        this.updateHoldUI(false);
+        this.showToast(data.message || `▶️ Match resumed by ${data.resumed_by || 'player'}`, 'info');
+        break;
+
+      case 'player_disconnected':
+        this.showToast(data.message || `⚠️ ${data.name || 'Player'} disconnected (reconnecting...)`, 'warning');
+        break;
+
+      case 'player_reconnected':
+        this.showToast(data.message || `🟢 ${data.name || 'Player'} reconnected!`, 'info');
         break;
 
       case 'player_joined':
@@ -1501,6 +1547,131 @@ class TarneebOnlineGame {
     if (modal) modal.style.display = 'none';
   }
 
+  // =========================================================================
+  // Feature 1: 7-Card Non-Trump Redeal Rule
+  // =========================================================================
+  checkAndPromptRedeal(data) {
+    if (!data || !data.my_hand || data.my_hand.length !== 13 || !data.round || data.round === 0) {
+      return;
+    }
+    // Only prompt before trick play starts
+    if ((data.trick_cards && data.trick_cards.length > 0) || (data.phase !== 'bidding' && data.phase !== 'playing')) {
+      return;
+    }
+    if (data.phase === 'playing' && data.round !== 1) {
+      return;
+    }
+
+    const me = data.players?.find(p => p.id === this.myId);
+    if (!me || me.is_spectator || me.role !== 'player') {
+      return;
+    }
+
+    const handSignature = data.round + ':' + data.my_hand.slice().sort().join(',');
+    if (this._lastRedealHandSignature === handSignature) {
+      return;
+    }
+
+    const suitCounts = { S: 0, C: 0, D: 0, H: 0 };
+    for (const card of data.my_hand) {
+      const parsed = this.parseCard(card);
+      if (parsed && suitCounts[parsed.suit] !== undefined) {
+        suitCounts[parsed.suit]++;
+      }
+    }
+
+    const trumpSuit = data.trump_suit || 'H';
+    const SUIT_NAMES = { S: 'Spades ♠', C: 'Clubs ♣', D: 'Diamonds ♦' };
+
+    let qualifyingSuitCode = null;
+    let qualifyingCount = 0;
+    for (const [sCode, sName] of Object.entries(SUIT_NAMES)) {
+      if (sCode !== trumpSuit && suitCounts[sCode] >= 7) {
+        qualifyingSuitCode = sCode;
+        qualifyingCount = suitCounts[sCode];
+        break;
+      }
+    }
+
+    if (qualifyingSuitCode) {
+      this._lastRedealHandSignature = handSignature;
+      this.showRedealPrompt(SUIT_NAMES[qualifyingSuitCode], qualifyingCount);
+    }
+  }
+
+  showRedealPrompt(suitName, count) {
+    const modal = document.getElementById('modalRedealPrompt');
+    const msg = document.getElementById('redealPromptMessage');
+    if (msg) {
+      msg.innerHTML = `You hold <strong>${count} cards</strong> of <span style="color: #60a5fa; font-weight: 800;">${suitName}</span>.<br>You have the right to request a redeal.`;
+    }
+    if (modal) {
+      modal.style.display = 'flex';
+      modal.classList.add('open');
+    }
+  }
+
+  closeRedealPrompt() {
+    const modal = document.getElementById('modalRedealPrompt');
+    if (modal) {
+      modal.style.display = 'none';
+      modal.classList.remove('open');
+    }
+  }
+
+  requestRedeal() {
+    this.closeRedealPrompt();
+    this.send('request_redeal', {});
+    this.showToast('🔄 Requesting redeal…', 'info');
+  }
+
+  keepHand() {
+    this.closeRedealPrompt();
+    this.showToast('Continuing with current hand 👍', 'info');
+  }
+
+  // =========================================================================
+  // Feature 2: Temporary Hold / Pause
+  // =========================================================================
+  toggleHold() {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.send('toggle_hold', {});
+    } else {
+      this.showToast('⚠️ Connecting to server…', 'warning');
+    }
+  }
+
+  updateHoldUI(isPaused, pausedByName) {
+    const holdBtn = document.getElementById('btnHoldResume');
+    const holdOverlay = document.getElementById('overlayMatchHold');
+    const holdMsg = document.getElementById('holdOverlayMessage');
+
+    if (isPaused) {
+      if (holdBtn) {
+        holdBtn.textContent = '▶️ Resume';
+        holdBtn.classList.add('is-paused');
+        holdBtn.title = 'Click to Resume Match';
+      }
+      if (holdOverlay) {
+        holdOverlay.style.display = 'flex';
+      }
+      if (holdMsg) {
+        holdMsg.textContent = pausedByName
+          ? `Match Paused by ${pausedByName} — Waiting to resume...`
+          : 'Match Paused — Waiting to resume...';
+      }
+    } else {
+      if (holdBtn) {
+        holdBtn.textContent = '⏸️ Hold';
+        holdBtn.classList.remove('is-paused');
+        holdBtn.title = 'Hold / Step Away';
+      }
+      if (holdOverlay) {
+        holdOverlay.style.display = 'none';
+      }
+    }
+  }
+
   showMatchHistoryModal() {
     const modal = document.getElementById('modalMatchHistory');
     const content = document.getElementById('matchHistoryContent');
@@ -1645,15 +1816,21 @@ let userActivelyIdentified = false;
 function initOnlineGame() {
   setupOnlineUIEvents();
 
-  // DO NOT auto-join from cached storage on page load!
-  // Always check if the user has actively chosen their role/name for the current session.
+  const savedSessionName = sessionStorage.getItem('tarneeb_session_name');
+  const savedSessionRole = sessionStorage.getItem('tarneeb_session_role') || 'player';
+  const savedSessionId = sessionStorage.getItem('tarneeb_session_id');
+
+  if (savedSessionName && savedSessionId) {
+    userActivelyIdentified = true;
+    connectWithIdentity(savedSessionName, savedSessionRole, savedSessionId);
+    return;
+  }
+
   if (userActivelyIdentified && window.tarneebGame && window.tarneebGame.myName) {
-    // User has already actively identified in current session
     if (!window.tarneebGame.ws || window.tarneebGame.ws.readyState !== WebSocket.OPEN) {
       connectWithIdentity(window.tarneebGame.myName, window.tarneebGame.myRole || 'player');
     }
   } else {
-    // If not actively identified in this session, ALWAYS display the "Who are you?" modal!
     openIdentityModal();
   }
 }
@@ -1719,6 +1896,9 @@ function logoutAndSwitchName() {
   userActivelyIdentified = false;
   sessionStorage.removeItem('tarneeb_session_name');
   sessionStorage.removeItem('tarneeb_session_role');
+  sessionStorage.removeItem('tarneeb_session_id');
+  sessionStorage.removeItem('tarneeb_player_id');
+  sessionStorage.removeItem('tarneeb_room_code');
 
   if (window.tarneebGame) {
     if (window.tarneebGame.ws && window.tarneebGame.ws.readyState === WebSocket.OPEN) {
@@ -1767,17 +1947,24 @@ function handleJoinSubmit(role) {
   connectWithIdentity(chosenName, actualRole);
 }
 
-function connectWithIdentity(name, role) {
+function connectWithIdentity(name, role, explicitToken) {
   const actualRole = (role === 'spectator') ? 'spectator' : 'player';
   window.tarneebGame.myName = name;
   window.tarneebGame.myRole = actualRole;
 
-  let token = localStorage.getItem('tarneeb_token_' + name.toLowerCase());
+  let token = explicitToken || localStorage.getItem('tarneeb_token_' + name.toLowerCase());
   if (!token) {
     token = btoa(name + ':' + Math.random().toString(36).substring(2, 9));
     localStorage.setItem('tarneeb_token_' + name.toLowerCase(), token);
   }
   window.tarneebGame.myId = token;
+
+  // Persist identity, role, session_id, player_id, room_code in sessionStorage
+  sessionStorage.setItem('tarneeb_session_name', name);
+  sessionStorage.setItem('tarneeb_session_role', actualRole);
+  sessionStorage.setItem('tarneeb_session_id', token);
+  sessionStorage.setItem('tarneeb_player_id', token);
+  sessionStorage.setItem('tarneeb_room_code', 'default');
 
   const onlineTable = document.getElementById('onlineGameTable');
   if (onlineTable) onlineTable.style.display = 'flex';
@@ -1908,6 +2095,25 @@ function setupOnlineUIEvents() {
       window.tarneebGame?.closeMatchEndedModal();
     };
   }
+
+  // Hold / Step Away Button in header & Resume Button in overlay
+  document.getElementById('btnHoldResume')?.addEventListener('click', () => {
+    window.tarneebGame?.toggleHold();
+  });
+  document.getElementById('btnResumeMatch')?.addEventListener('click', () => {
+    window.tarneebGame?.toggleHold();
+  });
+
+  // Feature 1: Redeal Modal buttons
+  document.getElementById('btnRequestRedeal')?.addEventListener('click', () => {
+    window.tarneebGame?.requestRedeal();
+  });
+  document.getElementById('btnKeepHand')?.addEventListener('click', () => {
+    window.tarneebGame?.keepHand();
+  });
+  document.getElementById('btnCloseRedealPrompt')?.addEventListener('click', () => {
+    window.tarneebGame?.keepHand();
+  });
 
   // Dealer change button (rotates dealer in order) & badge (modal picker)
   const changeDealerBtn = document.getElementById('btnChangeDealer');
