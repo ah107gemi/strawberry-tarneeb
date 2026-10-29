@@ -46,7 +46,7 @@ RANK_ORDER = {r: i for i, r in enumerate(RANKS)}  # 2=0 … A=12
 TRUMP_SUIT = "H"
 TOTAL_ROUNDS = 15
 MAX_PLAYERS = 4
-RECONNECT_TIMEOUT = 60  # seconds
+RECONNECT_TIMEOUT = 180  # seconds (3-minute grace period for temporary hold/call/text)
 
 ROSTER = ["Ahmed", "Hosam", "Shiba", "Furjani", "Naas", "Zentani"]
 
@@ -190,6 +190,9 @@ class GameState:
 
         self.bids: Dict[str, int] = {}         # token → bid amount
         self.tricks_taken: Dict[str, int] = {} # token → tricks this round
+        self.is_paused: bool = False           # Match temporary hold status
+        self.paused_by_name: Optional[str] = None
+        self.paused_by_token: Optional[str] = None
         self.trick_cards: List[Dict] = []      # [{player_id, card}, ...]
         self.led_suit: Optional[str] = None    # suit led in current trick
 
@@ -294,6 +297,9 @@ class GameState:
             "trump_suit": self.trump_suit,
             "players": [p.to_dict() for p in self.players.values()],
             "history": list(self.round_history),
+            "is_paused": self.is_paused,
+            "paused_by_name": self.paused_by_name,
+            "paused_by_token": self.paused_by_token,
         }
         # Attach private hand only for the requesting player
         if for_token and for_token in self.players:
@@ -327,8 +333,19 @@ class ConnectionManager:
         if player:
             # Reconnect
             player.ws = ws
+            was_disconnected = player.disconnected_at is not None
             player.disconnected_at = None
             log.info("Reconnected: %s (%s)", player.name, token)
+            if was_disconnected and player.seat is not None:
+                await self.broadcast({
+                    "type": "player_reconnected",
+                    "data": {
+                        "id": player.token,
+                        "name": player.name,
+                        "seat": player.seat,
+                        "message": f"{player.name} reconnected!"
+                    }
+                }, exclude=player.token)
         else:
             # New connection — seat assignment happens on 'join' message
             player = Player(token=token, name="", seat=None, role="spectator")
@@ -426,6 +443,13 @@ class ConnectionManager:
             "claim_remaining_tricks": self._handle_claim_tricks,
             "restart_game": self._handle_restart_game,
             "restart_match": self._handle_restart_game,
+            "request_redeal": self._handle_request_redeal,
+            "redeal": self._handle_request_redeal,
+            "toggle_hold": self._handle_toggle_hold,
+            "pause_game": self._handle_toggle_hold,
+            "resume_game": self._handle_toggle_hold,
+            "hold_game": self._handle_toggle_hold,
+            "reconnect": self._handle_reconnect,
         }
 
         handler = handlers.get(mtype)
@@ -662,6 +686,9 @@ class ConnectionManager:
         game.round = 0
         game.dealer_seat = 0
         game.current_turn_seat = 0
+        game.is_paused = False
+        game.paused_by_name = None
+        game.paused_by_token = None
         game.bids.clear()
         game.tricks_taken.clear()
         game.trick_cards.clear()
@@ -817,6 +844,9 @@ class ConnectionManager:
 
     async def _handle_bid(self, token: str, data: Dict):
         game = self.game
+        if game.is_paused:
+            await self.send_to(token, {"type": "error", "data": {"message": "Match is on hold. Tap Resume to continue."}})
+            return
 
         if game.phase != "bidding":
             await self.send_to(token, {"type": "error", "data": {"message": "Not in bidding phase."}})
@@ -861,6 +891,9 @@ class ConnectionManager:
 
     async def _handle_play_card(self, token: str, data: Dict):
         game = self.game
+        if game.is_paused:
+            await self.send_to(token, {"type": "error", "data": {"message": "Match is on hold. Tap Resume to continue."}})
+            return
 
         if game.phase != "playing":
             await self.send_to(token, {"type": "error", "data": {"message": "Not in playing phase."}})
@@ -1013,6 +1046,9 @@ class ConnectionManager:
 
         # Reset cumulative and per-round match statistics
         game.round = 0
+        game.is_paused = False
+        game.paused_by_name = None
+        game.paused_by_token = None
         game.scores.clear()
         game.round_scores.clear()
         game.team_scores = {1: 0, 2: 0}
@@ -1123,6 +1159,32 @@ class ConnectionManager:
             game.phase = "bidding"
             first_bid_seat = game.player_right_of(game.dealer_seat)
             game.bid_order = game.seated_tokens_in_order(first_bid_seat)
+
+        # Bot 7-card non-trump redeal check (80% redeal chance if weak/random)
+        for tok in game.seats:
+            if tok and tok in game.players:
+                p = game.players[tok]
+                if getattr(p, "is_bot", False):
+                    suit_counts = defaultdict(int)
+                    for c in p.hand:
+                        suit_counts[card_suit(c)] += 1
+                    for s_code, s_name in [("S", "Spades ♠"), ("C", "Clubs ♣"), ("D", "Diamonds ♦")]:
+                        if s_code != game.trump_suit and suit_counts[s_code] >= 7:
+                            if random.random() < 0.8:
+                                log.info("Bot %s held 7+ of %s and declared redeal", p.name, s_name)
+                                await asyncio.sleep(0.3)
+                                await self.broadcast({
+                                    "type": "redeal_declared",
+                                    "data": {
+                                        "player_id": tok,
+                                        "player_name": p.name,
+                                        "suit": s_name,
+                                        "count": suit_counts[s_code],
+                                        "message": f"{p.name} held {suit_counts[s_code]}+ cards of {s_name} and declared a redeal. Re-shuffling..."
+                                    }
+                                })
+                                await self._redeal_current_round()
+                                return
 
         await self.broadcast_game_state()
         self._trigger_bot_turn_if_needed()
@@ -1318,6 +1380,179 @@ class ConnectionManager:
     # Reconnect cleanup
     # ------------------------------------------------------------------
 
+
+    # ------------------------------------------------------------------
+    # Feature 1: 7-Card Non-Trump Redeal Rule
+    # ------------------------------------------------------------------
+
+    async def _handle_request_redeal(self, token: str, data: Dict):
+        game = self.game
+        player = game.players.get(token)
+        if not player or not player.hand or len(player.hand) != 13:
+            await self.send_to(token, {"type": "error", "data": {"message": "Invalid redeal request: Hand must contain 13 cards."}})
+            return
+
+        # Check phase: can only redeal right after deal before trick play starts
+        if len(game.trick_cards) > 0 or (game.round > 1 and game.phase != "bidding") or (game.round == 1 and game.phase != "playing"):
+            await self.send_to(token, {"type": "error", "data": {"message": "Redeal can only be declared before trick play begins."}})
+            return
+
+        # Count cards by suit
+        suit_counts = defaultdict(int)
+        for c in player.hand:
+            suit_counts[card_suit(c)] += 1
+
+        SUIT_NAMES = {"S": "Spades ♠", "C": "Clubs ♣", "D": "Diamonds ♦"}
+        qualifying_suit = None
+        qualifying_count = 0
+        for s_code, s_name in SUIT_NAMES.items():
+            if s_code != game.trump_suit and suit_counts[s_code] >= 7:
+                qualifying_suit = s_name
+                qualifying_count = suit_counts[s_code]
+                break
+
+        if not qualifying_suit:
+            await self.send_to(token, {"type": "error", "data": {"message": "Hand does not contain 7+ cards of a non-trump suit."}})
+            return
+
+        # Broadcast toast notification to all players
+        msg_text = f"{player.name} held {qualifying_count}+ cards of {qualifying_suit} and declared a redeal. Re-shuffling..."
+        log.info("Redeal declared: %s", msg_text)
+        await self.broadcast({
+            "type": "redeal_declared",
+            "data": {
+                "player_id": token,
+                "player_name": player.name,
+                "suit": qualifying_suit,
+                "count": qualifying_count,
+                "message": msg_text
+            }
+        })
+
+        # Re-shuffle and deal the same round number with the same dealer!
+        await self._redeal_current_round()
+
+    async def _redeal_current_round(self):
+        game = self.game
+        self._bot_turn_in_progress = False
+
+        # Reset per-round state for the same round & same dealer
+        game.bids = {}
+        game.tricks_taken = {tok: 0 for tok in game.seats if tok}
+        game.trick_cards = []
+        game.led_suit = None
+        game.round_scores = defaultdict(int)
+        game.team_round_scores = {1: 0, 2: 0}
+        game.bid_order = []
+        game.bidding_idx = 0
+        game.kings_snip = None
+
+        # Deal fresh 13 cards each
+        deck = make_deck()
+        for i in range(MAX_PLAYERS):
+            tok = game.seats[i]
+            if tok and tok in game.players:
+                game.players[tok].hand = sorted(
+                    deck[i * 13:(i + 1) * 13],
+                    key=lambda c: (card_suit(c), card_rank_value(c))
+                )
+
+        if game.round == 1:
+            game.phase = "playing"
+            first_seat = game.player_right_of(game.dealer_seat)
+            game.current_turn_seat = first_seat
+        else:
+            game.phase = "bidding"
+            first_bid_seat = game.player_right_of(game.dealer_seat)
+            game.bid_order = game.seated_tokens_in_order(first_bid_seat)
+
+        # Bot 7-card non-trump redeal check (80% chance)
+        for tok in game.seats:
+            if tok and tok in game.players:
+                p = game.players[tok]
+                if getattr(p, "is_bot", False):
+                    suit_counts = defaultdict(int)
+                    for c in p.hand:
+                        suit_counts[card_suit(c)] += 1
+                    for s_code, s_name in [("S", "Spades ♠"), ("C", "Clubs ♣"), ("D", "Diamonds ♦")]:
+                        if s_code != game.trump_suit and suit_counts[s_code] >= 7:
+                            if random.random() < 0.8:
+                                log.info("Bot %s held 7+ of %s and declared redeal", p.name, s_name)
+                                await asyncio.sleep(0.3)
+                                await self.broadcast({
+                                    "type": "redeal_declared",
+                                    "data": {
+                                        "player_id": tok,
+                                        "player_name": p.name,
+                                        "suit": s_name,
+                                        "count": suit_counts[s_code],
+                                        "message": f"{p.name} held {suit_counts[s_code]}+ cards of {s_name} and declared a redeal. Re-shuffling..."
+                                    }
+                                })
+                                await self._redeal_current_round()
+                                return
+
+        await self.broadcast_game_state()
+        self._trigger_bot_turn_if_needed()
+
+    # ------------------------------------------------------------------
+    # Feature 2: Temporary Hold / Pause & Reconnect
+    # ------------------------------------------------------------------
+
+    async def _handle_toggle_hold(self, token: str, data: Dict):
+        game = self.game
+        player = game.players.get(token)
+        p_name = player.name if player else "A player"
+
+        if game.is_paused:
+            game.is_paused = False
+            resumer = p_name
+            game.paused_by_name = None
+            game.paused_by_token = None
+            log.info("Match resumed by %s", resumer)
+            await self.broadcast({
+                "type": "game_resumed",
+                "data": {
+                    "resumed_by": resumer,
+                    "message": f"Match resumed by {resumer}."
+                }
+            })
+            await self.broadcast_game_state()
+            self._trigger_bot_turn_if_needed()
+        else:
+            game.is_paused = True
+            game.paused_by_name = p_name
+            game.paused_by_token = token
+            self._bot_turn_in_progress = False
+            log.info("Match paused by %s", p_name)
+            await self.broadcast({
+                "type": "game_paused",
+                "data": {
+                    "paused_by": p_name,
+                    "paused_by_token": token,
+                    "message": f"Match Paused by {p_name} — Waiting to resume..."
+                }
+            })
+            await self.broadcast_game_state()
+
+    async def _handle_reconnect(self, token: str, data: Dict):
+        game = self.game
+        target_token = data.get("session_id") or data.get("player_id") or token
+        player = game.players.get(target_token) or game.players.get(token)
+        if player:
+            log.info("Explicit reconnect handled for player %s (token=%s)", player.name, player.token)
+            player.disconnected_at = None
+            state = game.public_state(for_token=player.token)
+            await self.send_to(player.token, {"type": "game_state", "data": state})
+            await self.broadcast({
+                "type": "player_reconnected",
+                "data": {
+                    "id": player.token,
+                    "name": player.name,
+                    "seat": player.seat,
+                    "message": f"{player.name} reconnected!"
+                }
+            }, exclude=player.token)
     async def cleanup_stale_connections(self):
         """Periodically evict players that have been disconnected > RECONNECT_TIMEOUT."""
         while True:
@@ -1335,11 +1570,17 @@ class ConnectionManager:
                 player = self.game.players.pop(tok, None)
                 if player and player.seat is not None:
                     self.game.seats[player.seat] = None
-                    log.info("Evicted stale player: %s (seat %d)", player.name, player.seat)
-                    await self.broadcast({
-                        "type": "player_left",
-                        "data": {"id": tok, "name": player.name},
-                    })
+                    log.info("Evicted stale player after 3m: %s (seat %d)", player.name, player.seat)
+                    if self.game.phase in ("bidding", "playing", "round_end") and self.game.round > 0:
+                        await self.terminate_match(
+                            leaving_player_name=player.name,
+                            reason=f"{player.name} disconnected for over 3 minutes. Match ended."
+                        )
+                    else:
+                        await self.broadcast({
+                            "type": "player_left",
+                            "data": {"id": tok, "name": player.name},
+                        })
 
     # ------------------------------------------------------------------
     # Bot automation & Solo simulation
@@ -1405,7 +1646,7 @@ class ConnectionManager:
             await self.broadcast_game_state()
 
     def _trigger_bot_turn_if_needed(self):
-        if self._bot_turn_in_progress:
+        if self._bot_turn_in_progress or self.game.is_paused:
             return
         game = self.game
         if game.phase == "bidding":
@@ -1431,6 +1672,9 @@ class ConnectionManager:
             # Snappy bot delay (200ms to 350ms <= 0.5s) so rounds start quickly and flow smoothly
             await asyncio.sleep(random.uniform(0.20, 0.35))
             game = self.game
+            if game.is_paused:
+                self._bot_turn_in_progress = False
+                return
             player = game.players.get(token)
             if not player or not getattr(player, "is_bot", False):
                 return
@@ -1605,16 +1849,18 @@ async def websocket_endpoint(ws: WebSocket, player_token: Optional[str] = None):
                     pass
 
     except WebSocketDisconnect:
-        is_seated_active = (player and player.seat is not None and not getattr(player, "is_bot", False))
-        is_active_game = (manager.game.phase in ("bidding", "playing", "round_end", "dealer_select") or manager.game.round > 0)
         manager.disconnect(player_token)
-        if is_seated_active and is_active_game:
-            await manager.terminate_match(leaving_player_name=player.name, reason=f"{player.name} disconnected. The active match has ended.")
-        else:
-            await manager.broadcast({
-                "type": "player_disconnected",
-                "data": {"id": player_token, "name": player.name},
-            })
+        log.info("Player %s (%s) disconnected. Starting 3-minute grace period.", getattr(player, "name", "Unknown"), player_token)
+        await manager.broadcast({
+            "type": "player_disconnected",
+            "data": {
+                "id": player_token,
+                "name": getattr(player, "name", "Player"),
+                "seat": getattr(player, "seat", None),
+                "grace_period": RECONNECT_TIMEOUT,
+                "message": f"{getattr(player, 'name', 'Player')} disconnected (reconnecting...)"
+            },
+        })
     except Exception as exc:
         import traceback
         print(f"[ERROR] WebSocket fatal error for token {player_token}: {exc}")
