@@ -864,15 +864,15 @@ body::before {
 
   flex-direction: column !important;
 
-  background: var(--surface-card, #22252E) !important;
+  gap: 8px !important;
 
-  border: 1px solid var(--border-subtle, #2B303C) !important;
+  background: transparent !important;
 
-  border-radius: 12px !important;
+  border: none !important;
 
-  overflow: hidden !important;
+  border-radius: 0 !important;
 
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: none !important;
 
   width: 100% !important;
 
@@ -892,15 +892,25 @@ body::before {
 
   align-items: center !important;
 
-  padding: 12px 14px !important;
+  padding: 10px 14px !important;
 
-  border-bottom: 1px solid #2B303C !important;
+  background: var(--surface-card, #1A1C23) !important;
 
-  background: transparent !important;
+  border: 1px solid var(--border-subtle, #2B303C) !important;
 
-  transition: background-color 0.15s ease !important;
+  border-radius: 10px !important;
+
+  transition: all 0.15s ease !important;
 
   position: relative !important;
+
+  gap: 10px !important;
+
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+
+  width: 100% !important;
+
+  box-sizing: border-box !important;
 
 }
 
@@ -990,6 +1000,22 @@ body::before {
 
 
 
+.standings-name-wrap {
+
+  display: flex !important;
+
+  align-items: center !important;
+
+  gap: 8px !important;
+
+  min-width: 0 !important;
+
+  flex: 1 !important;
+
+}
+
+
+
 .standings-player-name {
 
   font-size: 0.95rem !important;
@@ -1004,9 +1030,41 @@ body::before {
 
   text-overflow: ellipsis !important;
 
+  min-width: 0 !important;
+
+}
+
+
+
+.standings-king-badge {
+
   display: inline-flex !important;
 
   align-items: center !important;
+
+  gap: 3px !important;
+
+  background: rgba(255, 215, 0, 0.15) !important;
+
+  color: #FFD700 !important;
+
+  border: 1px solid rgba(255, 215, 0, 0.4) !important;
+
+  padding: 2px 8px !important;
+
+  border-radius: 9999px !important;
+
+  font-size: 0.72rem !important;
+
+  font-weight: 800 !important;
+
+  letter-spacing: 0.4px !important;
+
+  white-space: nowrap !important;
+
+  flex-shrink: 0 !important;
+
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.25) !important;
 
 }
 
@@ -1070,7 +1128,11 @@ body::before {
 
 .standings-row.is-king {
 
-  background: rgba(255, 215, 0, 0.04) !important;
+  background: linear-gradient(90deg, rgba(255, 215, 0, 0.12) 0%, rgba(26, 28, 35, 0.95) 100%) !important;
+
+  border: 1.5px solid #FFD700 !important;
+
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.25) !important;
 
 }
 
@@ -1078,23 +1140,17 @@ body::before {
 
 .standings-row.is-king:hover {
 
-  background: rgba(255, 215, 0, 0.08) !important;
+  background: linear-gradient(90deg, rgba(255, 215, 0, 0.16) 0%, rgba(26, 28, 35, 0.95) 100%) !important;
 
 }
 
 
 
-/* Automatically append crown emoji (👑) directly next to their name */
-
 .standings-row.is-king .standings-player-name::after {
 
-  content: " 👑" !important;
+  content: "" !important;
 
-  font-size: 0.95rem !important;
-
-  display: inline-block !important;
-
-  margin-left: 4px !important;
+  display: none !important;
 
 }
 
