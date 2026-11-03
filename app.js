@@ -502,15 +502,15 @@
 
         standardScore = tricks === 0 ? 5 : -5;
 
-      } else if (bid === 7) {
+      } else if (bid >= 7) {
 
-        // Bid 7 special rule
+        // Bids 7 and above: double bid points if made (>= bid), lose bid if failed (< bid)
 
-        standardScore = tricks >= 7 ? 14 : -14;
+        standardScore = tricks >= bid ? (bid * 2) : -bid;
 
       } else {
 
-        // General Bids (2-6, 8-13)
+        // General Bids (2-6)
 
         standardScore = tricks >= bid ? bid : -bid;
 
@@ -718,11 +718,11 @@
 
     let podiumHtml = '';
 
-    const rankBadges = ['👑', '🥈', '🥉', '4️⃣'];
+    const rankBadges = ['1st', '2nd', '3rd', '4th'];
 
     const rankClasses = ['first', 'second', 'third', 'fourth'];
 
-    const rankLabels = ['1st Place', '2nd Place', '3rd Place', '4th Place'];
+    const rankLabels = ['1st', '2nd', '3rd', '4th'];
 
 
 
@@ -746,27 +746,43 @@
 
       }
 
+      const rankBadge = rankBadges[idx] || `${idx + 1}th`;
+
+      const rankClass = rankClasses[idx] || `rank-${idx + 1}`;
+
 
 
       podiumHtml += `
 
-        <div class="podium-item ${rankClasses[idx]} ${isKing ? 'is-king' : ''}">
+        <div class="standings-row podium-item ${rankClass} rank-${idx + 1} ${isKing ? 'is-king' : ''}">
 
-          <div class="podium-badge">${rankBadges[idx]}</div>
+          <div class="standings-left">
 
-          <span class="podium-rank-tag">${rankLabels[idx]}</span>
+            <div class="standings-rank-badge ${rankClass} rank-${idx + 1}">
 
-          <div class="podium-name" title="${escapeHtml(item.name)}${isKing ? ' (The King)' : ''}">
+              <span>${rankBadge}</span>
 
-            ${escapeHtml(item.name)}${isKing ? '<span class="king-title-badge"> (The King)</span>' : ''}
+            </div>
+
+            <div class="standings-name-wrap">
+
+              <span class="standings-player-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
+
+              ${isKing ? '<span class="standings-king-badge" title="The King (18+ Points!)">👑 King</span>' : ''}
+
+            </div>
 
           </div>
 
-          ${isKing ? '<div class="king-card-badge" title="Scored 18+ Points!">👑 (The King)</div>' : ''}
+          <div class="standings-right">
 
-          <div class="podium-score num ${isKing ? 'king-total' : ''}">${item.total}</div>
+            <span class="standings-score-num num ${isKing ? 'king-total' : ''}">${item.total}</span>
 
-          <div class="podium-gap num">${gapText}</div>
+            <span class="standings-score-label">pts</span>
+
+            ${gapText ? `<span class="standings-gap-label num">(${gapText})</span>` : ''}
+
+          </div>
 
         </div>
 
