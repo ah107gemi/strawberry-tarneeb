@@ -636,15 +636,15 @@
 
         standardScore = tricks === 0 ? 5 : -5;
 
-      } else if (bid === 7) {
+      } else if (bid >= 7) {
 
-        // Bid 7 special rule
+        // Bids 7 and above: double bid points if made (>= bid), lose bid if failed (< bid)
 
-        standardScore = tricks >= 7 ? 14 : -14;
+        standardScore = tricks >= bid ? (bid * 2) : -bid;
 
       } else {
 
-        // General Bids (2-6, 8-13)
+        // General Bids (2-6)
 
         standardScore = tricks >= bid ? bid : -bid;
 
@@ -872,7 +872,13 @@
 
             </div>
 
-            <span class="standings-player-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
+            <div class="standings-name-wrap">
+
+              <span class="standings-player-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
+
+              ${isKing ? '<span class="standings-king-badge" title="The King (18+ Points!)">👑 King</span>' : ''}
+
+            </div>
 
           </div>
 
