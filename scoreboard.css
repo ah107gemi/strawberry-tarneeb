@@ -440,235 +440,218 @@ body::before {
 
 
 
-/* 4-Player Podium Grid: ALWAYS sleek 4 columns side-by-side on mobile! */
+/* ==========================================================================
+   VERTICAL LIVE STANDINGS (Midnight Royale Theme)
+   ========================================================================== */
 
-.podium-grid.four-players {
-
-  display: grid !important;
-
-  grid-template-columns: repeat(4, 1fr) !important;
-
-  align-items: stretch !important;
-
-  gap: 4px !important;
-
-  padding-top: 0 !important;
-
-}
-
-
-
-.podium-item {
-
-  background: var(--mr-surface-alt) !important;
-
-  border: 1px solid var(--mr-border) !important;
-
-  border-radius: 10px !important;
-
-  padding: 6px 3px !important;
-
-  min-height: 74px !important;
-
+.podium-grid,
+.podium-grid.four-players,
+.standings-list {
   display: flex !important;
-
   flex-direction: column !important;
+  gap: 8px !important;
+  width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
 
+.standings-row,
+.podium-item {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
   align-items: center !important;
-
-  justify-content: center !important;
-
-  gap: 1px !important;
-
+  padding: 10px 14px !important;
+  min-height: 48px !important;
+  background: var(--mr-surface-alt, #182033) !important;
+  border: 1px solid var(--mr-border, rgba(255, 255, 255, 0.08)) !important;
+  border-radius: 10px !important;
+  gap: 10px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
   transform: none !important;
-
 }
 
-
-
-/* Leading Player: Clean gold highlight accents */
-
+/* Rank highlights */
+.standings-row.first,
 .podium-item.first {
-
-  background: linear-gradient(180deg, rgba(244, 200, 74, 0.14) 0%, var(--mr-surface-alt) 100%) !important;
-
-  border: 1.5px solid var(--mr-gold) !important;
-
-  box-shadow: 0 0 12px var(--mr-gold-glow) !important;
-
+  background: linear-gradient(90deg, rgba(244, 200, 74, 0.14) 0%, var(--mr-surface-alt, #182033) 100%) !important;
+  border: 1.5px solid var(--mr-gold, #F4C84A) !important;
+  box-shadow: 0 0 12px var(--mr-gold-glow, rgba(244, 200, 74, 0.35)) !important;
 }
 
-
-
+.standings-row.second,
 .podium-item.second {
-
-  border-color: rgba(148, 163, 184, 0.25) !important;
-
+  border-color: rgba(148, 163, 184, 0.35) !important;
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.08) 0%, var(--mr-surface-alt, #182033) 100%) !important;
 }
 
-
-
+.standings-row.third,
 .podium-item.third {
-
-  border-color: rgba(217, 119, 6, 0.25) !important;
-
+  border-color: rgba(217, 119, 6, 0.35) !important;
+  background: linear-gradient(90deg, rgba(217, 119, 6, 0.08) 0%, var(--mr-surface-alt, #182033) 100%) !important;
 }
 
-
-
+.standings-row.fourth,
 .podium-item.fourth {
-
-  border-color: rgba(100, 116, 139, 0.2) !important;
-
+  border-color: rgba(100, 116, 139, 0.25) !important;
+  background: var(--mr-surface-alt, #182033) !important;
 }
 
-
-
-.podium-badge {
-
-  font-size: 0.95rem !important;
-
-  line-height: 1 !important;
-
-  margin-bottom: 1px !important;
-
+/* King status: 18+ points */
+.standings-row.is-king,
+.podium-item.is-king {
+  background: linear-gradient(90deg, rgba(244, 200, 74, 0.2) 0%, var(--mr-surface-alt, #182033) 100%) !important;
+  border: 1.5px solid #FFD700 !important;
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.4) !important;
 }
 
+/* Left Group */
+.standings-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+}
 
-
-.podium-rank-tag {
-
-  font-size: 0.58rem !important;
-
+/* Rank Badge */
+.standings-rank-badge {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 0.72rem !important;
   font-weight: 800 !important;
-
-  padding: 1px 4px !important;
-
-  border-radius: 4px !important;
-
-  margin-bottom: 2px !important;
-
-  text-transform: uppercase !important;
-
-}
-
-
-
-.podium-item.first .podium-rank-tag {
-
-  background: var(--mr-gold) !important;
-
-  color: #101522 !important;
-
-}
-
-
-
-.podium-item.second .podium-rank-tag {
-
-  background: #64748B !important;
-
-  color: #FFFFFF !important;
-
-}
-
-
-
-.podium-item.third .podium-rank-tag {
-
-  background: #B45309 !important;
-
-  color: #FFFFFF !important;
-
-}
-
-
-
-.podium-item.fourth .podium-rank-tag {
-
-  background: #334155 !important;
-
+  line-height: 1 !important;
+  border: 1.5px solid var(--mr-border, rgba(255, 255, 255, 0.12)) !important;
+  background: var(--mr-surface, #202A42) !important;
   color: #94A3B8 !important;
-
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
 }
 
+.standings-rank-badge.first,
+.standings-row.first .standings-rank-badge,
+.podium-item.first .standings-rank-badge {
+  background: var(--mr-gold, #F4C84A) !important;
+  color: #101522 !important;
+  border-color: var(--mr-gold, #F4C84A) !important;
+  box-shadow: 0 0 8px rgba(244, 200, 74, 0.4) !important;
+}
 
-
-.podium-name {
-
-  font-size: 0.76rem !important;
-
-  font-weight: 700 !important;
-
+.standings-rank-badge.second,
+.standings-row.second .standings-rank-badge,
+.podium-item.second .standings-rank-badge {
+  background: #64748B !important;
   color: #FFFFFF !important;
-
-  text-align: center !important;
-
-  max-width: 100% !important;
-
-  white-space: nowrap !important;
-
-  overflow: hidden !important;
-
-  text-overflow: ellipsis !important;
-
-  line-height: 1.2 !important;
-
+  border-color: #64748B !important;
 }
 
+.standings-rank-badge.third,
+.standings-row.third .standings-rank-badge,
+.podium-item.third .standings-rank-badge {
+  background: #B45309 !important;
+  color: #FFFFFF !important;
+  border-color: #B45309 !important;
+}
 
+.standings-rank-badge.fourth,
+.standings-row.fourth .standings-rank-badge,
+.podium-item.fourth .standings-rank-badge {
+  background: #334155 !important;
+  color: #94A3B8 !important;
+  border-color: #334155 !important;
+}
 
-.podium-score {
-
-  font-size: 1.15rem !important;
-
+.standings-row.is-king .standings-rank-badge,
+.podium-item.is-king .standings-rank-badge {
+  box-shadow: 0 0 12px 2px #FFD700 !important;
+  border-radius: 50% !important;
+  border: 2px solid #FFD700 !important;
+  background-color: rgba(255, 215, 0, 0.25) !important;
+  color: #FFD700 !important;
   font-weight: 900 !important;
+}
 
-  margin-top: 1px !important;
+/* Name and King badge wrap */
+.standings-name-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+}
 
-  line-height: 1.1 !important;
-
+.standings-player-name {
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
   color: #FFFFFF !important;
-
-}
-
-
-
-.podium-item.first .podium-score {
-
-  color: var(--mr-gold) !important;
-
-}
-
-
-
-.podium-gap {
-
-  font-size: 0.6rem !important;
-
-  font-weight: 600 !important;
-
-  color: var(--mr-text-muted) !important;
-
-  margin-top: 1px !important;
-
   white-space: nowrap !important;
-
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  min-width: 0 !important;
 }
 
-
-
-.king-card-badge {
-
-  font-size: 0.58rem !important;
-
-  padding: 1px 4px !important;
-
-  margin: 1px 0 !important;
-
+.standings-king-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  background: rgba(244, 200, 74, 0.2) !important;
+  color: var(--mr-gold, #F4C84A) !important;
+  border: 1px solid var(--mr-gold, #F4C84A) !important;
+  padding: 2px 8px !important;
+  border-radius: 9999px !important;
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.4px !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 0 8px rgba(244, 200, 74, 0.3) !important;
 }
 
+/* Right Group */
+.standings-right {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 4px !important;
+  flex-shrink: 0 !important;
+  text-align: right !important;
+}
 
+.standings-score-num {
+  font-size: 1.25rem !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  color: #FFFFFF !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+.standings-score-num.king-total,
+.standings-row.first .standings-score-num,
+.podium-item.first .standings-score-num,
+.standings-row.is-king .standings-score-num,
+.podium-item.is-king .standings-score-num {
+  color: var(--mr-gold, #F4C84A) !important;
+  text-shadow: 0 0 10px rgba(244, 200, 74, 0.4) !important;
+}
+
+.standings-score-label {
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.standings-gap-label {
+  font-size: 0.68rem !important;
+  font-weight: 600 !important;
+  color: var(--mr-text-muted, #94A3B8) !important;
+  margin-left: 2px !important;
+}
 
 /* Bench Strip: Compact */
 
